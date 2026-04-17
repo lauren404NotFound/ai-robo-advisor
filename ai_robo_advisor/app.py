@@ -3405,10 +3405,10 @@ _cv1.html("""
         var root = pd.createElement('div');
         root.id = 'diq-chatbot-root';
         root.innerHTML = [
-            '<button id="diq-chat-btn" title="Chat with DeepAtomicIQ">\uD83E\uDD16</button>',
+            '<button id="diq-chat-btn" title="Chat with DeepAtomicIQ">&#x1F916;</button>',
             '<div id="diq-chat-panel">',
             '  <div id="diq-chat-hdr">',
-            '    <div class="ba">\uD83E\uDDE0</div>',
+            '    <div class="ba">&#x1F9E0;</div>',
             '    <div><div class="bn">DeepAtomicIQ Assistant</div>',
             '    <div class="bs">\u25CF Online &middot; Markowitz MINN</div></div>',
             '    <button class="bx">&times;</button>',
@@ -3519,88 +3519,7 @@ _cv1.html("""
 """, height=0, width=0)
 
 
-# ══ FLOATING CHATBOT — JS (must use components.html so it actually executes) ═
-import streamlit.components.v1 as _cv1
-_cv1.html("""
-<script>
-(function() {
-    var p = window.parent;
 
-    function scrollMsgs() {
-        var m = p.document.getElementById('diq-chat-msgs');
-        if (m) m.scrollTop = m.scrollHeight;
-    }
-
-    p.diqToggleChat = function() {
-        var panel = p.document.getElementById('diq-chat-panel');
-        if (!panel) return;
-        panel.classList.toggle('open');
-        if (panel.classList.contains('open')) {
-            var inp = p.document.getElementById('diq-chat-input');
-            if (inp) inp.focus();
-            scrollMsgs();
-        }
-    };
-
-    p.diqAskChip = function(q) {
-        var inp = p.document.getElementById('diq-chat-input');
-        if (inp) inp.value = q;
-        p.diqSendChat();
-    };
-
-    function addMsg(text, isUser) {
-        var msgs = p.document.getElementById('diq-chat-msgs');
-        if (!msgs) return;
-        var d = p.document.createElement('div');
-        d.className = isUser ? 'diq-msg-user' : 'diq-msg-bot';
-        d.innerHTML = text;
-        msgs.appendChild(d);
-        scrollMsgs();
-    }
-
-    function botReply(q) {
-        var t = q.toLowerCase();
-        if (t.match(/minn|markowitz|neural|network|how.*work/))
-            return "The <b>Markowitz-Informed Neural Network (MINN)</b> learns to build portfolios that maximise the Sharpe Ratio. It combines Markowitz portfolio theory with deep learning — your survey answers tune the model's risk threshold (δ) and temporal decay (γ).";
-        if (t.match(/start|begin|how do i|sign.?up|get started/))
-            return "Getting started is simple!<br>1. <b>Sign Up</b> top-right<br>2. Complete the <b>10-question assessment</b><br>3. MINN builds your <b>personalised portfolio</b> instantly<br>4. Explore results in the <b>Dashboard</b>";
-        if (t.match(/risk.?profile|profile|conservative|aggressive|moderate/))
-            return "DeepAtomicIQ maps you to one of <b>6 risk profiles</b>:<br>● Very Conservative · Conservative<br>● Moderate · Moderate-Aggressive<br>● Aggressive · Very Aggressive<br><br>Determined by your tolerance, horizon, age & reaction to drops.";
-        if (t.match(/sharpe|sharpe.?ratio/))
-            return "The <b>Sharpe Ratio</b> = (Return − Risk-Free Rate) ÷ Volatility.<br><br>Above 1.0 is generally good. The MINN <i>maximises</i> this during optimisation.";
-        if (t.match(/volatility|vol/))
-            return "<b>Volatility</b> measures how much your portfolio bounces up and down. Lower = smoother ride. The MINN balances return against volatility for your risk profile.";
-        if (t.match(/esg|sustainable|green|ethical/))
-            return "ESG = <b>Environmental, Social & Governance</b>. We include <b>ESGU</b> (iShares ESG S&P 500) for socially responsible exposure without sacrificing returns.";
-        if (t.match(/monte.?carlo|simulation|scenario/))
-            return "The <b>Monte Carlo simulation</b> runs <b>2,000 possible futures</b> for your portfolio, showing the full range from worst-case to best-case outcomes.";
-        if (t.match(/etf|fund|voo|qqq|bond|gold|gld/))
-            return "Our ETF universe:<br>● <b>VOO</b> (S&P 500) · <b>QQQ</b> (Nasdaq 100)<br>● <b>VWRA</b> (Global) · <b>AGG</b> (Bonds)<br>● <b>GLD</b> (Gold) · <b>VNQ</b> (Real Estate)<br>● <b>ESGU</b> (ESG) · <b>PDBC</b> (Commodities)";
-        if (t.match(/login|sign.?in|password|account/))
-            return "Click <b>Login</b> in the nav bar. Sign in with email/password or Google OAuth. Tick 'Keep me logged in' to stay signed in.";
-        if (t.match(/market|stock|price|index|sp500|nasdaq/))
-            return "The <b>Markets</b> page shows live ETF prices, sparkline charts, a 30-day price chart, and a sector performance heatmap — powered by Yahoo Finance.";
-        if (t.match(/invest|buy|how much|lump|monthl/))
-            return "Check the <b>Portfolio Implementation Guide</b> on your Dashboard — it shows exactly how much to put in each ETF based on your investment amount and monthly contribution.";
-        if (t.match(/hello|hi |hey|good/))
-            return "Hello! How can I help with your portfolio today? 😊";
-        if (t.match(/thank/))
-            return "You're welcome! Feel free to ask anything else. 🚀";
-        return "I can help with: the MINN model, risk profiles, ETFs, Sharpe ratio, how to invest, or getting started. Try one of those topics!";
-    }
-
-    p.diqSendChat = function() {
-        var inp = p.document.getElementById('diq-chat-input');
-        if (!inp) return;
-        var q = inp.value.trim();
-        if (!q) return;
-        addMsg(q, true);
-        inp.value = '';
-        setTimeout(function() { addMsg(botReply(q), false); }, 420);
-    };
-})();
-</script>
-""", height=0, width=0)
 
 
 # ── Main render ──────────────────────────────────────────────────────────────
