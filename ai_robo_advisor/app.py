@@ -3744,241 +3744,222 @@ else:
         "account":   page_account,
     }.get(page, page_home)()
 
+# ══ FLOATING CHATBOT — self-contained iframe, no cross-origin needed ══════════
 import streamlit.components.v1 as _cv1
-
-# Read Gemini key from secrets (fallback to empty string so the app doesn't crash)
 import json as _json
+
 try:
     _GEMINI_KEY = st.secrets.get("gemini_api_key", "") or ""
 except Exception:
     _GEMINI_KEY = ""
 
-_SYSTEM_PROMPT = (
-    "You are DeepAtomicIQ, an AI investment assistant embedded in the DeepAtomicIQ "
-    "robo-advisor platform. You help users understand their AI-generated portfolio, "
-    "explain investment concepts clearly, and guide them through the app. "
-    "The platform uses a Markowitz-Informed Neural Network (MINN) that maximises the "
-    "Sharpe ratio. It offers 6 risk profiles and invests across 8 ETFs: VOO (S&P 500), "
-    "QQQ (Nasdaq 100), VWRA (Global), AGG (Bonds), GLD (Gold), VNQ (Real Estate), "
-    "ESGU (ESG), PDBC (Commodities). "
-    "Be concise, friendly, and jargon-free. Use bullet points where helpful. "
-    "Never give regulated financial advice — always remind users to consult a qualified adviser for real decisions. "
-    "Keep replies under 120 words unless the user asks for detail."
-)
+_SYSTEM_PROMPT_JSON = _json.dumps("You are DeepAtomicIQ, an AI investment assistant embedded in the DeepAtomicIQ robo-advisor platform. You help users understand their AI-generated portfolio, explain investment concepts clearly, and guide them through the app. The platform uses a Markowitz-Informed Neural Network (MINN) that maximises the Sharpe ratio. It offers 6 risk profiles and invests across 8 ETFs: VOO (S&P 500), QQQ (Nasdaq 100), VWRA (Global), AGG (Bonds), GLD (Gold), VNQ (Real Estate), ESGU (ESG), PDBC (Commodities). Be concise, friendly, and jargon-free. Use bullet points where helpful. Never give regulated financial advice. Always remind users to consult a qualified financial adviser for real investment decisions. Keep replies under 120 words unless asked for detail.")
+_GEMINI_KEY_JS      = _json.dumps(_GEMINI_KEY)
 
-_cv1.html(f"""
+# CSS in the parent page to reposition the iframe container as fixed bottom-right
+st.markdown("""
+<style>
+/* Pin the LAST custom component (chatbot) to bottom-right corner */
+section.main > div > div:last-child [data-testid="stCustomComponentV1"]:last-child,
+[data-testid="stCustomComponentV1"]:last-of-type {
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 420px !important;
+    height: 640px !important;
+    z-index: 99998 !important;
+    pointer-events: none !important;
+    border: none !important;
+    overflow: visible !important;
+}
+[data-testid="stCustomComponentV1"]:last-of-type > iframe {
+    pointer-events: auto !important;
+    border: none !important;
+    background: transparent !important;
+    width: 420px !important;
+    height: 640px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+_CHATBOT_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:transparent!important;overflow:hidden;
+  font-family:'Inter',system-ui,sans-serif;width:420px;height:640px;}
+
+#cb-btn{
+  position:absolute;bottom:24px;right:24px;
+  width:58px;height:58px;border-radius:50%;
+  background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+  border:none;cursor:pointer;font-size:26px;color:#fff;
+  box-shadow:0 8px 28px rgba(109,94,252,0.6);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s,box-shadow .2s;z-index:10;
+}
+#cb-btn:hover{transform:scale(1.1);box-shadow:0 14px 38px rgba(109,94,252,0.8);}
+
+#cb-panel{
+  position:absolute;bottom:96px;right:20px;
+  width:380px;height:490px;
+  background:rgba(8,8,22,0.97);backdrop-filter:blur(20px);
+  border:1px solid rgba(109,94,252,0.35);border-radius:20px;
+  display:none;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.8);
+}
+#cb-panel.open{display:flex;}
+
+#cb-hdr{
+  padding:13px 16px;
+  background:linear-gradient(135deg,rgba(109,94,252,0.2),rgba(59,164,255,0.08));
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.cb-av{width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+  display:flex;align-items:center;justify-content:center;font-size:16px;}
+.cb-name{font-weight:700;color:#fff;font-size:13px;line-height:1.3;}
+.cb-sub{font-size:10px;color:#8EF6D1;}
+.cb-x{margin-left:auto;background:none;border:none;color:#8BA6D3;
+  font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;}
+
+#cb-msgs{
+  flex:1;overflow-y:auto;padding:12px;
+  display:flex;flex-direction:column;gap:9px;
+  scrollbar-width:thin;scrollbar-color:rgba(109,94,252,0.3) transparent;
+}
+.bot,.usr{max-width:90%;padding:9px 12px;border-radius:14px;
+  font-size:12.5px;line-height:1.55;word-break:break-word;}
+.bot{background:rgba(109,94,252,0.13);color:#D4E0F7;
+  border:1px solid rgba(109,94,252,0.2);align-self:flex-start;
+  border-bottom-left-radius:3px;}
+.usr{background:linear-gradient(135deg,#6D5EFC,#3BA4FF);color:#fff;
+  align-self:flex-end;border-bottom-right-radius:3px;}
+
+.typing{display:flex;gap:4px;align-items:center;padding:10px 12px;
+  background:rgba(109,94,252,0.1);border-radius:14px;
+  align-self:flex-start;border:1px solid rgba(109,94,252,0.15);
+  border-bottom-left-radius:3px;}
+.typing span{width:6px;height:6px;border-radius:50%;background:#8BA6D3;
+  animation:bounce 1.2s infinite;}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.chip{background:rgba(109,94,252,0.12);border:1px solid rgba(109,94,252,0.3);
+  border-radius:20px;padding:3px 9px;font-size:10.5px;color:#B0C4E8;
+  cursor:pointer;transition:background .15s;}
+.chip:hover{background:rgba(109,94,252,0.3);color:#fff;}
+
+#cb-inrow{display:flex;gap:8px;padding:10px 12px;
+  border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;}
+#cb-in{flex:1;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);border-radius:20px;
+  padding:8px 13px;color:#fff;font-size:12.5px;outline:none;font-family:inherit;}
+#cb-in:focus{border-color:#6D5EFC;}
+#cb-in:disabled{opacity:0.5;}
+#cb-send{background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+  border:none;border-radius:50%;width:36px;height:36px;flex-shrink:0;
+  cursor:pointer;color:#fff;font-size:15px;
+  display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+#cb-send:hover{transform:scale(1.1);}
+#cb-send:disabled{opacity:0.5;}
+</style>
+</head>
+<body>
+
+<button id="cb-btn" title="Chat with DeepAtomicIQ AI">&#x1F916;</button>
+
+<div id="cb-panel">
+  <div id="cb-hdr">
+    <div class="cb-av">&#x1F9E0;</div>
+    <div>
+      <div class="cb-name">DeepAtomicIQ AI</div>
+      <div class="cb-sub">&#x25CF; Powered by Gemini</div>
+    </div>
+    <button class="cb-x" id="cb-close">&times;</button>
+  </div>
+  <div id="cb-msgs">
+    <div class="bot">
+      Hi! I&apos;m your DeepAtomicIQ AI assistant. Ask me anything about
+      your portfolio, investment strategy, or how the app works.
+      <div class="chips">
+        <span class="chip">How does MINN work?</span>
+        <span class="chip">Explain my risk profile</span>
+        <span class="chip">What is the Sharpe ratio?</span>
+        <span class="chip">Which ETFs should I buy?</span>
+      </div>
+    </div>
+  </div>
+  <div id="cb-inrow">
+    <input id="cb-in" type="text" placeholder="Ask me anything&hellip;">
+    <button id="cb-send">&#10148;</button>
+  </div>
+</div>
+
 <script>
-(function() {{
-    var pd = window.parent.document;
-    var GEMINI_KEY = "{_GEMINI_KEY}";
-    var SYSTEM_PROMPT = {_json.dumps(_SYSTEM_PROMPT)};
-    var chatHistory = [];   // conversation history for multi-turn context
+var GEMINI_KEY   = """ + _json.dumps(_GEMINI_KEY) + """;
+var SYSTEM_PROMPT = """ + _json.dumps(SYSTEM_PROMPT) + """;
+var chatHistory  = [];
 
-    var existing = pd.getElementById('diq-chatbot-root');
+var panel = document.getElementById('cb-panel');
+var msgs  = document.getElementById('cb-msgs');
+var inp   = document.getElementById('cb-in');
+var btn   = document.getElementById('cb-btn');
+var send  = document.getElementById('cb-send');
+var close = document.getElementById('cb-close');
 
-    if (!existing) {{
-        var s = pd.createElement('style');
-        s.id = 'diq-chatbot-styles';
-        s.textContent = [
-            '#diq-chat-btn{{position:fixed;bottom:28px;right:28px;z-index:99999;',
-            'width:58px;height:58px;border-radius:50%;',
-            'background:linear-gradient(135deg,#6D5EFC,#3BA4FF);',
-            'border:none;cursor:pointer;',
-            'box-shadow:0 8px 28px rgba(109,94,252,0.55);',
-            'font-size:26px;color:#fff;',
-            'display:flex;align-items:center;justify-content:center;',
-            'transition:transform .2s,box-shadow .2s;}}',
-            '#diq-chat-btn:hover{{transform:scale(1.1);box-shadow:0 14px 38px rgba(109,94,252,0.75);}}',
-            '#diq-chat-panel{{position:fixed;bottom:98px;right:28px;z-index:99999;',
-            'width:370px;max-height:540px;',
-            'background:rgba(10,10,26,0.98);backdrop-filter:blur(24px);',
-            'border:1px solid rgba(109,94,252,0.35);border-radius:20px;',
-            'display:none;flex-direction:column;',
-            'box-shadow:0 20px 60px rgba(0,0,0,0.7);overflow:hidden;font-family:Inter,system-ui,sans-serif;}}',
-            '#diq-chat-panel.open{{display:flex;}}',
-            '#diq-chat-hdr{{padding:14px 16px;',
-            'background:linear-gradient(135deg,rgba(109,94,252,0.22),rgba(59,164,255,0.1));',
-            'border-bottom:1px solid rgba(255,255,255,0.08);',
-            'display:flex;align-items:center;gap:10px;}}',
-            '#diq-chat-hdr .ba{{width:34px;height:34px;border-radius:50%;',
-            'background:linear-gradient(135deg,#6D5EFC,#3BA4FF);',
-            'display:flex;align-items:center;justify-content:center;font-size:17px;}}',
-            '#diq-chat-hdr .bn{{font-weight:700;color:#fff;font-size:14px;line-height:1.3;}}',
-            '#diq-chat-hdr .bs{{font-size:11px;color:#8EF6D1;}}',
-            '#diq-chat-hdr .bx{{margin-left:auto;background:none;border:none;color:#8BA6D3;',
-            'font-size:19px;cursor:pointer;padding:2px 6px;line-height:1;}}',
-            '#diq-chat-msgs{{flex:1;overflow-y:auto;padding:12px;',
-            'display:flex;flex-direction:column;gap:10px;',
-            'scrollbar-width:thin;scrollbar-color:rgba(109,94,252,0.3) transparent;}}',
-            '.diq-bot,.diq-usr{{max-width:88%;padding:10px 13px;',
-            'border-radius:16px;font-size:13px;line-height:1.55;word-break:break-word;}}',
-            '.diq-bot{{background:rgba(109,94,252,0.14);color:#D4E0F7;',
-            'border:1px solid rgba(109,94,252,0.22);align-self:flex-start;border-bottom-left-radius:3px;}}',
-            '.diq-usr{{background:linear-gradient(135deg,#6D5EFC,#3BA4FF);color:#fff;',
-            'align-self:flex-end;border-bottom-right-radius:3px;}}',
-            '.diq-typing{{display:flex;gap:4px;align-items:center;padding:12px 14px;',
-            'background:rgba(109,94,252,0.1);border-radius:16px;align-self:flex-start;',
-            'border:1px solid rgba(109,94,252,0.18);border-bottom-left-radius:3px;}}',
-            '.diq-typing span{{width:7px;height:7px;border-radius:50%;background:#8BA6D3;',
-            'animation:diq-bounce 1.2s infinite;}}',
-            '.diq-typing span:nth-child(2){{animation-delay:.2s;}}',
-            '.diq-typing span:nth-child(3){{animation-delay:.4s;}}',
-            '@keyframes diq-bounce{{0%,60%,100%{{transform:translateY(0);}}30%{{transform:translateY(-6px);}}}}',
-            '#diq-chat-inrow{{display:flex;gap:8px;padding:10px 12px;',
-            'border-top:1px solid rgba(255,255,255,0.08);}}',
-            '#diq-chat-in{{flex:1;background:rgba(255,255,255,0.07);',
-            'border:1px solid rgba(255,255,255,0.12);border-radius:20px;',
-            'padding:8px 14px;color:#fff;font-size:13px;outline:none;font-family:inherit;}}',
-            '#diq-chat-in:focus{{border-color:#6D5EFC;}}',
-            '#diq-chat-in:disabled{{opacity:0.5;cursor:not-allowed;}}',
-            '#diq-chat-send{{background:linear-gradient(135deg,#6D5EFC,#3BA4FF);',
-            'border:none;border-radius:50%;width:36px;height:36px;flex-shrink:0;',
-            'cursor:pointer;color:#fff;font-size:15px;',
-            'display:flex;align-items:center;justify-content:center;transition:transform .15s;}}',
-            '#diq-chat-send:hover{{transform:scale(1.12);}}',
-            '#diq-chat-send:disabled{{opacity:0.5;cursor:not-allowed;}}',
-            '.diq-chips{{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}}',
-            '.diq-chip{{background:rgba(109,94,252,0.13);border:1px solid rgba(109,94,252,0.32);',
-            'border-radius:20px;padding:4px 10px;font-size:11px;color:#B0C4E8;',
-            'cursor:pointer;transition:background .15s;}}',
-            '.diq-chip:hover{{background:rgba(109,94,252,0.32);color:#fff;}}'
-        ].join('');
-        pd.head.appendChild(s);
+function toggle(){ panel.classList.toggle('open'); if(panel.classList.contains('open')){ inp.focus(); msgs.scrollTop=msgs.scrollHeight; } }
+btn.onclick   = toggle;
+close.onclick = toggle;
 
-        var root = pd.createElement('div');
-        root.id = 'diq-chatbot-root';
-        root.innerHTML = [
-            '<button id="diq-chat-btn" title="Ask DeepAtomicIQ AI">&#x1F916;</button>',
-            '<div id="diq-chat-panel">',
-            '  <div id="diq-chat-hdr">',
-            '    <div class="ba">&#x1F9E0;</div>',
-            '    <div><div class="bn">DeepAtomicIQ AI</div>',
-            '    <div class="bs">&#x25CF; Powered by Gemini</div></div>',
-            '    <button class="bx">&times;</button>',
-            '  </div>',
-            '  <div id="diq-chat-msgs">',
-            '    <div class="diq-bot">',
-            "      Hi! I'm your DeepAtomicIQ AI assistant. Ask me anything about your portfolio, investment strategy, or how the app works.",
-            '      <div class="diq-chips">',
-            '        <span class="diq-chip">How does MINN work?</span>',
-            '        <span class="diq-chip">Explain my risk profile</span>',
-            '        <span class="diq-chip">What is the Sharpe ratio?</span>',
-            '        <span class="diq-chip">Which ETFs should I buy?</span>',
-            '      </div>',
-            '    </div>',
-            '  </div>',
-            '  <div id="diq-chat-inrow">',
-            '    <input id="diq-chat-in" type="text" placeholder="Ask me anything&hellip;">',
-            '    <button id="diq-chat-send">&#10148;</button>',
-            '  </div>',
-            '</div>'
-        ].join('');
-        pd.body.appendChild(root);
-    }}
+function addMsg(text,isUser){
+  var d=document.createElement('div');
+  d.className=isUser?'usr':'bot';
+  d.innerHTML=text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>');
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
 
-    // ─ Re-get refs every rerun ────────────────────────────────────────────────
-    var panel  = pd.getElementById('diq-chat-panel');
-    var msgs   = pd.getElementById('diq-chat-msgs');
-    var inp    = pd.getElementById('diq-chat-in');
-    var btn    = pd.getElementById('diq-chat-btn');
-    var send   = pd.getElementById('diq-chat-send');
-    var closeB = pd.querySelector('#diq-chat-hdr .bx');
+function showTyping(){ var d=document.createElement('div'); d.className='typing'; d.id='cb-typing';
+  d.innerHTML='<span></span><span></span><span></span>'; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+function removeTyping(){ var t=document.getElementById('cb-typing'); if(t) t.remove(); }
 
-    function scrollDown() {{ msgs.scrollTop = msgs.scrollHeight; }}
+async function callGemini(q){
+  if(!GEMINI_KEY) return "I'm in offline mode — add a Gemini API key in secrets.toml to enable full AI.";
+  chatHistory.push({role:'user',parts:[{text:q}]});
+  try{
+    var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+GEMINI_KEY,
+      {method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({system_instruction:{parts:[{text:SYSTEM_PROMPT}]},contents:chatHistory,generationConfig:{maxOutputTokens:300,temperature:0.7}})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var data=await r.json();
+    var reply=data.candidates[0].content.parts[0].text;
+    chatHistory.push({role:'model',parts:[{text:reply}]});
+    return reply;
+  }catch(e){ chatHistory.pop(); return '&#9888; Could not reach AI: '+e.message; }
+}
 
-    function addMsg(text, isUser) {{
-        var d = pd.createElement('div');
-        d.className = isUser ? 'diq-usr' : 'diq-bot';
-        d.innerHTML = text.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>').replace(/\\*(.*?)\\*/g, '<i>$1</i>');
-        msgs.appendChild(d);
-        scrollDown();
-        return d;
-    }}
+async function doSend(){
+  var q=inp.value.trim(); if(!q||inp.disabled) return;
+  addMsg(q,true); inp.value=''; inp.disabled=true; send.disabled=true;
+  showTyping();
+  var reply=await callGemini(q);
+  removeTyping(); addMsg(reply,false);
+  inp.disabled=false; send.disabled=false; inp.focus();
+}
 
-    function showTyping() {{
-        var d = pd.createElement('div');
-        d.className = 'diq-typing'; d.id = 'diq-typing-indicator';
-        d.innerHTML = '<span></span><span></span><span></span>';
-        msgs.appendChild(d); scrollDown(); return d;
-    }}
+send.onclick=doSend;
+inp.addEventListener('keydown',function(e){ if(e.key==='Enter') doSend(); });
 
-    function removeTyping() {{
-        var t = pd.getElementById('diq-typing-indicator');
-        if (t) t.parentNode.removeChild(t);
-    }}
-
-    function setLoading(on) {{
-        inp.disabled = on; send.disabled = on;
-        if (!on) inp.focus();
-    }}
-
-    async function callGemini(userMsg) {{
-        if (!GEMINI_KEY) {{
-            return "I'm running in offline mode — no API key configured. Please ask your administrator to add a Gemini API key in secrets.toml to enable full AI responses.";
-        }}
-        chatHistory.push({{ role: 'user', parts: [{{ text: userMsg }}] }});
-        try {{
-            var resp = await fetch(
-                'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY,
-                {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{
-                        system_instruction: {{ parts: [{{ text: SYSTEM_PROMPT }}] }},
-                        contents: chatHistory,
-                        generationConfig: {{ maxOutputTokens: 300, temperature: 0.7 }}
-                    }})
-                }}
-            );
-            if (!resp.ok) {{
-                var err = await resp.json().catch(function(){{ return {{}}; }});
-                throw new Error(err.error && err.error.message ? err.error.message : 'API error ' + resp.status);
-            }}
-            var data = await resp.json();
-            var reply = data.candidates[0].content.parts[0].text;
-            chatHistory.push({{ role: 'model', parts: [{{ text: reply }}] }});
-            return reply;
-        }} catch(e) {{
-            chatHistory.pop(); // remove failed user message from history
-            return '&#9888; Sorry, I couldn\'t reach the AI right now (' + e.message + '). Please try again in a moment.';
-        }}
-    }}
-
-    function toggle() {{
-        panel.classList.toggle('open');
-        if (panel.classList.contains('open')) {{ inp.focus(); scrollDown(); }}
-    }}
-
-    async function doSend() {{
-        var q = inp.value.trim();
-        if (!q || inp.disabled) return;
-        addMsg(q, true);
-        inp.value = '';
-        setLoading(true);
-        var typing = showTyping();
-        var reply = await callGemini(q);
-        removeTyping();
-        addMsg(reply, false);
-        setLoading(false);
-    }}
-
-    function reattach(el) {{
-        var n = el.cloneNode(true); el.parentNode.replaceChild(n, el); return n;
-    }}
-
-    btn    = reattach(btn);    btn.addEventListener('click', toggle);
-    closeB = reattach(closeB); closeB.addEventListener('click', toggle);
-    send   = reattach(send);   send.addEventListener('click', doSend);
-    inp    = reattach(inp);
-    inp.addEventListener('keydown', function(e) {{ if (e.key === 'Enter') doSend(); }});
-
-    pd.querySelectorAll('.diq-chip').forEach(function(chip) {{
-        var c = chip.cloneNode(true); chip.parentNode.replaceChild(c, chip);
-        c.addEventListener('click', function() {{
-            inp.value = c.textContent.trim(); doSend();
-        }});
-    }});
-
-}})();
+document.querySelectorAll('.chip').forEach(function(c){
+  c.onclick=function(){ inp.value=c.textContent; doSend(); };
+});
 </script>
-""", height=1, scrolling=False)
+</body>
+</html>"""
+
+_cv1.html(_CHATBOT_HTML, height=640, scrolling=False)
