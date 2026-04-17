@@ -3523,6 +3523,7 @@ def page_more():
 import streamlit.components.v1 as _cv1
 
 # Read Gemini key from secrets (fallback to empty string so the app doesn't crash)
+import json as _json
 _GEMINI_KEY = st.secrets.get("gemini_api_key", "")
 
 _SYSTEM_PROMPT = (
@@ -3543,8 +3544,8 @@ _cv1.html(f"""
 (function() {{
     var pd = window.parent.document;
     var GEMINI_KEY = "{_GEMINI_KEY}";
-    var SYSTEM_PROMPT = {repr(_SYSTEM_PROMPT)};
-    var history = [];   // conversation history for multi-turn context
+    var SYSTEM_PROMPT = {_json.dumps(_SYSTEM_PROMPT)};
+    var chatHistory = [];   // conversation history for multi-turn context
 
     var existing = pd.getElementById('diq-chatbot-root');
 
@@ -3688,7 +3689,7 @@ _cv1.html(f"""
         if (!GEMINI_KEY) {{
             return "I'm running in offline mode — no API key configured. Please ask your administrator to add a Gemini API key in secrets.toml to enable full AI responses.";
         }}
-        history.push({{ role: 'user', parts: [{{ text: userMsg }}] }});
+        chatHistory.push({{ role: 'user', parts: [{{ text: userMsg }}] }});
         try {{
             var resp = await fetch(
                 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY,
@@ -3697,7 +3698,7 @@ _cv1.html(f"""
                     headers: {{ 'Content-Type': 'application/json' }},
                     body: JSON.stringify({{
                         system_instruction: {{ parts: [{{ text: SYSTEM_PROMPT }}] }},
-                        contents: history,
+                        contents: chatHistory,
                         generationConfig: {{ maxOutputTokens: 300, temperature: 0.7 }}
                     }})
                 }}
@@ -3708,10 +3709,10 @@ _cv1.html(f"""
             }}
             var data = await resp.json();
             var reply = data.candidates[0].content.parts[0].text;
-            history.push({{ role: 'model', parts: [{{ text: reply }}] }});
+            chatHistory.push({{ role: 'model', parts: [{{ text: reply }}] }});
             return reply;
         }} catch(e) {{
-            history.pop(); // remove failed user message from history
+            chatHistory.pop(); // remove failed user message from history
             return '&#9888; Sorry, I couldn\'t reach the AI right now (' + e.message + '). Please try again in a moment.';
         }}
     }}
