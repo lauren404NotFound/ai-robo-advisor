@@ -1380,7 +1380,7 @@ def _handle_query_params():
 
     if "page" in params:
         pg = params["page"]
-        if pg in {"home", "dashboard", "market", "news", "insights", "more"}:
+        if pg in {"home", "dashboard", "market", "news", "insights", "more", "account"}:
             st.session_state.nav_page = pg
         del st.query_params["page"]
 
