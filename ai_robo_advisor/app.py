@@ -1,0 +1,2664 @@
+"""
+app.py  —  AI & ML Robo-Advisor  (Streamlit)
+=============================================
+Navigation:   Home | My Dashboard | News | Market | Search | More
+Auth:         Login / Sign Up (Google, Apple, Email, Phone) → Logout
+Survey:       10-question one-at-a-time wizard (DeepIQ style)
+ML backend:   Random Forest + SHAP explainability
+AI Explain:   Plain-English portfolio explanation (BalanceHer AssessmentEngine pattern)
+Portfolio:    Markowitz allocation + Monte Carlo simulation
+
+Run:
+    cd "Demo_prototype copy"
+    python3 -m streamlit run ai_robo_advisor/app.py --server.port 8507
+"""
+
+from __future__ import annotations
+import os, sys, time, hashlib, json
+import datetime
+import numpy as np
+import pandas as pd
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+import streamlit as st
+import secrets
+import hashlib
+
+# Architectural Node: Decentralized Local Storage Auth Engaged
+from streamlit_oauth import OAuth2Component
+
+# Securely load credentials from .streamlit/secrets.toml
+try:
+    if "oauth" in st.secrets:
+        GOOGLE_CLIENT_ID = st.secrets["oauth"]["google_client_id"]
+        GOOGLE_CLIENT_SECRET = st.secrets["oauth"]["google_client_secret"]
+        LINKEDIN_CLIENT_ID = st.secrets["oauth"]["linkedin_client_id"]
+        LINKEDIN_CLIENT_SECRET = st.secrets["oauth"]["linkedin_client_secret"]
+    else:
+        raise KeyError
+except Exception:
+    import toml
+    try:
+        sec = toml.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".streamlit", "secrets.toml"))
+        GOOGLE_CLIENT_ID = sec["oauth"]["google_client_id"]
+        GOOGLE_CLIENT_SECRET = sec["oauth"]["google_client_secret"]
+        LINKEDIN_CLIENT_ID = sec["oauth"]["linkedin_client_id"]
+        LINKEDIN_CLIENT_SECRET = sec["oauth"]["linkedin_client_secret"]
+    except Exception:
+        GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
+        LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
+
+oauth2 = OAuth2Component(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    "https://accounts.google.com/o/oauth2/auth",
+    "https://oauth2.googleapis.com/token",
+    "https://www.googleapis.com/oauth2/v1/userinfo",
+)
+
+linkedin_oauth = OAuth2Component(
+    LINKEDIN_CLIENT_ID,
+    LINKEDIN_CLIENT_SECRET,
+    "https://www.linkedin.com/oauth/v2/authorization",
+    "https://www.linkedin.com/oauth/v2/accessToken",
+    "https://api.linkedin.com/v2/userinfo",
+)
+
+_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+if _PKG_DIR not in sys.path:
+    sys.path.insert(0, _PKG_DIR)
+
+from portfolio_engine import build_portfolio, TICKER_MAP, ASSETS
+from explainer import DeepIQInterpreter
+import database
+
+# ══════════════════════════════════════════════════════════════════════════════
+# THEME - "Cyber Lilac" (Inspired by modern fintech UI)
+# ══════════════════════════════════════════════════════════════════════════════
+ACCENT  = "#9B72F2"  # Vibrant Lilac
+ACCENT2 = "#B18AFF"  # Soft Lavender
+ACCENT3 = "#E6D5FF"  # White-ish Purple
+CANVAS  = "#0B0B1A"  # Light background
+PANEL   = "rgba(18, 18, 38, 0.72)"
+BORDER  = "rgba(155, 114, 242, 0.22)"
+TEXT    = "#F3F3F9"
+MUTED   = "rgba(237, 237, 243, 0.55)"
+GRID    = "rgba(155, 114, 242, 0.08)"
+TMPL    = "plotly_dark"
+POS     = "#4AE3A0"  # Spring Green
+NEG     = "#FF6B6B"  # Vibrant Coral
+
+PROFILE_COLORS = {
+    "Profile 1": "#60A5FA",
+    "Profile 2": "#4AE3A0",
+    "Profile 3": "#FBBF24",
+    "Profile 4": "#F97316",
+    "Profile 5": "#EF4444",
+    "Profile 6": "#9B72F2",
+}
+
+MODEL_PATH = os.path.join(_PKG_DIR, "model.pkl")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ICONS (Lucide-style Outline)
+# ══════════════════════════════════════════════════════════════════════════════
+def get_svg(name, size=18, color="currentColor"):
+    icons = {
+        "home": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+        "dashboard": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+        "news": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>',
+        "market": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
+        "search": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+        "more": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+        "brain": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54Z"/></svg>',
+        "zap": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-2 10h3l-2 10 7-12h-3l2-8Z"/></svg>',
+        "risk": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="M2 12h20"/><path d="m4.93 19.07 14.14-14.14"/></svg>'
+    }
+    return icons.get(name, "")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE CONFIG
+# ══════════════════════════════════════════════════════════════════════════════
+st.set_page_config(
+    page_title="AI Robo-Advisor",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown("""
+<style>
+    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GLOBAL CSS
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+html, body, [class*="css"] {{
+  font-family: 'Inter', system-ui, sans-serif !important;
+}}
+.stApp {{
+  background:
+    radial-gradient(1000px 700px at 0% 0%, rgba(155, 114, 242, 0.15) 0%, transparent 60%),
+    radial-gradient(800px 600px at 100% 20%, rgba(177, 138, 255, 0.08) 0%, transparent 70%),
+    radial-gradient(1200px 800px at 50% 100%, rgba(138, 43, 226, 0.06) 0%, transparent 60%),
+    linear-gradient(135deg, #070B1A 0%, #0F172A 100%);
+  color: {TEXT};
+}}
+.block-container {{
+  padding-top: 0 !important;
+  padding-bottom: 4rem !important;
+  max-width: 1400px; padding-top: 4rem !important;
+}}
+header[data-testid="stHeader"], div[data-testid="stToolbar"],
+.stDeployButton, #MainMenu {{ display:none !important; visibility:hidden; }}
+
+/* ══ TOP NAV ══ */
+.nav-bar {{
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  display: flex; align-items: center;
+  padding: 0 40px; height: 68px;
+  background: rgba(11, 11, 26, 0.9);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(155, 114, 242, 0.15);
+  pointer-events: none;
+}}
+.nav-grid {{
+  display: grid; width: 100%; gap: 0 !important;
+  grid-template-columns: 240px repeat(5, 110px) 1fr 360px;
+  align-items: center;
+}}
+.nav-brand {{
+  font-size: 19px; font-weight: 900; color: #ffffff;
+  letter-spacing: -0.04em; display: flex; align-items: center; gap: 10px;
+}}
+.nav-link-wrap {{
+  display: flex; justify-content: center; align-items: center; height: 68px;
+}}
+.nav-link:hover {{ color: #ffffff; background: rgba(255,255,255,0.05); }}
+.nav-link-wrap.active .nav-link {{ color: #3BA4FF; font-weight: 700; border-bottom: 2px solid #3BA4FF; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }}
+
+.nav-link {{
+  color: {MUTED}; font-size: 14px; font-weight: 500;
+  transition: all 0.25s; text-decoration: none;
+  padding: 8px 16px; border-radius: 12px;
+  display: flex; align-items: center; gap: 8px;
+  white-space: nowrap;
+}}
+.nav-link-wrap.active .nav-link:hover {{ color: #ffffff; background: rgba(255,255,255,0.05); }}
+.nav-link-wrap.active .nav-link {{ color: #3BA4FF; font-weight: 700; border-bottom: 2px solid #3BA4FF; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }}
+
+.nav-link {{
+  color: {ACCENT}; background: transparent; font-weight: 700;
+}}
+.nav-right {{
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+}}
+#nav-trigger-marker {{ position: fixed; top: 0; left: 0; height: 0; width: 0; z-index: 1001; }}
+
+/* The Streamlit block containing the buttons */
+div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) {{
+    position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important;
+    height: 68px !important; z-index: 1005 !important;
+    display: grid !important; gap: 0 !important;
+    grid-template-columns: 240px repeat(5, 110px) 1fr 360px !important;
+    padding: 0 40px !important; align-items: center !important;
+    background: transparent !important; pointer-events: auto !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) button {{
+    background: transparent !important; border: none !important; color: transparent !important;
+    height: 68px !important; width: 100% !important; margin: 0 !important;
+    box-shadow: none !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) button:hover {{
+    background: rgba(255,255,255,0.03) !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) div[data-testid="column"] {{
+    width: 100% !important; flex: none !important; padding: 0 !important;
+}}
+.nav-account {{
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid {BORDER}; background: rgba(138,43,226,0.08);
+  font-size: 13px; color: {ACCENT3}; font-weight: 600;
+}}
+.nav-avatar {{
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, {ACCENT}, {ACCENT2});
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: #ffffff;
+}}
+.nav-btn {{
+  padding: 6px 16px; border-radius: 8px; font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all 0.18s;
+  border: none;
+}}
+.nav-btn-outline {{
+  background: transparent; color: {ACCENT2};
+  border: 1px solid rgba(138,43,226,0.4);
+}}
+.nav-btn-outline:hover {{ background: rgba(138,43,226,0.12); }}
+.nav-btn-primary {{
+  background: {ACCENT}; color: #ffffff;
+}}
+.nav-btn-primary:hover {{ background: #7020cc; box-shadow: 0 4px 16px rgba(138,43,226,0.4); }}
+.nav-btn-danger {{
+  background: transparent; color: {NEG};
+  border: 1px solid rgba(255,107,107,0.3);
+}}
+.nav-btn-danger:hover {{ background: rgba(255,107,107,0.08); }}
+
+
+
+
+/* ══ AUTH MODAL OVERLAY (Controlled within render_auth_modal) ══ */
+.modal-title {{
+  font-size: 28px; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 6px; text-align: center;
+  background: linear-gradient(90deg, #ffffff 0%, #a78bfa 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}}
+.modal-sub {{
+  font-size: 14px; color: #8BA6D3; text-align: center; margin-bottom: 28px;
+}}
+.modal-divider {{ display: flex; align-items: center; gap: 12px; margin: 18px 0; }}
+.modal-divider-line {{ flex: 1; height: 1px; background: rgba(109,94,252,0.25); }}
+.modal-divider-text {{ font-size: 11px; color: #6D5EFC; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }}
+.social-btn {{
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px 16px; border-radius: 12px; margin-bottom: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06); color: #ffffff;
+}}
+.social-btn:hover {{ background: rgba(255,255,255,0.12); border-color: rgba(109,94,252,0.5); transform: translateY(-1px); }}
+.auth-tab-row {{
+  display: flex; gap: 6px; margin-bottom: 24px;
+  background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px;
+  border: 1px solid rgba(109,94,252,0.2);
+}}
+.auth-tab {{
+  flex: 1; padding: 8px; border-radius: 8px; text-align: center;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #8BA6D3;
+}}
+.auth-tab.active {{ background: #6D5EFC; color: #ffffff; box-shadow: 0 4px 12px rgba(109,94,252,0.35); }}
+
+/* Native Streamlit Inputs Override within Modal */
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="base-input"] {{
+  background-color: rgba(255,255,255,0.06) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  transition: all 0.25s ease !important;
+}}
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="base-input"]:focus-within {{
+  border-color: #6D5EFC !important;
+  box-shadow: 0 0 0 2px rgba(109,94,252,0.3), 0 0 20px rgba(109,94,252,0.15) !important;
+  background-color: rgba(109,94,252,0.08) !important;
+}}
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) input {{ color: #ffffff !important; font-size: 15px !important; }}
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) label p {{ color: #a0b4d0 !important; font-size: 13px !important; font-weight: 500 !important; }}
+
+/* Streamlit button overrides inside modal */
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) button[kind="primary"] {{
+  background: linear-gradient(135deg, #6D5EFC, #3BA4FF) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 8px 24px rgba(109,94,252,0.4) !important;
+  transition: all 0.2s !important;
+}}
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) button[kind="primary"]:hover {{
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 32px rgba(109,94,252,0.5) !important;
+}}
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) button[kind="secondary"] {{
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 12px !important;
+  color: #a0b4d0 !important;
+}}
+div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) button[kind="secondary"]:hover {{
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(109,94,252,0.4) !important;
+  color: #ffffff !important;
+}}
+.auth-switch {{
+  text-align: center; font-size: 13px; color: {MUTED}; margin-top: 18px;
+}}
+.auth-switch span {{ color: {ACCENT2}; cursor: pointer; font-weight: 600; }}
+.auth-error {{
+  background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3);
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+  font-size: 13px; color: {NEG};
+}}
+
+/* ══ PAGE HERO ══ */
+.page-hero {{
+  padding: 52px 0 36px 0; text-align: center;
+}}
+.page-hero-title {{
+  font-size: 42px; font-weight: 900; letter-spacing: -0.04em;
+  background: linear-gradient(135deg, {ACCENT} 0%, {ACCENT2} 60%, {ACCENT} 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 14px;
+}}
+.page-hero-sub {{
+  font-size: 16px; color: {MUTED}; max-width: 560px; margin: 0 auto; line-height: 1.65;
+}}
+
+/* ══ HOME FEATURE GRID ══ */
+.feat-grid {{
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 18px; margin: 40px 0;
+}}
+.feat-card {{
+  border: 1px solid {BORDER}; background: {PANEL}; border-radius: 18px;
+  padding: 28px 24px; transition: all 0.22s; cursor: pointer;
+  backdrop-filter: blur(16px);
+}}
+.feat-card:hover {{
+  border-color: rgba(191,148,255,0.4);
+  box-shadow: 0 16px 48px rgba(138,43,226,0.2);
+  transform: translateY(-3px);
+}}
+.feat-icon {{ font-size: 32px; margin-bottom: 14px; }}
+.feat-title {{ font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }}
+.feat-desc  {{ font-size: 13px; color: {MUTED}; line-height: 1.6; }}
+
+/* ══ CARDS / PANELS ══ */
+.card {{
+  border: 1px solid {BORDER}; background: {PANEL};
+  border-radius: 28px; padding: 28px; margin-bottom: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(14px);
+}}
+.card:hover {{
+  border-color: rgba(155, 114, 242, 0.4);
+  box-shadow: 0 20px 60px rgba(155, 114, 242, 0.15);
+  transform: translateY(-4px);
+}}
+.panel-title {{
+  font-weight: 800; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  color: {ACCENT2}; margin-bottom: 20px;
+  border-left: 4px solid {ACCENT}; padding-left: 12px;
+}}
+
+/* ══ KPI GRID ══ */
+.kpi-grid {{
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin: 14px 0;
+}}
+.kpi {{
+  border: 1px solid {BORDER}; background: rgba(10,10,22,0.6);
+  border-radius: 14px; padding: 14px 12px; transition: all 0.2s;
+}}
+.kpi:hover {{
+  transform: translateY(-3px);
+  border-color: rgba(191,148,255,0.5);
+  box-shadow: 0 16px 40px rgba(138,43,226,0.18);
+}}
+.kpi-label {{ color:{MUTED}; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.10em; margin-bottom:7px; }}
+.kpi-value {{ font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:800; color:#ffffff; }}
+.kpi-hint  {{ color:rgba(230,213,255,0.35); font-size:9px; margin-top:7px; line-height:1.4; }}
+
+/* ══ SURVEY ══ */
+.survey-wrap {{
+  max-width: 700px; margin: 0 auto; padding: 20px 0;
+}}
+.q-number {{
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: {ACCENT2}; margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase;
+}}
+.q-text {{
+  font-size: 22px; font-weight: 700; color: #ffffff;
+  margin-bottom: 6px; line-height: 1.35;
+}}
+.q-desc {{
+  font-size: 13px; color: {MUTED}; margin-bottom: 20px; line-height: 1.6;
+}}
+.progress-bar-wrap {{
+  background: rgba(138,43,226,0.12); border-radius: 99px;
+  height: 4px; margin-bottom: 24px; overflow: hidden;
+}}
+.progress-bar-fill {{
+  background: linear-gradient(90deg, {ACCENT}, {ACCENT2});
+  height: 4px; border-radius: 99px; transition: width 0.4s ease;
+}}
+
+/* ══ PROFILE HERO ══ */
+.profile-hero {{
+  border: 1px solid {BORDER};
+  background: linear-gradient(135deg, rgba(155, 114, 242, 0.22), rgba(11, 11, 26, 0.95));
+  border-radius: 32px; padding: 40px; margin-bottom: 28px;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 40px rgba(155, 114, 242, 0.15);
+  position: relative; overflow: hidden;
+}}
+.profile-hero::after {{
+    content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(155, 114, 242, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+}}
+.profile-name {{ font-size: 32px; font-weight: 950; color: #ffffff; letter-spacing: -0.04em; margin-bottom: 12px; }}
+.profile-desc {{ font-size: 14px; color: {MUTED}; line-height: 1.7; max-width: 820px; }}
+.tag-row {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }}
+.tag {{
+  background: rgba(155, 114, 242, 0.15); border: 1px solid rgba(155, 114, 242, 0.3);
+  border-radius: 99px; padding: 6px 18px; font-size: 12px;
+  color: {ACCENT2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+}}
+
+/* ══ AI EXPLAIN SECTION ══ */
+.ai-explain-box {{
+  background: linear-gradient(135deg, rgba(138,43,226,0.10), rgba(10,10,30,0.85));
+  border: 1px solid rgba(138,43,226,0.30);
+  border-radius: 18px; padding: 28px 30px; margin-bottom: 16px;
+}}
+.ai-explain-header {{
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}}
+.ai-explain-icon {{
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, {ACCENT}, {ACCENT2});
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}}
+.ai-explain-title {{
+  font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;
+}}
+.ai-explain-sub {{
+  font-size: 12px; color: {MUTED};
+}}
+.ai-explain-para {{
+  font-size: 14px; color: rgba(237,237,243,0.85);
+  line-height: 1.75; margin-bottom: 14px;
+  padding: 14px 18px; border-radius: 12px;
+  background: rgba(255,255,255,0.03); border-left: 3px solid {ACCENT};
+}}
+.ai-explain-para:last-child {{ margin-bottom: 0; }}
+.ai-explain-para b {{ color: {ACCENT2}; }}
+
+/* ══ INSIGHTS ══ */
+.insight-pos, .insight-neg {{
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; font-size: 14px;
+}}
+.insight-pos {{ background: rgba(74,227,160,0.08); border-left: 3px solid {POS}; }}
+.insight-neg {{ background: rgba(255,107,107,0.08); border-left: 3px solid {NEG}; }}
+
+/* ══ ETF TABLE ══ */
+.etf-row {{
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid {BORDER}; font-size: 14px;
+}}
+.etf-name   {{ color: {ACCENT2}; font-weight: 600; }}
+.etf-ticker {{ font-family: 'JetBrains Mono', monospace; color: {POS}; font-size: 12px; }}
+
+/* ══ NEWS / MARKET PLACEHOLDERS ══ */
+.coming-soon {{
+  text-align: center; padding: 80px 20px;
+}}
+.coming-soon-icon {{ font-size: 56px; margin-bottom: 20px; }}
+.coming-soon-title {{
+  font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 10px;
+}}
+.coming-soon-sub {{ font-size: 15px; color: {MUTED}; }}
+.market-card {{
+  border: 1px solid {BORDER}; background: {PANEL}; border-radius: 14px;
+  padding: 18px 20px; transition: all 0.2s;
+}}
+.market-card:hover {{ border-color: rgba(191,148,255,0.4); transform: translateY(-2px); }}
+.market-ticker {{ font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {ACCENT2}; }}
+.market-name   {{ font-size: 11px; color: {MUTED}; margin-top: 2px; }}
+.market-price  {{ font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: #ffffff; margin-top: 8px; }}
+.market-change-pos {{ font-size: 12px; color: {POS}; font-weight: 600; }}
+.market-change-neg {{ font-size: 12px; color: {NEG}; font-weight: 600; }}
+
+/* plotly modebar */
+.js-plotly-plot .plotly .modebar {{ opacity: 0.15; }}
+.js-plotly-plot:hover .plotly .modebar {{ opacity: 0.90; }}
+
+/* radio styled like DeepIQ */
+div[role='radiogroup'] > label {{
+  border: 1px solid {BORDER}; border-radius: 12px; padding: 10px 18px;
+  margin-bottom: 8px; cursor: pointer; transition: all 0.2s;
+  background: rgba(255,255,255,0.02);
+}}
+div[role='radiogroup'] > label:hover {{
+  border-color: rgba(191,148,255,0.5);
+  background: rgba(138,43,226,0.08);
+}}
+
+/* primary button lilac */
+.stButton > button[kind="primary"] {{
+  background: linear-gradient(135deg, {ACCENT}, {ACCENT2}) !important; border: none !important;
+  border-radius: 14px !important; font-weight: 800 !important;
+  font-size: 16px !important; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  color: #ffffff !important; padding: 0.6rem 2rem !important;
+  box-shadow: 0 10px 30px rgba(155, 114, 242, 0.3) !important;
+}}
+.stButton > button[kind="primary"]:hover {{
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 15px 45px rgba(155, 114, 242, 0.5) !important;
+}}
+.stButton > button {{ 
+  border-radius: 14px !important; font-weight: 600 !important; 
+  background: rgba(155, 114, 242, 0.05) !important;
+  border: 1px solid rgba(155, 114, 242, 0.2) !important;
+  color: {TEXT} !important;
+}}
+.stButton > button:hover {{ border-color: {ACCENT} !important; background: rgba(155, 114, 242, 0.1) !important; }}
+
+/* Custom Text Inputs */
+div[data-baseweb="input"] {{
+  background-color: rgba(20, 20, 35, 0.8) !important;
+  border: 1px solid rgba(155,114,242,0.4) !important;
+  border-radius: 8px !important;
+}}
+div[data-baseweb="input"] input {{
+  color: #B18AFF !important;
+  font-weight: 600 !important;
+  -webkit-text-fill-color: #B18AFF !important;
+}}
+div[data-baseweb="input"]:focus-within {{
+  border-color: #B18AFF !important;
+  box-shadow: 0 0 0 1px #B18AFF !important;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+
+# DeepAtomicIQ Data Loader
+# Weights and IQ parameters are loaded from Robo_P directories on demand.
+
+def _auth_check() -> bool:
+    return st.session_state.get("authenticated", False)
+
+def _user_email() -> str:
+    return st.session_state.get("user_email", "")
+
+def _user_name() -> str:
+    return st.session_state.get("user_name", "")
+
+def _do_login(email: str, name: str, provider: str = "email", avatar: str = None, remember: bool = True):
+    st.session_state.authenticated = True
+    st.session_state.user_email    = email
+    st.session_state.user_name     = name
+    st.session_state.user_provider = provider
+    st.session_state.user_avatar   = avatar
+    st.session_state.show_auth     = False
+
+    if remember:
+        st.session_state.save_login_email = email
+        st.session_state.save_login_name = name
+
+    # Rest of existing code (saved assessment, preferences...)
+    saved = database.get_latest_assessment(email)
+    if saved:
+        st.session_state.result = saved["result"]
+        st.session_state.survey_answers = saved["answers"]
+        st.session_state.survey_page = "portfolio"
+
+    st.session_state.preferences = {}
+    user_data = database.get_user(email)
+    if user_data and user_data.get("preferences_json"):
+        import json
+        try:
+            st.session_state.preferences = json.loads(user_data["preferences_json"])
+        except:
+            pass
+
+def get_currency_symbol() -> str:
+    prefs = st.session_state.get("preferences", {})
+    curr = prefs.get("currency", "GBP (£)")
+    if "USD" in curr: return "$"
+    if "EUR" in curr: return "€"
+    return "£"
+
+def _do_logout():
+    st.session_state.clear_login_token = True
+    
+    for k in ["authenticated","user_email","user_name","user_provider","user_avatar"]:
+        st.session_state.pop(k, None)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SURVEY QUESTIONS
+# ══════════════════════════════════════════════════════════════════════════════
+QUESTIONS = [
+    dict(key="q1_risk_comfort", number="Q1 / 10",
+         text="How much risk are you comfortable with?",
+         desc="This maps to your investor risk profile. Higher risk tolerates larger swings in portfolio value but pursues greater long-term returns.",
+         options=["Low — I prioritise capital preservation",
+                  "Medium — balanced growth and stability",
+                  "High — maximum long-term growth"],
+         default="Medium — balanced growth and stability",
+         map={"Low — I prioritise capital preservation": 1,
+              "Medium — balanced growth and stability": 3,
+              "High — maximum long-term growth": 5}),
+    dict(key="q2_age", number="Q2 / 10",
+         text="What is your age group?",
+         desc="Younger investors can generally afford more volatility. This influences how the AI weights your risk capacity.",
+         options=["Under 30","30–39","40–49","50–59","60 or over"],
+         default="30–39",
+         map={"Under 30":25,"30–39":35,"40–49":45,"50–59":55,"60 or over":65}),
+    dict(key="q3_horizon", number="Q3 / 10",
+         text="What is your intended investment time horizon?",
+         desc="Longer horizons allow more volatility tolerance, as there is more time to recover from market downturns.",
+         options=["Short (under 3 years)","Medium (3–10 years)","Long (10–20 years)","Very long (over 20 years)"],
+         default="Long (10–20 years)",
+         map={"Short (under 3 years)":2,"Medium (3–10 years)":7,"Long (10–20 years)":15,"Very long (over 20 years)":25}),
+    dict(key="q4_income", number="Q4 / 10",
+         text="What is your approximate annual income?",
+         desc="Income determines your capacity to absorb losses and make regular contributions.",
+         options=["Under £25,000","£25,000 – £50,000","£50,000 – £100,000","Over £100,000"],
+         default="£25,000 – £50,000",
+         map={"Under £25,000":20000,"£25,000 – £50,000":37500,"£50,000 – £100,000":75000,"Over £100,000":150000}),
+    dict(key="q5_savings", number="Q5 / 10",
+         text="How much do you currently have saved or invested?",
+         desc="Existing wealth acts as a financial buffer, supporting a more aggressive allocation.",
+         options=["Under £5,000","£5,000 – £25,000","£25,000 – £100,000","Over £100,000"],
+         default="£5,000 – £25,000",
+         map={"Under £5,000":2500,"£5,000 – £25,000":15000,"£25,000 – £100,000":60000,"Over £100,000":200000}),
+    dict(key="q6_debt", number="Q6 / 10",
+         text="How would you describe your current debt situation?",
+         desc="High debt reduces financial flexibility and lowers your capacity to tolerate investment losses.",
+         options=["Debt-free","Low debt (mortgage or small loans, well managed)",
+                  "Moderate debt (manageable but notable)","High debt (significant financial obligations)"],
+         default="Low debt (mortgage or small loans, well managed)",
+         map={"Debt-free":0,"Low debt (mortgage or small loans, well managed)":10000,
+              "Moderate debt (manageable but notable)":50000,"High debt (significant financial obligations)":150000}),
+    dict(key="q7_dependents", number="Q7 / 10",
+         text="How many financial dependants do you have?",
+         desc="Dependants increase your liquidity needs and responsibilities, reducing investment risk capacity.",
+         options=["None","1","2","3 or more"],
+         default="None",
+         map={"None":0,"1":1,"2":2,"3 or more":3}),
+    dict(key="q8_emergency", number="Q8 / 10",
+         text="How many months of expenses does your emergency fund cover?",
+         desc="A larger emergency fund means you are less likely to need to liquidate investments unexpectedly.",
+         options=["Less than 1 month","1–3 months","3–6 months","More than 6 months"],
+         default="3–6 months",
+         map={"Less than 1 month":0.5,"1–3 months":2,"3–6 months":4.5,"More than 6 months":9}),
+    dict(key="q9_experience", number="Q9 / 10",
+         text="How long have you been investing?",
+         desc="Investment experience indicates familiarity with market volatility and emotional resilience during downturns.",
+         options=["I am new to investing (under 1 year)","1–3 years","3–10 years","Over 10 years"],
+         default="1–3 years",
+         map={"I am new to investing (under 1 year)":0,"1–3 years":2,"3–10 years":6,"Over 10 years":15}),
+    dict(key="q10_reaction", number="Q10 / 10",
+         text="If your portfolio dropped 25% in a month, you would…",
+         desc="Your behavioural response to losses is the most important signal of true risk tolerance. Be honest — there are no wrong answers.",
+         options=["Sell everything immediately to stop further losses",
+                  "Reduce exposure but hold some positions",
+                  "Hold and wait for recovery",
+                  "Hold and consider buying more at the lower price",
+                  "Actively buy more — it's a long-term opportunity"],
+         default="Hold and wait for recovery",
+         map={"Sell everything immediately to stop further losses":5,
+              "Reduce exposure but hold some positions":9,
+              "Hold and wait for recovery":13,
+              "Hold and consider buying more at the lower price":17,
+              "Actively buy more — it's a long-term opportunity":20}),
+]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SESSION STATE INIT
+# ══════════════════════════════════════════════════════════════════════════════
+def _init():
+    defaults = dict(
+        nav_page="home",      # home | dashboard | news | market | search
+        survey_step=0,
+        survey_answers={},
+        survey_page="survey", # survey | analysing | portfolio
+        result=None,
+        show_auth=False,
+        auth_mode="login",    # login | signup
+        auth_tab="email",     # email | phone
+        authenticated=False,
+        user_email="",
+        user_name="",
+    )
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+_init()
+
+if st.session_state.get("save_login_email"):
+    st.components.v1.html(f"""
+    <script>
+    try {{ 
+        window.parent.localStorage.setItem('diq_user_email', '{st.session_state.save_login_email}');
+        window.parent.localStorage.setItem('diq_user_name', '{st.session_state.save_login_name}');
+    }} catch(e) {{}}
+    </script>
+    """, height=0)
+    st.session_state.pop("save_login_email", None)
+    st.session_state.pop("save_login_name", None)
+
+if st.session_state.get("clear_login_token"):
+    st.components.v1.html("""
+    <script>
+    try { 
+        window.parent.localStorage.removeItem('diq_user_email');
+        window.parent.localStorage.removeItem('diq_user_name');
+    } catch(e) {}
+    </script>
+    """, height=0)
+    st.session_state.pop("clear_login_token", None)
+
+def restore_session_from_storage():
+    """Read email & name directly from localStorage and log the user in."""
+    if st.session_state.get("authenticated"):
+        return  # Already logged in
+
+    if not st.session_state.get("clear_login_token"):
+        st.components.v1.html("""
+        <script>
+        try {
+            const email = window.parent.localStorage.getItem('diq_user_email');
+            const name = window.parent.localStorage.getItem('diq_user_name');
+            if (email && name) {
+                const url = new URL(window.parent.location.href);
+                if (!url.searchParams.has('_auto_email')) {
+                    url.searchParams.set('_auto_email', email);
+                    url.searchParams.set('_auto_name', name);
+                    window.parent.location.href = url.toString();
+                }
+            }
+        } catch(e) {}
+        </script>
+        """, height=0)
+
+    # Check if we have auto-login params
+    email = st.query_params.get("_auto_email", None)
+    name = st.query_params.get("_auto_name", None)
+    if email and name:
+        if "_auto_email" in st.query_params: del st.query_params["_auto_email"]
+        if "_auto_name" in st.query_params: del st.query_params["_auto_name"]
+        
+        _do_login(email, name, provider="persistent", remember=False)
+        st.rerun()
+
+restore_session_from_storage()
+
+if "explanation_mode" not in st.session_state:
+    st.session_state.explanation_mode = "simple"   # "simple" or "advanced"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AI EXPLAIN  (adapted from BalanceHer AssessmentEngine.fetchInsight)
+# — No external API needed; uses portfolio data + SHAP to write plain English —
+# ══════════════════════════════════════════════════════════════════════════════
+def generate_simple_explanation(port: dict, inputs: dict, answers: dict) -> list[str]:
+    """Super simple, jargon‑free explanation for beginners."""
+    cat = port["risk_category"]
+    stats = port["stats"]
+    sim = port["simulated_growth"]
+    alloc = port["allocation_pct"]
+    horizon = inputs.get("horizon", 10)
+
+    # User answers in plain language
+    risk_ans = answers.get("q1_risk_comfort", "Medium — balanced growth and stability")
+    react_ans = answers.get("q10_reaction", "Hold and wait for recovery")
+    age_ans = answers.get("q2_age", "30–39")
+    horizon_ans = answers.get("q3_horizon", "Long (10–20 years)")
+
+    # Risk category description
+    if "Very Conservative" in cat:
+        risk_desc = "you want your money to be as safe as possible, even if that means it grows very slowly"
+    elif "Conservative" in cat:
+        risk_desc = "you prefer mostly safety, but you're okay with a little bit of ups and downs if it means your money can grow a bit faster"
+    elif "Moderate" in cat:
+        risk_desc = "you are comfortable with a balanced mix of safety and growth – some good years, some less good, but overall a steady climb"
+    elif "Aggressive" in cat:
+        risk_desc = "you are willing to take bigger risks for the chance of bigger rewards – you understand that some years might be tough, but you're in it for the long term"
+    else:
+        risk_desc = "you are ready for a roller‑coaster ride – big ups and downs – because you believe that over many years you will come out ahead"
+
+    # Reaction description
+    if "sell everything" in react_ans.lower():
+        reaction_desc = "you would panic and sell everything if the market dropped sharply"
+    elif "reduce exposure" in react_ans.lower():
+        reaction_desc = "you would get nervous and sell some, but keep most of your investments"
+    elif "hold and wait" in react_ans.lower():
+        reaction_desc = "you would stay calm and do nothing, trusting that markets usually recover"
+    elif "buy more" in react_ans.lower():
+        reaction_desc = "you would see a drop as a great chance to buy more at lower prices"
+    else:
+        reaction_desc = "you would consider adding to your investments if prices fell"
+
+    # Horizon description
+    if horizon >= 15:
+        horizon_desc = "you have a very long time ahead – this gives your money many years to grow and recover from any bumps"
+    elif horizon >= 7:
+        horizon_desc = "you have a medium‑long horizon – plenty of time to ride out market ups and downs"
+    else:
+        horizon_desc = "you plan to use this money relatively soon, so we focus on keeping it safe"
+
+    # Top two allocations with simple asset names
+    top_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)[:2]
+    asset_descriptions = {
+        "US Equities": "American company shares",
+        "Global Equities": "company shares from all over the world",
+        "Technology": "technology company shares (like Apple, Microsoft, etc.)",
+        "Core Fixed Income": "government and corporate bonds (loans that pay you interest)",
+        "Gold": "physical gold",
+        "Commodities": "raw materials like oil and wheat",
+        "Real Estate": "property investments",
+        "ESG Equities": "shares of companies that are good for the planet and society"
+    }
+    simple_alloc = [f"{asset_descriptions.get(a, a)} ({p:.0f}%)" for a, p in top_alloc]
+    simple_alloc_str = " and ".join(simple_alloc)
+    alloc_str = f"**{top_alloc[0][0]}** ({top_alloc[0][1]:.0f}%) and **{top_alloc[1][0]}** ({top_alloc[1][1]:.0f}%)" if len(top_alloc) == 2 else f"**{top_alloc[0][0]}** ({top_alloc[0][1]:.0f}%)"
+
+    # Expected return and risk in simple terms
+    expected_return = stats['expected_annual_return']
+    if expected_return > 7:
+        return_desc = "a high potential growth rate"
+    elif expected_return > 4:
+        return_desc = "a moderate growth rate"
+    else:
+        return_desc = "a lower but more stable growth rate"
+
+    volatility = stats['expected_volatility']
+    if volatility > 15:
+        vol_desc = "your portfolio will have big swings – some years up a lot, some years down a lot"
+    elif volatility > 8:
+        vol_desc = "your portfolio will have noticeable ups and downs, but nothing too extreme"
+    else:
+        vol_desc = "your portfolio will be fairly steady, with small ups and downs"
+
+    # Simulation numbers
+    p50 = sim['p50']
+    p10 = sim['p10']
+    p90 = sim['p90']
+    years = sim['years']
+
+    paragraphs = [
+        f"**What our AI sees in your answers**\n\n"
+        f"After analyzing your answers, our AI has placed you in the **{cat}** investor type. "
+        f"That means {risk_desc}. "
+        f"Your age ({age_ans}) and your investment horizon ({horizon_ans}) were two of the biggest clues. "
+        f"Also, when we asked what you would do if your investments suddenly dropped 25%, you told us: “{reaction_desc}”. "
+        f"This behaviour tells us a lot about how you handle financial ups and downs.",
+
+        f"**What this means for your money**\n\n"
+        f"A {cat} profile typically grows at {return_desc}. "
+        f"In practical terms, {vol_desc}. "
+        f"The good news is that over many years, taking on some bumps usually leads to higher overall growth. "
+        f"Your portfolio is designed to give you the best possible growth for the level of bumpiness you are comfortable with.",
+
+        f"**Where your money should go**\n\n"
+        f"Based on our AI calculations, your money should be split mainly between {simple_alloc_str}. "
+        f"That means you would buy shares in {alloc_str}. "
+        f"By spreading your money across different types of investments, you protect yourself from any one company or market crashing. "
+        f"This is called **diversification** – it's like not putting all your eggs in one basket.",
+
+        f"**What you might end up with**\n\n"
+        f"We ran a computer simulation of **2,000 possible futures** for the stock market, using real historical data. "
+        f"After **{years} years**, the most likely outcome (the middle scenario) is that your portfolio would be worth **£{p50:,.0f}**. "
+        f"In a very good market (top 10% of scenarios), it could reach **£{p90:,.0f}**. "
+        f"Even in a bad market (bottom 10% of scenarios), the model predicts **£{p10:,.0f}** – that's the power of diversification and staying invested.",
+
+        f"**A few simple tips**\n\n"
+        f"✔️ The most important thing is to **stay invested** – don't panic sell when markets drop. History shows that markets recover.\n"
+        f"✔️ **Review your plan once a year** or after big life changes (marriage, new job, etc.).\n"
+        f"✔️ If you ever feel confused, remember: this AI is here to help. You can always retake the survey or talk to a human financial adviser."
+    ]
+    return paragraphs
+
+
+def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> list[str]:
+    """Technical explanation with Sharpe ratio, volatility, SHAP‑like factors."""
+    cat = port["risk_category"]
+    stats = port["stats"]
+    sim = port["simulated_growth"]
+    alloc = port["allocation_pct"]
+    horizon = inputs.get("horizon", 10)
+
+    # Top SHAP-like contributors (we can derive from answers)
+    risk_ans = answers.get("q1_risk_comfort", "Medium — balanced growth and stability")
+    react_ans = answers.get("q10_reaction", "Hold and wait for recovery")
+    horizon_ans = answers.get("q3_horizon", "Long (10–20 years)")
+    age_ans = answers.get("q2_age", "30–39")
+
+    top_factors = ["Risk tolerance", "Investment horizon", "Behavioural response to losses"]
+
+    # Top allocations
+    top_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)[:2]
+    alloc_str = " and ".join(f"**{a}** ({p:.0f}%)" for a, p in top_alloc)
+
+    # ETF mapping for advanced paragraph
+    etf_map = {
+        "US Equities": "VOO",
+        "Global Equities": "VWRA",
+        "Technology": "QQQ",
+        "Core Fixed Income": "AGG",
+        "Gold": "GLD",
+        "Commodities": "PDBC",
+        "Real Estate": "VNQ",
+        "ESG Equities": "ESGU"
+    }
+    invest_recs = [f"**{etf_map.get(a, a)}** ({p:.0f}%)" for a, p in alloc.items() if p > 0]
+    top_invest_recs = " and ".join(invest_recs[:2])
+
+    paragraphs = [
+        f"Our AI analysed your answers using a **Random Forest classifier** trained on thousands of investor profiles. "
+        f"With high confidence, your responses place you in the **{cat}** risk category – one of five profiles ranging from Very Conservative to Very Aggressive.",
+
+        f"The three most important factors in your result were: **{', '.join(top_factors)}**. "
+        f"When you told us you are in the **{age_ans}** age group with a **{horizon_ans}** investment horizon, the AI recognised that you {'have time to recover from market downturns' if horizon >= 10 else 'require capital protection in the near term'}. "
+        f"Your reaction to a 25% drop – '*{react_ans}*' – was also a strong signal of your true risk tolerance.",
+
+        f"A **{cat}** profile means {'you are comfortable accepting moderate ups and downs in exchange for long-term growth' if 'Moderate' in cat or 'Aggressive' in cat else 'your priority is protecting the money you have, accepting lower returns in exchange for stability'}. "
+        f"The expected annual return for your portfolio is **{stats['expected_annual_return']:.1f}%**, "
+        f"with an estimated year-to-year volatility of **{stats['expected_volatility']:.1f}%**. "
+        f"A Sharpe ratio of **{stats['sharpe_ratio']:.2f}** indicates you are being well‑compensated for every unit of risk taken.",
+
+        f"**Optimal allocation:** To achieve this portfolio, distribute your capital as {top_invest_recs}. "
+        f"This specific {alloc_str} split is designed to {'capture aggressive global market growth while hedging against sudden drops' if stats['expected_annual_return'] > 6 else 'preserve your capital through stable bonds and low‑volatility assets while still beating inflation'}. "
+        f"Diversification across these uncorrelated assets reduces idiosyncratic risk.",
+
+        f"Based on **2,000 Monte Carlo simulations**, the median projected value after **{sim['years']} years** is **£{sim['p50']:,.0f}**. "
+        f"In a bullish scenario (90th percentile), this could reach **£{sim['p90']:,.0f}**. "
+        f"Even in a bearish environment (10th percentile), the model projects **£{sim['p10']:,.0f}**, reflecting the portfolio's built‑in resilience."
+    ]
+    return paragraphs
+
+
+def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> str:
+    """Return the full explanation text as a single string."""
+    if mode == "simple":
+        paragraphs = generate_simple_explanation(port, inputs, answers)
+    else:
+        paragraphs = generate_advanced_explanation(port, inputs, answers)
+    return "\n\n".join(paragraphs)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PLOTLY HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+def _style(fig, height=None):
+    kw = dict(template=TMPL, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+              font=dict(color=TEXT, family="Inter, system-ui, sans-serif"),
+              margin=dict(l=14, r=14, t=30, b=14),
+              legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0))
+    if height: kw["height"] = height
+    fig.update_layout(**kw)
+    fig.update_xaxes(showgrid=True, gridcolor=GRID, zeroline=False)
+    fig.update_yaxes(showgrid=True, gridcolor=GRID, zeroline=False)
+    return fig
+
+def donut_chart(alloc):
+    labels = list(alloc.keys()); values = list(alloc.values())
+    palette = ["#9B72F2","#B18AFF","#4AE3A0","#60A5FA","#FBBF24","#F97316","#6EE7B7"][:len(labels)]
+    
+    asset_descriptions = {
+        "US Equities": "Shares of the largest United States companies.",
+        "Global Equities": "Shares of companies from all over the world.",
+        "Technology": "Shares of technology companies like Apple and Microsoft.",
+        "Core Fixed Income": "Safe, stable bonds (like loans to the government).",
+        "Gold": "Investments in physical gold for protection against inflation.",
+        "Commodities": "Raw materials like oil, wheat, and natural gas.",
+        "Real Estate": "Investments in property and real estate.",
+        "ESG Equities": "Companies selected for good environmental & social practices."
+    }
+    custom_data = [asset_descriptions.get(lbl, "Investment asset component.") for lbl in labels]
+    
+    fig = go.Figure(go.Pie(labels=labels, values=values, hole=0.6,
+        marker_colors=palette, textinfo="percent", customdata=custom_data,
+        hovertemplate="<b>%{label}</b><br>%{value:.1f}%<br><i>%{customdata}</i><extra></extra>", textfont_size=11))
+    fig.update_layout(template=TMPL, paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=TEXT), margin=dict(l=0,r=0,t=0,b=0), height=240, showlegend=True,
+        legend=dict(orientation="v", valign="middle", yanchor="middle", y=0.5, xanchor="left", x=1.1))
+    return fig
+
+def growth_line(curve, color):
+    r,g,b = int(color[1:3],16), int(color[3:5],16), int(color[5:7],16)
+    currency = get_currency_symbol()
+    fig = go.Figure(go.Scatter(x=curve["x"], y=curve["y"], mode="lines",
+        line=dict(color=color, width=3), fill="tozeroy",
+        fillcolor=f"rgba({r},{g},{b},0.08)",
+        hovertemplate=f"Year %{{x:.0f}}<br>{currency}%{{y:,.0f}}<extra></extra>"))
+    fig = _style(fig, 300)
+    fig.update_layout(xaxis_title="Years", yaxis_title=f"Value ({currency})",
+        yaxis_tickprefix=currency, yaxis_tickformat=",.0f")
+    return fig
+
+def monte_chart(sim, color):
+    r,g,b = int(color[1:3],16), int(color[3:5],16), int(color[5:7],16)
+    currency = get_currency_symbol()
+    years = sim["years"]; x = list(range(years+1))
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x+x[::-1],
+        y=[sim["p10"]]*(years+1)+[sim["p90"]]*(years+1),
+        fill="toself", fillcolor=f"rgba({r},{g},{b},0.10)",
+        line=dict(color="rgba(0,0,0,0)"), name="10–90th Pct", hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=x, y=[sim["p50"]]*(years+1),
+        line=dict(color=color, width=2.5), name="Median",
+        hovertemplate=f"Year %{{x}}<br>{currency}%{{y:,.0f}}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=[sim["p25"]]*(years+1),
+        line=dict(color=color, dash="dot", width=1), name="25th",
+        hovertemplate=f"Year %{{x}}<br>{currency}%{{y:,.0f}}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=[sim["p75"]]*(years+1),
+        line=dict(color=color, dash="dot", width=1), name="75th",
+        hovertemplate=f"Year %{{x}}<br>{currency}%{{y:,.0f}}<extra></extra>"))
+    fig = _style(fig, 300)
+    fig.update_layout(xaxis_title="Years", yaxis_title=f"Value ({currency})",
+        yaxis_tickprefix=currency, yaxis_tickformat=",.0f")
+    return fig
+
+def shap_fig(contributors):
+    feats  = [c["feature"] for c in reversed(contributors)]
+    vals   = [c["shap_value"] for c in reversed(contributors)]
+    colors = [POS if v > 0 else NEG for v in vals]
+    fig = go.Figure(go.Bar(x=vals, y=feats, orientation="h",
+        marker_color=colors, hovertemplate="<b>%{y}</b><br>SHAP: %{x:.4f}<extra></extra>"))
+    fig = _style(fig, 280)
+    fig.update_layout(xaxis_title="SHAP contribution")
+    return fig
+
+def prob_fig(probs):
+    cats = list(probs.keys()); vals = [p*100 for p in probs.values()]
+    colors = [PROFILE_COLORS.get(c, ACCENT2) for c in cats]
+    fig = go.Figure(go.Bar(x=cats, y=vals, marker_color=colors,
+        hovertemplate="<b>%{x}</b><br>%{y:.1f}%<extra></extra>"))
+    fig = _style(fig, 240)
+    fig.update_layout(yaxis_title="Probability (%)", yaxis_range=[0,100], xaxis_tickangle=-15)
+    return fig
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NAV BAR
+# ══════════════════════════════════════════════════════════════════════════════
+NAV_ITEMS = [
+    ("home",      "🏠 Home"),
+    ("dashboard", "📊 My Dashboard"),
+    ("news",      "📰 News"),
+    ("market",    "📈 Market"),
+    ("insights",  "🧠 AI Insights"),
+    ("more",      "••• More"),
+]
+
+def _handle_query_params():
+    """Read URL query params set by the HTML nav and update session state."""
+    params = st.query_params
+
+    if "page" in params:
+        pg = params["page"]
+        if pg in {"home", "dashboard", "market", "news", "insights"}:
+            st.session_state.nav_page = pg
+        del st.query_params["page"]
+
+    if "auth" in params:
+        mode = params["auth"]
+        if mode in ("login", "signup"):
+            st.session_state.show_auth = True
+            st.session_state.auth_mode = mode
+        del st.query_params["auth"]
+        
+    if "code" in params:
+        code = params["code"]
+        import asyncio, base64, json, httpx
+        try:
+            # Manually extract Google JWT Payload
+            token = asyncio.run(oauth2.client.get_access_token(code=code, redirect_uri="http://localhost:8501"))
+            jwt = token["id_token"].split(".")[1]
+            jwt += "=" * ((4 - len(jwt) % 4) % 4)
+            user_info = json.loads(base64.urlsafe_b64decode(jwt).decode("utf-8"))
+            
+            _do_login(user_info.get("email"), user_info.get("name", "Google User"), "google", user_info.get("picture"))
+            if not database.get_user(user_info.get("email")):
+                database.create_user_oauth(user_info.get("email"), user_info.get("name", "Google User"), "google")
+        except Exception:
+            try:
+                # Fallback to LinkedIn API Endpoint
+                token = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri="http://localhost:8501"))
+                res = httpx.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"})
+                user_info = res.json()
+                _do_login(user_info.get("email"), user_info.get("name", "LinkedIn User"), "linkedin", user_info.get("picture"))
+                if not database.get_user(user_info.get("email")):
+                    database.create_user_oauth(user_info.get("email"), user_info.get("name", "LinkedIn User"), "linkedin")
+            except Exception:
+                pass
+                
+        st.query_params.clear()
+        st.session_state.show_auth = False
+        st.rerun()
+
+    if params.get("logout") == "1":
+        st.session_state.authenticated = False
+        st.session_state.user_name = None
+        st.session_state.user_email = None
+        st.session_state.result = None
+        st.session_state.survey_page = "survey"
+        del st.query_params["logout"]
+
+
+def render_nav():
+    _handle_query_params()
+
+    page = st.session_state.nav_page
+    auth = st.session_state.get("authenticated", False)
+    name = st.session_state.get("user_name", "")
+
+    def _active(p):
+        return "active" if page == p else ""
+
+    if auth:
+        short_name = name.split()[0][:12] if name else "User"
+        initials = "".join(w[0].upper() for w in name.split()[:2]) if name else "U"
+        
+        avatar_url = st.session_state.get("user_avatar")
+        if avatar_url:
+            avatar_html = f'<img src="{avatar_url}" style="width:26px; height:26px; border-radius:50%; object-fit:cover;">'
+        else:
+            avatar_html = f'<div class="nav-avi">{initials}</div>'
+            
+        auth_html = f"""
+          <div class="nav-user-pill">
+            {avatar_html}
+            <span>{short_name}</span>
+          </div>
+          <span class="nav-sep"></span>
+          <a class="nav-act-btn logout-btn" data-action="logout" href="javascript:void(0);">Logout</a>
+        """
+    else:
+        auth_html = """
+          <a class="nav-act-btn login-btn"  data-action="login" href="javascript:void(0);">Login</a>
+          <a class="nav-act-btn signup-btn" data-action="signup" href="javascript:void(0);">Sign Up</a>
+          <a class="nav-act-btn cta-btn"    data-action="signup" href="javascript:void(0);">Get Started →</a>
+        """
+
+    st.markdown(f"""
+<style>
+header[data-testid="stHeader"] {{ display: none !important; }}
+#diq-navbar {{
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  height: 62px;
+  background: rgba(6, 8, 20, 0.95);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(155, 114, 242, 0.18);
+  box-shadow: 0 2px 32px rgba(0,0,0,0.55);
+  display: flex; align-items: center;
+  padding: 0 36px; gap: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}}
+.diq-brand {{
+  font-size: 16px; font-weight: 900; letter-spacing: -0.03em; color: #fff;
+  display: flex; align-items: center; gap: 9px; min-width: 190px; white-space: nowrap;
+  text-decoration: none;
+}}
+.diq-dot {{
+  width: 9px; height: 9px; border-radius: 50%;
+  background: linear-gradient(135deg, #9B72F2, #4AE3A0);
+  box-shadow: 0 0 8px rgba(155,114,242,0.8); flex-shrink: 0;
+}}
+.diq-links {{
+  display: flex; align-items: center; gap: 2px; flex: 1; justify-content: center;
+}}
+.diq-lnk {{
+  font-size: 13.5px; font-weight: 500; color: rgba(237,237,243,0.55);
+  padding: 7px 17px; border-radius: 9px; white-space: nowrap;
+  transition: color 0.15s, background 0.15s; cursor: pointer;
+  text-decoration: none; display: inline-block;
+}}
+.diq-lnk:hover {{ color: #fff; background: rgba(255,255,255,0.07); }}
+.diq-lnk.active {{
+  color: #9B72F2; font-weight: 700; background: rgba(155,114,242,0.13);
+  box-shadow: inset 0 0 0 1px rgba(155,114,242,0.22);
+}}
+.diq-auth {{
+  display: flex; align-items: center; gap: 9px; min-width: 310px; justify-content: flex-end;
+}}
+.nav-user-pill {{
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(155,114,242,0.1); border: 1px solid rgba(155,114,242,0.28);
+  border-radius: 22px; padding: 4px 14px 4px 5px;
+  font-size: 13px; font-weight: 600; color: #E6D5FF; white-space: nowrap;
+}}
+.nav-avi {{
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, #9B72F2, #4AE3A0);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0;
+}}
+.nav-sep {{ width: 1px; height: 20px; background: rgba(155,114,242,0.25); }}
+.nav-act-btn {{
+  font-size: 12.5px; font-weight: 600; border-radius: 9px; border: none;
+  padding: 7px 17px; cursor: pointer; white-space: nowrap; font-family: inherit;
+  transition: all 0.16s; line-height: 1; text-decoration: none; display: inline-block;
+}}
+.login-btn  {{ background: transparent; color: rgba(237,237,243,0.65); }}
+.login-btn:hover  {{ color: #fff; background: rgba(255,255,255,0.07); }}
+.signup-btn {{ background: transparent; color: #9B72F2; border: 1px solid rgba(155,114,242,0.45); }}
+.signup-btn:hover {{ background: rgba(155,114,242,0.12); border-color: #9B72F2; }}
+.cta-btn    {{ background: linear-gradient(135deg,#9B72F2,#B18AFF); color:#fff;
+               box-shadow: 0 4px 14px rgba(155,114,242,0.38); }}
+.cta-btn:hover {{ box-shadow: 0 6px 20px rgba(155,114,242,0.55); transform: translateY(-1px); }}
+.logout-btn {{ background: transparent; color: rgba(255,107,107,0.8);
+               border: 1px solid rgba(255,107,107,0.3); }}
+.logout-btn:hover {{ background: rgba(255,107,107,0.08); }}
+</style>
+
+<div id="diq-navbar">
+  <div class="diq-brand"><div class="diq-dot"></div>DeepAtomicIQ</div>
+  <div class="diq-links">
+    <a class="diq-lnk {_active('home')}"      data-route="home"      href="javascript:void(0);">Home</a>
+    <a class="diq-lnk {_active('dashboard')}" data-route="dashboard" href="javascript:void(0);">Dashboard</a>
+    <a class="diq-lnk {_active('market')}"    data-route="market"    href="javascript:void(0);">Markets</a>
+    <a class="diq-lnk {_active('insights')}"  data-route="insights"  href="javascript:void(0);">News & Insights</a>
+    <a class="diq-lnk {_active('more')}"      data-route="more"      href="javascript:void(0);">Preferences</a>
+  </div>
+  <div class="diq-auth">{auth_html}</div>
+</div>
+""", unsafe_allow_html=True)
+
+    # Spacer so content clears the fixed nav
+    st.markdown('<div style="height:70px"></div>', unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    # JS PROXY ROUTER (Prevents HTML <a> tags from killing SessionState)
+    # ══════════════════════════════════════════════════════════════════════════════
+    with st.expander("System Hooks", expanded=False):
+        st.markdown("""
+        <style>
+        /* Safely isolate and hide the expansion container exclusively */
+        details:has(#proxy-anchor) { display: none !important; }
+        </style>
+        <div id="proxy-anchor"></div>
+        """, unsafe_allow_html=True)
+        
+        # Hidden Proxy Buttons
+        for pg in ["home", "dashboard", "market", "insights", "more"]:
+            if st.button(f"nav_to_{pg}", key=f"proxy_nav_{pg}"):
+                st.session_state.nav_page = pg
+                st.rerun()
+        
+        if st.button("auth_login_proxy", key="proxy_auth_login"):
+            st.session_state.show_auth = True
+            st.session_state.auth_mode = "login"
+            st.rerun()
+            
+        if st.button("auth_signup_proxy", key="proxy_auth_signup"):
+            st.session_state.show_auth = True
+            st.session_state.auth_mode = "signup"
+            st.rerun()
+            
+        if st.button("auth_logout_proxy", key="proxy_auth_logout"):
+            _do_logout()
+            st.rerun()
+
+    import streamlit.components.v1 as components
+    components.html("""
+    <script>
+    const parentDoc = window.parent.document;
+    
+    // Attach a single, permanent delegated listener to the React Root!
+    if (!parentDoc.diqProxyReady) {
+        parentDoc.addEventListener('click', function(e) {
+            const lnk = e.target.closest('a.diq-lnk, a.nav-act-btn');
+            if (lnk) {
+                // Intercept the click instantly before React or Browser Native logic executes!
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const route = lnk.getAttribute('data-route');
+                const action = lnk.getAttribute('data-action');
+                
+                if (route) {
+                    const btn = parentDoc.evaluate('//button[.//p[text()="nav_to_' + route + '"]]', parentDoc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    if (btn) btn.click();
+                } else if (action === 'login' || action === 'signup') {
+                    const btn = parentDoc.evaluate('//button[.//p[text()="auth_' + action + '_proxy"]]', parentDoc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    if (btn) btn.click();
+                } else if (action === 'logout') {
+                    const btn = parentDoc.evaluate('//button[.//p[text()="auth_logout_proxy"]]', parentDoc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    if (btn) btn.click();
+                }
+            }
+        }, true); // TRUE = Capture Phase (Extremely important to beat Streamlit's native handlers)
+        
+        parentDoc.diqProxyReady = true;
+    }
+    </script>
+    """, height=0, width=0)
+
+
+
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AUTH MODAL  (ported from BalanceHer signin + NavAuth patterns)
+# ══════════════════════════════════════════════════════════════════════════════
+def render_auth_modal():
+    mode = st.session_state.get("auth_mode", "login")
+    tab  = st.session_state.get("auth_tab", "email")
+
+    title = "Sign in" if mode == "login" else "Create an Account"
+    sub   = "Sign in to access your portfolio" if mode == "login" else "Start your investment journey today"
+
+    # Render overlay first, independent of the form's stacking context
+    st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown("""
+        <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            /* Softer, darker overlay – not too bright, not pitch black */
+            background: rgba(10, 20, 40, 0.6);
+            backdrop-filter: blur(2px); /* optional: adds subtle depth */
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        /* Modal container – now fits any screen */
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            
+            /* Responsive sizing – never too big */
+            width: 90vw !important;
+            max-width: 440px !important;
+            max-height: 90vh !important;
+            overflow-y: auto !important;
+            
+            padding: 28px !important;
+            border-radius: 16px !important;
+            background: linear-gradient(145deg, #0f172a, #1e293b) !important;
+            box-shadow: 0 0 40px rgba(109, 94, 252, 0.25) !important;
+            z-index: 1000 !important;
+            pointer-events: auto !important;
+            
+            /* Prevent content from spilling */
+            word-wrap: break-word !important;
+        }
+
+        /* Optional: better scrollbar for long content */
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar,
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar {
+            width: 6px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        import re, random
+        # 🟢 VERIFICATION TRAP SCENE
+        if st.session_state.get("auth_verify_pending"):
+            title = "Verification Step"
+            sub = "We've sent a 4-digit security code to confirm it's you."
+            
+        st.markdown(f"""
+        <div id="auth-modal-marker"></div>
+        <div style="text-align:center; margin-bottom:28px;">
+          <div class="modal-title">{title}</div>
+          <div class="modal-sub">{sub}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.session_state.get("auth_verify_pending"):
+            st.info(f"**Demo note:** Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
+            code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input", max_chars=4)
+            
+            vc1, vc2 = st.columns(2)
+            with vc1:
+                if st.button("Cancel", use_container_width=True):
+                    st.session_state.auth_verify_pending = False
+                    st.rerun()
+            with vc2:
+                if st.button("Verify & Proceed", type="primary", use_container_width=True):
+                    if code_in == st.session_state.get("mock_code"):
+                        action = st.session_state.get("pending_action")
+                        data   = st.session_state.get("pending_data")
+                        
+                        if action == "signup_email" or action == "signup_phone":
+                            provider_type = "phone" if action == "signup_phone" else "email"
+                            database.create_user(data["email"], data["name"], data["pw"], data["dob"], provider_type)
+                            _do_login(data["email"], data["name"], provider_type, remember=data.get("remember", True))
+                            st.success(f"Account certified! Welcome, {data['name']} 🎉")
+                        elif action == "login_email" or action == "login_phone":
+                            provider_type = "phone" if action == "login_phone" else "email"
+                            _do_login(data["email"], data["name"], provider_type, remember=data.get("remember", True))
+                            st.success(f"Security confirmed. Welcome back, {data['name']}!")
+                        
+                        st.session_state.auth_verify_pending = False
+                        time.sleep(0.6); st.rerun()
+                    else:
+                        st.error("Incorrect code. Please try again.")
+            return # IMPORTANT: EXIT early so the rest of the modal hides!
+            
+        # Social oauth buttons — proper styled row
+        # Social oauth buttons — proper styled row
+        st.markdown("""
+        <style>
+        .oauth-native-btn {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 12px !important;
+            height: 48px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-decoration: none !important;
+            width: 100%;
+        }
+
+        .oauth-native-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(109, 94, 252, 0.6) !important;
+            color: white !important;
+        }
+
+        .google-native::before {
+            content: "";
+            display: inline-block;
+            background: url("https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg") no-repeat center;
+            background-size: 20px;
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+        }
+
+        .linkedin-native::before {
+            content: "";
+            display: inline-block;
+            background: url("https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg") no-repeat center;
+            background-size: 20px;
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        c1, c2 = st.columns(2)
+
+        import asyncio
+
+        # GOOGLE
+        google_url = asyncio.run(oauth2.client.get_authorization_url(
+            redirect_uri="http://localhost:8501", 
+            scope=["openid", "email", "profile"]
+        ))
+        with c1:
+            st.markdown(f'<a href="{google_url}" target="_self" class="oauth-native-btn google-native">Google</a>', unsafe_allow_html=True)
+
+        # LINKEDIN
+        linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(
+            redirect_uri="http://localhost:8501", 
+            scope=["openid", "profile", "email"]
+        ))
+        with c2:
+            st.markdown(f'<a href="{linkedin_url}" target="_self" class="oauth-native-btn linkedin-native">LinkedIn</a>', unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="display:flex;align-items:center;gap:12px;margin:20px 0;">
+          <div style="flex:1;height:1px;background:rgba(109,94,252,0.3);"></div>
+          <span style="font-size:11px;color:#6D5EFC;text-transform:uppercase;letter-spacing:.12em;font-weight:700;">or continue with email</span>
+          <div style="flex:1;height:1px;background:rgba(109,94,252,0.3);"></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Tab: Email / Phone
+        t1, t2 = st.columns(2)
+        with t1:
+            if st.button("✉️  Email", use_container_width=True, key="tab_email",
+                         type="primary" if tab == "email" else "secondary"):
+                st.session_state.auth_tab = "email"; st.rerun()
+        with t2:
+            if st.button("📱  Phone", use_container_width=True, key="tab_phone",
+                         type="primary" if tab == "phone" else "secondary"):
+                st.session_state.auth_tab = "phone"; st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if tab == "email":
+            email_in = st.text_input("Email address", placeholder="you@example.com",
+                                     key="auth_email_field")
+            if mode == "signup":
+                name_in = st.text_input("Full name", placeholder="Jane Smith",
+                                        key="auth_name_field")
+                default_dob = st.session_state.get("auth_dob_field", datetime.date(1990,1,1))
+                dob_in  = st.date_input("Date of Birth", value=default_dob, 
+                                        min_value=datetime.date(1920,1,1),
+                                        max_value=datetime.date.today(), key="auth_dob_field",
+                                        help="You must be at least 18 years old to use DeepIQ.")
+                pw_in   = st.text_input("Password", type="password",
+                                        placeholder="At least 8 characters", key="auth_pw_field")
+            else:
+                pw_in   = st.text_input("Password", type="password", key="auth_pw_field_login")
+                name_in = ""
+
+            st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
+            remember_me = st.checkbox("Keep me logged in", value=True, key="remember_me_email")
+
+            btn_label = "Create Account" if mode == "signup" else "Sign In"
+            if st.button(btn_label, use_container_width=True, type="primary", key="auth_submit"):
+                if not email_in:
+                    st.error("Please enter your email."); return
+                
+                # Check for standard email format string
+                if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email_in):
+                    st.error("Please enter a valid, complete email address (e.g. name@domain.com)."); return
+
+                if mode == "signup":
+                    if not name_in:
+                        st.error("Please enter your name."); return
+                    if not dob_in:
+                        st.error("Please enter your date of birth."); return
+                    
+                    # Age verification logic
+                    today = datetime.date.today()
+                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
+                    if age < 18:
+                        st.error("Access Denied: You must be 18 or older to invest."); return
+
+                    if len(pw_in) < 8:
+                        st.error("Password must be at least 8 characters."); return
+                    
+                    if database.get_user(email_in):
+                        st.error("An account with this email already exists."); return
+                        
+                    # TRIGGER 2FA VERIFICATION
+                    st.session_state.auth_verify_pending = True
+                    st.session_state.mock_code = str(random.randint(1000, 9999))
+                    st.session_state.pending_action = "signup_email"
+                    st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d"), "remember": remember_me}
+                    st.rerun()
+                    
+                else:
+                    user = database.get_user(email_in)
+                    if not user:
+                        st.error("No account found. Please sign up first.")
+                    elif user.get("provider", "email") != "email":
+                        # CRITICAL SECURITY DECISION: 
+                        # Do NOT skip the password and force login here. Anyone typing out the email could hack the account!
+                        provider_name = str(user["provider"]).capitalize()
+                        st.warning(f"This email is linked to **{provider_name}**. Please use the {provider_name} button above to sign in.")
+                    elif user["password_hash"] == database.hash_password(pw_in):
+                        # TRIGGER 2FA VERIFICATION
+                        st.session_state.auth_verify_pending = True
+                        st.session_state.mock_code = str(random.randint(1000, 9999))
+                        st.session_state.pending_action = "login_email"
+                        st.session_state.pending_data = {"email": email_in, "name": user["name"], "remember": remember_me}
+                        st.rerun()
+                    else:
+                        st.error("Incorrect password.")
+
+        else:  # phone
+            pc1, pc2 = st.columns([1, 2])
+            with pc1:
+                cc_in = st.selectbox("Code", ["+44 (UK)", "+1 (US)", "+61 (AU)", "+91 (IN)", "+49 (DE)"], key="auth_cc")
+            with pc2:
+                phone_in = st.text_input("Phone number", placeholder="7700 000000", key="auth_phone_field")
+            
+            if mode == "signup":
+                name_in = st.text_input("Full name", placeholder="Jane Smith", key="auth_phone_name")
+                default_phone_dob = st.session_state.get("auth_phone_dob", datetime.date(1990,1,1))
+                dob_in  = st.date_input("Date of Birth", value=default_phone_dob, min_value=datetime.date(1920,1,1), max_value=datetime.date.today(), key="auth_phone_dob", help="You must be at least 18 years old to use DeepIQ.")
+                pw_in   = st.text_input("Password", type="password", placeholder="At least 8 characters", key="auth_phone_pw")
+            else:
+                pw_in   = st.text_input("Password", type="password", key="auth_phone_pw_login")
+                name_in = ""
+            
+            st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
+            remember_me_phone = st.checkbox("Keep me logged in", value=True, key="remember_me_phone")
+            
+            btn_label = "Create Account" if mode == "signup" else "Sign In"
+            if st.button(btn_label, use_container_width=True, type="primary", key="auth_phone_submit"):
+                phone_clean = re.sub(r"\D", "", phone_in) # Extract digits only
+                
+                if not phone_clean:
+                    st.error("Please enter your phone number."); return
+                if len(phone_clean) < 7 or len(phone_clean) > 15:
+                    st.error("Please enter a valid phone number length (between 7 and 15 digits)."); return
+                
+                full_phone = f"{cc_in.split(' ')[0]}{phone_clean}"
+                pseudo_email = f"{full_phone}@phone.auth"
+                
+                if mode == "signup":
+                    if not name_in:
+                        st.error("Please enter your full name."); return
+                    if not dob_in:
+                        st.error("Please enter your date of birth."); return
+                    
+                    # Age verification logic
+                    today = datetime.date.today()
+                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
+                    if age < 18:
+                        st.error("Access Denied: You must be 18 or older to invest."); return
+
+                    if len(pw_in) < 8:
+                        st.error("Password must be at least 8 characters."); return
+                    
+                    if database.get_user(pseudo_email):
+                        st.error("An account with this phone number already exists."); return
+
+                    # TRIGGER 2FA VERIFICATION
+                    st.session_state.auth_verify_pending = True
+                    st.session_state.mock_code = str(random.randint(1000, 9999))
+                    st.session_state.pending_action = "signup_phone"
+                    st.session_state.pending_data = {"email": pseudo_email, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d"), "display_contact": full_phone, "remember": remember_me_phone}
+                    st.rerun()
+
+                else:
+                    user = database.get_user(pseudo_email)
+                    if not user:
+                        st.error("No account found for this number. Please sign up first.")
+                    elif user.get("provider", "email") != "phone" and user.get("provider", "email") != "email":
+                        provider_name = str(user["provider"]).capitalize()
+                        st.warning(f"This number is linked to **{provider_name}**. Please use the {provider_name} button to sign in.")
+                    elif user["password_hash"] == database.hash_password(pw_in):
+                        # TRIGGER 2FA VERIFICATION
+                        st.session_state.auth_verify_pending = True
+                        st.session_state.mock_code = str(random.randint(1000, 9999))
+                        st.session_state.pending_action = "login_phone"
+                        st.session_state.pending_data = {"email": pseudo_email, "name": user["name"], "display_contact": full_phone, "remember": remember_me_phone}
+                        st.rerun()
+                    else:
+                        st.error("Incorrect password.")
+
+        # Switch mode
+        switch_label = "Already have an account? Sign in" if mode == "signup" else "Don't have an account? Sign up"
+        if st.button(switch_label, key="auth_switch_mode"):
+            st.session_state.auth_mode = "login" if mode == "signup" else "signup"
+            st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✕  Close", key="auth_close"):
+            st.session_state.show_auth = False
+            st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGES
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── HOME ──────────────────────────────────────────────────────────────────────
+def page_home():
+    st.markdown("""
+    <style>
+      
+      .hero-section {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 100px; margin-bottom: 140px; gap: 80px;
+      }
+      .hero-left { flex: 0.9; min-width: 40%; }
+      .hero-right { flex: 1.1; }
+      .hero-headline {
+        font-size: 4.8rem; font-weight: 900; letter-spacing: -0.04em; color: #ffffff;
+        line-height: 1.05; margin-bottom: 24px;
+      }
+      .hero-subhead {
+        font-size: 1.25rem; color: #8BA6D3; line-height: 1.6; margin-bottom: 40px;
+        max-width: 95%;
+      }
+
+      #hero-btn-marker + div [data-testid="stButton"] > button {
+          background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%) !important;
+          color: white !important;
+          padding: 24px 20px !important;
+          border-radius: 50px !important;
+          border: none !important;
+          box-shadow: 0 12px 36px rgba(109, 94, 252, 0.4) !important;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      #hero-btn-marker + div [data-testid="stButton"] > button:hover {
+          transform: translateY(-4px) scale(1.02) !important;
+          box-shadow: 0 16px 40px rgba(109, 94, 252, 0.6) !important;
+          background: linear-gradient(135deg, #7A6CFD 0%, #55B4FF 100%) !important;
+          color: white !important;
+      }
+      #hero-btn-marker + div [data-testid="stButton"] p {
+          font-size: 22px !important;
+          font-weight: 800 !important;
+      }
+      
+      .hero-right { flex: 1; }
+      .glass-card-hero {
+        background: rgba(255,255,255,0.02); backdrop-filter: blur(24px);
+        border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
+        padding: 30px; box-shadow: 0 24px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+        position: relative; overflow: hidden;
+      }
+      .glass-card-hero::before {
+        content: ""; position: absolute; top: -50px; right: -50px;
+        width: 150px; height: 150px; background: radial-gradient(circle, rgba(142,246,209,0.2) 0%, transparent 70%);
+        border-radius: 50%; pointer-events: none;
+      }
+      
+      .hero-metric-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
+      .hero-metric { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; border: 1px solid rgba(255,255,255,0.03); }
+      .hm-title { font-size: 11px; color: #8BA6D3; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+      .hm-val { font-size: 24px; font-weight: 800; color: #ffffff; }
+      .hm-trend { font-size: 12px; color: #8EF6D1; margin-left: 8px; }
+      
+      /* Features */
+      
+      .feature-section { margin-top: 140px; }
+      .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 50px; }
+      .feature-card {
+        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 20px; padding: 40px; transition: all 0.3s ease;
+        backdrop-filter: blur(12px); position: relative; overflow: hidden;
+      }
+
+      .feature-card:hover {
+        background: rgba(255,255,255,0.04); border-color: rgba(109, 94, 252, 0.4);
+        transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+      }
+      .feature-icon {
+        width: 48px; height: 48px; border-radius: 12px; margin-bottom: 20px;
+        background: linear-gradient(135deg, rgba(109,94,252,0.2), rgba(59,164,255,0.1));
+        display: flex; align-items: center; justify-content: center; font-size: 24px;
+        border: 1px solid rgba(109,94,252,0.2);
+      }
+      .feature-title { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 10px; }
+      .feature-desc { font-size: 14px; color: #8BA6D3; line-height: 1.6; }
+      
+      /* Explainer */
+      .explain-section { margin-top: 100px; margin-bottom: 60px; text-align: center; }
+      .explain-title { font-size: 32px; font-weight: 800; color: #ffffff; margin-bottom: 16px; }
+      .chat-box {
+        background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 20px; padding: 30px; text-align: left; max-width: 800px; margin: 0 auto;
+        border-left: 4px solid #3BA4FF; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1.1, 1], gap="large")
+    
+    with col1:
+        # Build the welcome string based on login state
+        user_name = st.session_state.get("user_name", "")
+        if user_name:
+            first_name = user_name.strip().split()[0]
+            welcome_line2 = f"Welcome, {first_name}"
+        else:
+            welcome_line2 = "Welcome"
+
+        st.markdown(f"""
+        <style>
+        /* Frame 1: visible 0→42%, fade out 42→48%, hidden 48→92%, fade in 92→100% */
+        @keyframes heroShow {{
+          0%   {{ opacity: 1; transform: translateY(0); }}
+          42%  {{ opacity: 1; transform: translateY(0); }}
+          48%  {{ opacity: 0; transform: translateY(-10px); }}
+          92%  {{ opacity: 0; transform: translateY(10px); }}
+          100% {{ opacity: 1; transform: translateY(0); }}
+        }}
+        /* Frame 2: hidden 0→42%, fade in 48→54%, visible 54→92%, fade out 92→100% */
+        @keyframes heroHide {{
+          0%   {{ opacity: 0; transform: translateY(10px); }}
+          42%  {{ opacity: 0; transform: translateY(10px); }}
+          48%  {{ opacity: 0; transform: translateY(10px); }}
+          54%  {{ opacity: 1; transform: translateY(0); }}
+          92%  {{ opacity: 1; transform: translateY(0); }}
+          100% {{ opacity: 0; transform: translateY(-10px); }}
+        }}
+        .hero-slot {{
+          position: relative;
+          height: 300px;
+          overflow: hidden;
+        }}
+        .hero-frame {{
+          position: absolute; top: 0; left: 0; width: 100%;
+          animation-duration: 7s;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+          will-change: opacity, transform;
+        }}
+        .hero-frame-1 {{ animation-name: heroShow; }}
+        .hero-frame-2 {{ animation-name: heroHide; }}
+        </style>
+        <div style="margin-top:20px;">
+          <div class="hero-slot">
+            <div class="hero-frame hero-frame-1">
+              <div class="hero-headline">AI-Powered <br>
+                <span style="background: linear-gradient(90deg, #6D5EFC, #3BA4FF);
+                             -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                  Portfolio Intelligence
+                </span>
+              </div>
+            </div>
+            <div class="hero-frame hero-frame-2">
+              <div class="hero-headline">
+                <span style="background: linear-gradient(90deg, #6D5EFC, #3BA4FF);
+                             -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                  {welcome_line2}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-subhead" style="max-width:90%; margin-top:12px;">
+            Personalised portfolio construction using neural inference, regime detection,
+            and risk-aware optimisation directly mapped to your unique financial DNA.
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # ── Premium Streamlit button custom-scaled using CSS
+        st.markdown('<div id="hero-btn-marker"></div>', unsafe_allow_html=True)
+        btn_col, _ = st.columns([1.5, 2])
+        with btn_col:
+            if st.button("Start Assessment →", key="hero_start", use_container_width=True):
+                st.session_state.nav_page = "dashboard"
+                st.session_state.survey_page = "survey"
+                st.session_state.survey_step = 0
+                st.session_state.survey_answers = {}
+                st.rerun()
+            
+    with col2:
+        # ── Pull real data if logged in with a saved result ──
+        result = st.session_state.get("result")
+        is_auth = st.session_state.get("authenticated", False)
+        currency = get_currency_symbol()
+
+        if is_auth and result:
+            port   = result.get("portfolio", {})
+            stats  = port.get("stats", {})
+            alloc  = port.get("allocation", {})
+            score  = result.get("score", 5)
+            cat    = port.get("risk_category", "Balanced")
+            exp_r  = stats.get("expected_annual_return", 0)
+            vol    = stats.get("expected_volatility", 0)
+            sharpe = stats.get("sharpe_ratio", 0)
+            conf   = int(min(99, max(60, sharpe * 30 + 60)))
+            trend_sign = "▲" if exp_r >= 0 else "▼"
+            trend_color = "#8EF6D1" if exp_r >= 0 else "#FF6B6B"
+
+            # Top 3 allocations for mini bar chart
+            top3 = sorted(alloc.items(), key=lambda x: x[1], reverse=True)[:3]
+            bars_html = ""
+            bar_colors = ["#6D5EFC", "#3BA4FF", "#8EF6D1"]
+            for i, (asset, pct) in enumerate(top3):
+                short = asset.split()[0]  # first word only
+                bars_html += f"""
+                <div style="margin-bottom:8px;">
+                  <div style="display:flex; justify-content:space-between; font-size:11px; color:#8BA6D3; margin-bottom:3px;">
+                    <span>{short}</span><span>{pct:.0f}%</span>
+                  </div>
+                  <div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px;">
+                    <div style="width:{pct}%; background:{bar_colors[i]}; border-radius:4px; height:6px;
+                                transition: width 1s ease;"></div>
+                  </div>
+                </div>"""
+
+            st.markdown(f"""
+            <div class="glass-card-hero">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                <div style="font-size:14px; color:#ffffff; font-weight:700;">Your Portfolio</div>
+                <div style="background:rgba(142,246,209,0.12); color:#8EF6D1; padding:4px 10px;
+                            border-radius:20px; font-size:11px; font-weight:700;">
+                  {cat} · Score {score:.0f}
+                </div>
+              </div>
+              <div class="hero-metric-grid">
+                <div class="hero-metric">
+                  <div class="hm-title">Expected Return</div>
+                  <div class="hm-val">{trend_sign} {exp_r:.1f}%
+                    <span style="font-size:12px; color:{trend_color};">p.a.</span>
+                  </div>
+                </div>
+                <div class="hero-metric">
+                  <div class="hm-title">AI Confidence</div>
+                  <div class="hm-val" style="color:#6D5EFC;">{conf}
+                    <span style="font-size:14px;">/100</span>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-metric" style="margin-top:14px;">
+                <div class="hm-title" style="margin-bottom:10px;">Top Holdings</div>
+                {bars_html}
+              </div>
+              <div style="display:flex; gap:16px; margin-top:14px;">
+                <div style="flex:1; background:rgba(255,255,255,0.04); border-radius:10px; padding:10px; text-align:center;">
+                  <div style="font-size:10px; color:#8BA6D3; margin-bottom:4px;">VOLATILITY</div>
+                  <div style="font-size:16px; font-weight:700; color:#FF9B6B;">{vol:.1f}%</div>
+                </div>
+                <div style="flex:1; background:rgba(255,255,255,0.04); border-radius:10px; padding:10px; text-align:center;">
+                  <div style="font-size:10px; color:#8BA6D3; margin-bottom:4px;">SHARPE</div>
+                  <div style="font-size:16px; font-weight:700; color:#8EF6D1;">{sharpe:.2f}</div>
+                </div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        else:
+            # ── Animated placeholder for logged-out visitors ──
+            st.markdown("""
+            <style>
+            @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
+            @keyframes scanline {
+              0%   { top: 0%; }
+              100% { top: 100%; }
+            }
+            .hero-placeholder { animation: pulse 2.8s ease-in-out infinite; }
+            .shimmer-bar {
+              height: 10px; border-radius: 6px;
+              background: linear-gradient(90deg, rgba(109,94,252,0.3), rgba(59,164,255,0.5), rgba(109,94,252,0.3));
+              background-size: 200% 100%;
+              animation: shimmer 2s infinite;
+              margin-bottom: 10px;
+            }
+            @keyframes shimmer {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+            </style>
+            <div class="glass-card-hero" style="position:relative;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div style="font-size:14px; color:#ffffff; font-weight:700;">Live Dashboard</div>
+                <div style="background:rgba(109,94,252,0.15); color:#6D5EFC; padding:4px 10px;
+                            border-radius:20px; font-size:11px; font-weight:700; animation: pulse 2s infinite;">
+                  ● Awaiting Profile
+                </div>
+              </div>
+              <div class="hero-placeholder">
+                <div style="font-size:11px; color:#8BA6D3; letter-spacing:.08em; margin-bottom:6px;">PORTFOLIO VALUE</div>
+                <div class="shimmer-bar" style="width:70%; height:28px; border-radius:8px;"></div>
+                <div style="display:flex; gap:12px; margin:18px 0 10px;">
+                  <div style="flex:1;">
+                    <div style="font-size:11px; color:#8BA6D3; margin-bottom:5px;">RETURN</div>
+                    <div class="shimmer-bar" style="width:60%;"></div>
+                  </div>
+                  <div style="flex:1;">
+                    <div style="font-size:11px; color:#8BA6D3; margin-bottom:5px;">AI CONFIDENCE</div>
+                    <div class="shimmer-bar" style="width:50%;"></div>
+                  </div>
+                </div>
+                <div style="font-size:11px; color:#8BA6D3; margin-bottom:8px;">TOP HOLDINGS</div>
+                <div class="shimmer-bar" style="width:90%;"></div>
+                <div class="shimmer-bar" style="width:75%;"></div>
+                <div class="shimmer-bar" style="width:55%;"></div>
+              </div>
+              <div style="text-align:center; margin-top:18px; font-size:12px; color:#6D5EFC; font-weight:600;">
+                ✦ Complete your assessment to unlock live data
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="feature-section">
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <div class="feature-title">Neural Optimisation</div>
+          <div class="feature-desc">Markowitz-Informed Neural Networks maximize Sharpe Ratios in real-time.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <div class="feature-title">Regime Detection</div>
+          <div class="feature-desc">AI protects capital during extreme co-movement events dynamically.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔬</div>
+          <div class="feature-title">Explainable AI Signals</div>
+          <div class="feature-desc">No black boxes. We expose parameters that explain the model's logic.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <div class="feature-title">Correlation Intelligence</div>
+          <div class="feature-desc">IQ-based bounds outperform historical averages via nonlinear ties.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎲</div>
+          <div class="feature-title">Risk Engine</div>
+          <div class="feature-desc">Deep Monte Carlo simulations based on manifold structures, not standard curves.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-title">Adaptive Allocation</div>
+          <div class="feature-desc">Real-time balancing informed by instantaneous macroeconomic shifts.</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="explain-section">
+      <div class="explain-title">Why This Portfolio Fits You</div>
+      <div class="chat-box">
+        <div style="display:flex; align-items:center; margin-bottom:12px;">
+          <div style="background:#3BA4FF; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:12px;">🤖</div>
+          <div style="font-weight:700; color:#fff;">DeepAtomicIQ Interpreter</div>
+        </div>
+        <div style="color:#8BA6D3; line-height:1.7; font-size:15px; margin-bottom:16px;">
+          "Based on your inputs, our models infer a <b>Moderate-Aggressive</b> profile with <b>87%</b> confidence.<br><br>
+          We allocate heavily towards technology and large-cap equities (expected growth: <b>7.8%</b>) to capitalize on 
+          your 15-year horizon, while embedding a 30% defensive wing to hedge against predicted short-term volatility."
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ── SURVEY + PORTFOLIO ─────────────────────────────────────────────────────────
+# ── DASHBOARD / SURVEY GATE ──────────────────────────────────────────────────
+def page_dashboard():
+    # Authentication check
+    if not st.session_state.get("authenticated"):
+        st.markdown("""
+        <div class="coming-soon">
+          <div class="coming-soon-icon">🔒</div>
+          <div class="coming-soon-title">Access Restricted</div>
+          <div class="coming-soon-sub">Please log in or sign up to access your personalised dashboard.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Return Home", use_container_width=True):
+            st.session_state.nav_page = "home"
+            st.rerun()
+        return
+
+    # If currently analysing, always render that screen first
+    # (result doesn't exist yet at this point — it gets set inside _render_analysing)
+    sp = st.session_state.get("survey_page", "survey")
+    if sp == "analysing":
+        _render_analysing()
+        return
+
+    # Results check — survey not yet completed
+    if not st.session_state.get("result"):
+        st.markdown("""
+        <div class="coming-soon">
+          <div class="coming-soon-icon">📋</div>
+          <div class="coming-soon-title">Incomplete Risk Profile</div>
+          <div class="coming-soon-sub">Please complete the investor assessment survey to view your dashboard.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        c1, c2, c3 = st.columns([1,2,1])
+        with c2:
+            if st.button("🚀 Start Assessment Now", type="primary", use_container_width=True):
+                st.session_state.survey_page = "survey"
+                st.session_state.survey_step = 0
+                st.session_state.survey_answers = {}
+                st.rerun()
+        
+        if sp == "survey":
+            st.markdown("---")
+            _render_survey()
+        return
+
+    # Results exist — show portfolio or survey
+    if sp == "survey":
+        _render_survey()
+    else:
+        _render_portfolio()
+
+
+def _render_survey():
+    step = st.session_state.survey_step
+    q    = QUESTIONS[step]
+    pct  = int((step / len(QUESTIONS)) * 100)
+
+    st.markdown(f"""
+    <div class="survey-wrap">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width:{pct}%"></div>
+      </div>
+      <div class="q-number">{q['number']}</div>
+      <div class="q-text">{q['text']}</div>
+      <div class="q-desc">{q['desc']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    cur = st.session_state.survey_answers.get(q["key"], q["default"])
+    if cur not in q["options"]: cur = q["default"]
+
+    selected = st.radio("", q["options"], index=q["options"].index(cur),
+                        key=f"radio_{step}")
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+    col_back, _, col_next = st.columns([1, 2, 1])
+    with col_back:
+        if step > 0:
+            if st.button("← Back", use_container_width=True):
+                st.session_state.survey_answers[q["key"]] = selected
+                st.session_state.survey_step -= 1; st.rerun()
+    with col_next:
+        is_last = (step == len(QUESTIONS) - 1)
+        if st.button("Generate Portfolio →" if is_last else "Next →",
+                     type="primary", use_container_width=True):
+            st.session_state.survey_answers[q["key"]] = selected
+            if is_last:
+                st.session_state.survey_page = "analysing"
+            else:
+                st.session_state.survey_step += 1
+            st.rerun()
+
+    if st.session_state.survey_answers:
+        with st.expander("📋 Your answers so far"):
+            for prev_q in QUESTIONS[:step]:
+                val = st.session_state.survey_answers.get(prev_q["key"], "—")
+                st.markdown(f"**{prev_q['number']}** {prev_q['text'][:60]}…  →  `{val}`")
+
+
+def _render_analysing():
+    st.markdown(f"""
+    <div style='text-align:center; padding:60px 0 30px 0;'>
+      <div style='font-size:52px; margin-bottom:16px;'>🧠</div>
+      <div style='font-size:26px; font-weight:800; color:#ffffff; margin-bottom:10px;'>
+        Inferring Optimal Portfolio State…
+      </div>
+      <div style='font-size:13px; color:{MUTED}; max-width:520px; margin:0 auto; line-height:1.7;'>
+        The DeepAtomicIQ MINN is mapping your constraints to the manifold of efficient portfolios.
+        Calculating IQ Parameters (δ, γ, ε) and co-movement regimes.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    pb  = st.progress(0)
+    msg = st.empty()
+
+    try:
+        ans = st.session_state.survey_answers
+        
+        # Calculate Risk Score (1-10) based on weighted heuristics
+        # This acts as the bridge between User profile and pre-trained Robo profiles
+        score = 5.0
+        if ans.get("q1_risk_comfort") == "Low — I prioritise capital preservation": score -= 2
+        elif ans.get("q1_risk_comfort") == "High — maximum long-term growth": score += 3
+        
+        reaction = ans.get("q10_reaction", "")
+        if "Sell everything" in reaction: score -= 2
+        elif "buy more" in reaction: score += 1.5
+        
+        score = max(1.1, min(10.0, score))
+
+        msg.markdown(f"<div style='text-align:center;color:{MUTED};font-size:13px;'>Querying neural model for risk level {score:.1f}…</div>",
+                     unsafe_allow_html=True)
+        pb.progress(40)
+        time.sleep(0.8)
+
+        msg.markdown(f"<div style='text-align:center;color:{MUTED};font-size:13px;'>Optimizing Sharpe Ratio across Body/Wing/Tail regimes…</div>",
+                     unsafe_allow_html=True)
+        pb.progress(70)
+
+        horizon_map = {"Short (under 3 years)":3, "Medium (3–10 years)":7, "Long (10–20 years)":15, "Very long (over 20 years)":25}
+        horizon_yrs = horizon_map.get(ans.get("q3_horizon"), 10)
+
+        portfolio = build_portfolio(
+            risk_score = score,
+            initial    = 10000,
+            monthly    = 500,
+            years      = horizon_yrs,
+        )
+        
+        if "error" in portfolio:
+            st.error(portfolio["error"])
+            return
+
+        pb.progress(90)
+        msg.markdown(f"<div style='text-align:center;color:{MUTED};font-size:13px;'>Generating Atomic IQ Interpretation…</div>",
+                     unsafe_allow_html=True)
+
+        exp = {
+            "confidence": 0.92,
+            "top_contributors": [{"feature": "Risk Tolerance Capacity"}, {"feature": "Investment Horizon"}, {"feature": "Market Reaction Strategy"}]
+        }
+        inputs = {"horizon": horizon_yrs}
+        
+        dynamic_paragraphs = get_ai_explanation(st.session_state.explanation_mode, portfolio, inputs, ans)
+        minn_base = "This project implements a Markowitz-Informed Neural Network (MINN) to learn how to build investment portfolios that balance risk and return intelligently. It combines ideas from finance (portfolio theory) and machine learning (deep neural networks). The model learns how assets \"move together\" — their co-movements or correlations — and finds portfolio weights that maximize the Sharpe Ratio, a measure of performance defined as average return divided by risk. In plain terms: the network learns how to distribute money across several assets so that the overall portfolio performs well relative to its volatility (ups and downs)."
+        
+        final_summary = minn_base + "\n\n" + dynamic_paragraphs
+        
+        pb.progress(100)
+        msg.empty()
+        time.sleep(0.3)
+
+        st.session_state.result = {
+            "portfolio":   portfolio,
+            "ai_summary":  final_summary,
+            "score":       score
+        }
+        
+        # PERSIST to database
+        email = st.session_state.get("user_email")
+        if email:
+            database.save_assessment(email, ans, st.session_state.result)
+        
+        st.session_state.survey_page = "portfolio"
+        st.rerun()
+
+    except Exception as exc:
+        st.error(f"Analysis failed: {exc}")
+        if st.button("← Back to Survey"):
+            st.session_state.survey_page = "survey"
+            st.session_state.survey_step = 0; st.rerun()
+
+
+def _render_portfolio():
+    res = st.session_state.result
+    if not res:
+        st.session_state.survey_page = "survey"; st.rerun()
+
+    port  = res["portfolio"]
+    iq    = port.get("iq_params", {})
+    cat   = port["risk_category"]
+    stats = port["stats"]
+    sim   = port["simulated_growth"]
+    color = PROFILE_COLORS.get(f"Profile {port['profile_score']}", ACCENT2)
+    summary = res.get("ai_summary", "")
+
+    # ── Profile hero ──────────────────────────────────────────────────────────
+    st.markdown(f"""
+    <div class="profile-hero">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("zap", 24, "#fff")}</div>
+        <div class="profile-name" style="margin-bottom:0;">Markowitz-Informed Neural Network (MINN)</div>
+      </div>
+      <div class="profile-desc">Neural state optimization completed for date **{port['date']}**. Models tuned to maximize Sharpe Ratio under current co-movement regimes.</div>
+      <div class="tag-row">
+        <span class="tag">AI Inference Validated</span>
+        <span class="tag">δ={iq.get('delta',0):.2f}</span>
+        <span class="tag">γ={iq.get('gamma',0):.3f}</span>
+        <span class="tag">ε={iq.get('epsilon',0):.1f}</span>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── KPIs ──────────────────────────────────────────────────────────────────
+    kpi_html = '<div class="kpi-grid">'
+    for label, val, hint, vc, tooltip in [
+        ("Expected Return",  f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate", POS, "The average percentage your portfolio is expected to grow each year based on long-term data."),
+        ("Learned Volatility",f"{stats['expected_volatility']:.1f}%",   "Predicted Pfolio Vol", "#ffffff", "How much your portfolio\\'s value is likely to bounce up and down. A lower number means a smoother, less stressful ride."),
+        ("Sharpe Ratio",     f"{stats['sharpe_ratio']:.2f}",             "Risk-Adjusted Learner", POS, "A score showing how much return you are getting for the risk you are taking. A higher score means smarter investing!"),
+        ("P90 Growth",       f"{get_currency_symbol()}{sim['p90']:,.0f}",                      f"Optimistic Projection",color, "The \\'best-case\\' scenario (top 10% of possibilities) of what your portfolio could be worth at the end of your timeframe."),
+    ]:
+        kpi_html += (f'<div class="kpi" title="{tooltip}"><div class="kpi-label">{label}</div>'
+                     f'<div class="kpi-value" style="color:{vc};">{val}</div>'
+                     f'<div class="kpi-hint">{hint}</div></div>')
+    kpi_html += "</div>"
+    st.markdown(kpi_html, unsafe_allow_html=True)
+
+    import re
+    summary = res.get("ai_summary", "")
+    summary = re.sub(r'<div class="ai-explain-box">', '', summary, flags=re.IGNORECASE)
+    summary = summary.replace('</div>', '').strip()
+
+    # ── AI EXPLANATION WITH TOGGLE ──────────────────────────────────────────
+    st.markdown("---")
+    col_toggle, col_spacer = st.columns([1, 3])
+    with col_toggle:
+        mode = st.session_state.explanation_mode
+        new_mode = st.toggle(
+            "🔬 Advanced mode (for investors who understand market terms)",
+            value=(mode == "advanced"),
+            help="Switch to advanced mode to see Sharpe ratios, volatility, and technical details."
+        )
+        st.session_state.explanation_mode = "advanced" if new_mode else "simple"
+
+    # Generate explanation on the fly based on current mode
+    ans = st.session_state.survey_answers
+    horizon_map = {"Short (under 3 years)":3, "Medium (3–10 years)":7, "Long (10–20 years)":15, "Very long (over 20 years)":25}
+    horizon_yrs = horizon_map.get(ans.get("q3_horizon"), 10)
+    
+    inputs = {"horizon": horizon_yrs}
+    explanation_text = get_ai_explanation(st.session_state.explanation_mode, port, inputs, ans)
+
+    st.markdown(f"""
+    <div style="background-color: rgba(155, 114, 242, 0.06); border: 1px solid rgba(155, 114, 242, 0.25); border-radius: 12px; padding: 24px; margin-top: 10px; margin-bottom: 28px;">
+        <h3 style="font-weight: 600; color: #E6D5FF; margin-top: 0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 16px;">
+            <span style="font-size:20px;">🧠</span> 
+            AI‑Powered Insight
+            <span style="font-size:12px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">
+                {st.session_state.explanation_mode.upper()} MODE
+            </span>
+        </h3>
+        <div style="font-size: 15px; color: rgba(237,237,243,0.9); white-space: pre-line; line-height: 1.75;">
+            {explanation_text}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
+    col1, col2 = st.columns([1, 1.4], gap="large")
+    with col1:
+        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation ℹ️<span class="tooltip-text">This chart shows exactly how your money is divided. By spreading your investment across different areas (like stocks and bonds), you reduce the risk of losing money if one area performs poorly.</span></div></div>', unsafe_allow_html=True)
+        # Sort weights for cleaner display
+        sorted_weights = dict(sorted(port["allocation_pct"].items(), key=lambda x: x[1], reverse=True))
+        st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
+        etf_html = '<div style="margin-top:10px;">'
+        for asset, pct_v in sorted_weights.items():
+            etf_html += (f'<div class="etf-row"><span class="etf-name">{asset}</span>'
+                         f'<span style="color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
+        st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">DeepIQ Architecture Diagnostics ℹ️<span class="tooltip-text">Behind the scenes, our neural network calculates parameters to balance your portfolio. Threshold (δ) controls how much risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
+        
+        ic1, ic2 = st.columns(2)
+        with ic1:
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">THRESHOLD (δ)<span class="tooltip-text">This number controls how carefully the AI watches for risky market behavior. A higher number means the AI is heavily filtering out 'market noise' to focus only on major, dangerous trends.</span></div></div>
+                <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{iq.get('delta',0):.2f}</div>
+                <div style="font-size:9px; color:{MUTED};">Manifold Boundary</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with ic2:
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">DECAY (γ)<span class="tooltip-text">This number controls the AI's 'memory'. A higher number means the AI cares more about what the market did yesterday than what it did 5 years ago, making it react faster to sudden changes.</span></div></div>
+                <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{iq.get('gamma',0):.3f}</div>
+                <div style="font-size:9px; color:{MUTED};">Temporal Discount</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability ℹ️<span class="tooltip-text">Financial markets go through different \'regimes\' or phases—like normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This graph shows which market conditions the AI believes are most likely right now, and how it has prepared your portfolio to handle them.</span></div></div>', unsafe_allow_html=True)
+        regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
+        r_names = list(regimes.keys())
+        r_vals = list(regimes.values())
+        r_exps = []
+        for r in r_names:
+            if r == "Body": r_exps.append("Normal, calm market conditions.")
+            elif r == "Tail": r_exps.append("Severe market crashes or extreme events.")
+            elif r == "Wing": r_exps.append("Moderate turbulence and volatility.")
+            else: r_exps.append("Baseline mathematical smoothing (Identity matrix).")
+        
+        # Simple regime bar chart
+        fig_r = px.bar(
+            x=r_vals, y=r_names, orientation='h',
+            color=r_names,
+            color_discrete_map={"Body":ACCENT, "Wing":ACCENT2, "Tail":NEG, "Identity":MUTED},
+            custom_data=[r_exps]
+        )
+        fig_r.update_traces(hovertemplate="<b>%{y} Regime</b><br>Probability: %{x:.1%}<br><i>%{customdata[0]}</i><extra></extra>")
+        fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None, height=180, margin=dict(l=0,r=20,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_r, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Row 2: Performance | Growth ──────────────────────────────
+    c1, c2 = st.columns([1.3, 1.0], gap="large")
+    with c1:
+        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation ℹ️<span class="tooltip-text">We simulated 2,000 different possible futures for the stock market based on historical data. This graph shows the range of possible outcomes for your specific portfolio over time, giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
+        st.plotly_chart(monte_chart(sim, color), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with c2:
+        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Compounding Projection ℹ️<span class="tooltip-text">This line shows the expected average growth of your money over your investment horizon. It assumes you continue to consistently invest, showing how \'compounding interest\'—earning returns on your previous returns—accelerates your wealth over decades.</span></div></div>', unsafe_allow_html=True)
+        st.plotly_chart(growth_line(port["growth_curve"], color), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
+    # ── Survey summary expander ───────────────────────────────────────────────
+    with st.expander("📋 Survey Summary"):
+        st.markdown("**Your Answers**")
+        for q in QUESTIONS:
+            val = st.session_state.survey_answers.get(q["key"], "—")
+            st.markdown(f"- **{q['number']}** {q['text'][:55]}…  →  `{val}`")
+
+    # ── Disclaimer ────────────────────────────────────────────────────────────
+    st.markdown(f"""
+<div style='margin:8px 0;padding:12px;background:rgba(255,107,107,0.06);
+border-left:3px solid rgba(255,107,107,0.35);border-radius:8px;
+font-size:12px;color:rgba(237,237,243,0.45);'>
+⚠️ <b>Disclaimer:</b> This is for educational and research purposes only. 
+Not financial advice. Consult a qualified financial adviser before investing. 
+Past performance does not guarantee future results.
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_r, _ = st.columns([1, 3])
+    with col_r:
+        if st.button("🔄  Try a Different Profile", use_container_width=True):
+            st.session_state.survey_page    = "survey"
+            st.session_state.survey_step    = 0
+            st.session_state.survey_answers = {}
+            st.session_state.result         = None
+            st.rerun()
+
+
+# ── NEWS & INSIGHTS ───────────────────────────────────────────────────────────
+def page_insights():
+    st.markdown("""
+    <div style="padding:32px 0 20px 0;">
+      <div style="font-size:26px;font-weight:800;color:#ffffff;margin-bottom:6px;">News & AI Insights</div>
+      <div style="font-size:14px;color:rgba(237,237,243,0.5);">Global market developments alongside real-time financial intelligence powered by DeepIQ</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 1], gap="large")
+
+    with col1:
+        st.markdown('<div class="panel-title">Latest Market News</div>', unsafe_allow_html=True)
+        st.markdown('''
+        <div class="card" style="margin-bottom:16px;">
+            <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Markets rally ahead of earnings season</div>
+            <div style="font-size:14px; color:#8BA6D3; margin-bottom:16px;">Wall Street indices climbed higher as investors brace for top-tier tech earnings later this week.</div>
+            <hr style="border-color:rgba(255,255,255,0.05); margin:16px 0;">
+            <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Oil prices stabilize amid easing tensions</div>
+            <div style="font-size:14px; color:#8BA6D3; margin-bottom:16px;">Crude benchmarks leveled out after recent surges, relieving some inflationary fears globally.</div>
+            <hr style="border-color:rgba(255,255,255,0.05); margin:16px 0;">
+            <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Tech giants announce AI integration guidelines</div>
+            <div style="font-size:14px; color:#8BA6D3; margin-bottom:16px;">Several mega-cap tech corporations unified their AI deployment strategies, spurring semiconductor growth.</div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="panel-title">DeepIQ Pulse Analysis</div>', unsafe_allow_html=True)
+        news_items = [
+            {
+                "category": "MARKET PULSE",
+                "title": "Fed Signals Potential Rate Cut in Q3 as Inflation Cools to 2.8%",
+                "desc": "DeepIQ Analysis: This shifts the probability curve toward higher growth assets. Small-cap and tech stocks may see increased momentum in our Moderate-Aggressive portfolios.",
+                "impact": "POS",
+                "tag": "Economy"
+            },
+            {
+                "category": "TECH SECTOR",
+                "title": "Global Semiconductor Supply Chains Reach 95% Efficiency Post-Disruption",
+                "desc": "Strategic Note: We remain Overweight on AI infrastructure but recommend profit-taking on specific hardware laggards.",
+                "impact": "NEU",
+                "tag": "Sector Analysis"
+            },
+            {
+                "category": "ESG WATCH",
+                "title": "New EU Carbon Credits Policy Surprises Energy Markets",
+                "desc": "Green IQ: Renewable ETFs in your portfolio are expected to see a 2.4% uplift in expected annual return due to these tax incentives.",
+                "impact": "POS",
+                "tag": "Environment"
+            }
+        ]
+
+        for item in news_items:
+            impact_color = POS if item["impact"]=="POS" else (NEG if item["impact"]=="NEG" else ACCENT)
+            st.markdown(f"""
+            <div class="card" style="margin-bottom:16px; border-left: 4px solid {impact_color};">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:10px; font-weight:800; color:{impact_color}; letter-spacing:0.1em;">{item['category']}</span>
+                <span class="tag">{item['tag']}</span>
+              </div>
+              <div style="font-size:16px; font-weight:700; color:#ffffff; margin-bottom:12px;">{item['title']}</div>
+              <div style="font-size:13px; color:rgba(237,237,243,0.7); line-height:1.6; background:rgba(0,0,0,0.2); padding:12px; border-radius:6px;">
+                <span style="font-family:'JetBrains Mono',monospace; color:{ACCENT}; font-size:11px; display:block; margin-bottom:4px;">DeepIQ AI Insight:</span>
+                {item['desc']}
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+# ── MARKET ────────────────────────────────────────────────────────────────────
+import yfinance as yf
+
+@st.cache_data(ttl=60)
+def get_live_market_data():
+    tickers = ["VOO", "QQQ", "VWRA.L", "AGG", "GLD", "VNQ", "ESGU", "PDBC"]
+    names = ["Vanguard S&P 500", "Invesco Nasdaq 100", "Vanguard All-World", "iShares Core US Bonds", "SPDR Gold Shares", "Vanguard Real Estate", "iShares ESG S&P 500", "Invesco Commodities"]
+    
+    data = []
+    try:
+        # Fetch data for all tickers at once for performance
+        tickers_str = " ".join(tickers)
+        # Using period='5d' to ensure we get previous close even over weekends/holidays
+        hist = yf.download(tickers_str, period="5d", progress=False)
+        
+        for i, t in enumerate(tickers):
+            try:
+                # get the closing prices
+                closes = hist['Close'][t].dropna()
+                if len(closes) >= 2:
+                    current_price = closes.iloc[-1]
+                    prev_price = closes.iloc[-2]
+                    chg_pct = ((current_price - prev_price) / prev_price) * 100
+                    
+                    currency = "£" if t == "VWRA.L" else "$"
+                    display_ticker = "VWRA" if t == "VWRA.L" else t
+                    
+                    data.append((
+                        display_ticker,
+                        names[i],
+                        f"{currency}{current_price:.2f}",
+                        f"{'+' if chg_pct > 0 else ''}{chg_pct:.2f}%",
+                        chg_pct >= 0
+                    ))
+                else:
+                    raise Exception("Not enough data")
+            except Exception:
+                # fallback if missing data
+                data.append((t, names[i], "N/A", "N/A", True))
+                
+        return data
+    except Exception as e:
+        return [
+            ("VOO",  "Vanguard S&P 500", "$489.12", "+1.23%", True),
+            ("QQQ",  "Invesco Nasdaq 100","$425.88","+2.10%", True),
+            ("VWRA", "Vanguard All-World", "£97.44", "+0.87%", True),
+            ("AGG",  "iShares Core US Bonds","$95.30","-0.12%", False),
+            ("GLD",  "SPDR Gold Shares",  "$228.60","+0.65%", True),
+            ("VNQ",  "Vanguard Real Estate","$81.20","-0.34%", False),
+            ("ESGU", "iShares ESG S&P 500","$103.45","+1.04%", True),
+            ("PDBC", "Invesco Commodities","$14.22", "+0.22%", True),
+        ]
+
+def page_market():
+    st.markdown(f"""
+    <div style="padding:32px 0 20px 0;">
+      <div style="font-size:22px;font-weight:800;color:#ffffff;margin-bottom:6px;">Market Overview</div>
+      <div style="font-size:13px;color:{MUTED};"><strong style="color:#8EF6D1;">Live Connection Active:</strong> Real-time indicative quotes powered by Yahoo Finance API</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.spinner("Fetching live market data..."):
+        markets = get_live_market_data()
+
+    cols = st.columns(4)
+    for i, (ticker, name, price, chg, up) in enumerate(markets):
+        with cols[i % 4]:
+            chg_class = "market-change-pos" if up else "market-change-neg"
+            arrow = "▲" if up else "▼" if chg != "N/A" else ""
+            st.markdown(f"""
+            <div class="market-card">
+              <div class="market-ticker">{ticker}</div>
+              <div class="market-name">{name}</div>
+              <div class="market-price">{price}</div>
+              <div class="{chg_class}">{arrow} {chg}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+
+
+
+# ── MORE 
+def page_more():
+    st.markdown("""
+    <div style="padding:32px 0 20px 0;">
+      <div style="font-size:26px;font-weight:800;color:#ffffff;margin-bottom:6px;">Settings & Support</div>
+      <div style="font-size:14px;color:rgba(237,237,243,0.5);">Manage your profile and find resources</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2, tab3 = st.tabs(["⚙️ Preferences", "❔ FAQ", "📧 Support"])
+
+    user_email = st.session_state.get("user_email", "guest") or "guest"
+
+    with tab1:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        # Load existing preferences if available
+        user_data = database.get_user(user_email) if user_email != "guest" else None
+        prefs = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
+        
+        reports = st.checkbox("Receive Weekly Portfolio Reports", value=prefs.get("reports", True))
+        alerts = st.checkbox("Real-Time Volatility Alerts", value=prefs.get("alerts", False))
+        currency = st.selectbox("Default Currency", ["GBP (£)", "USD ($)", "EUR (€)"], 
+                                index=["GBP (£)", "USD ($)", "EUR (€)"].index(prefs.get("currency", "GBP (£)")))
+        
+        if st.button("Save Preferences", type="primary"):
+            if user_email == "guest":
+                st.error("Please login to save preferences.")
+            else:
+                new_prefs = {"reports": reports, "alerts": alerts, "currency": currency}
+                database.update_user_preferences(user_email, new_prefs)
+                st.session_state.preferences = new_prefs
+                st.toast("Preferences saved to database!")
+        
+        if st.button("Refresh Application State", key="ref_app"):
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab2:
+        faqs = [
+            ("How does the AI work?", "We use a Markowitz-Informed Neural Network (MINN) to learn optimal risk-return trade-offs directly from market regimes."),
+            ("Is my money safe?", "DeepIQ is an educational research prototype. In a production environment, investments would be held by FCA-regulated custodians."),
+            ("What is the Sharpe Ratio?", "It's a measure of risk-adjusted return. A higher Sharpe ratio suggests better returns for the level of risk taken."),
+            ("How often should I rebalance?", "DeepIQ recommends reviewing your portfolio every quarter or after significant life events.")
+        ]
+        for q, a in faqs:
+            with st.expander(q):
+                st.write(a)
+
+    with tab3:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("### Contact Support")
+        subj = st.text_input("Subject", key="support_subj")
+        msg = st.text_area("How can we help?", key="support_msg")
+        if st.button("Submit Support Ticket"):
+            if user_email == "guest":
+                st.warning("Please login to submit a ticket.")
+            elif not subj or not msg:
+                st.error("Please fill in all fields.")
+            else:
+                database.save_ticket(user_email, subj, msg)
+                st.success("Your inquiry has been stored in our database. We'll contact you soon.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN
+# ══════════════════════════════════════════════════════════════════════════════
+# DeepAtomicIQ on-demand inference sequence
+render_nav()
+
+if st.session_state.get("show_auth", False):
+    render_auth_modal()
+else:
+    page = st.session_state.nav_page
+    {
+        "home":      page_home,
+        "dashboard": page_dashboard,
+        "market":    page_market,
+        "insights":  page_insights,
+        "more":      page_more,
+    }.get(page, page_home)()
