@@ -3977,7 +3977,7 @@ html,body{background:transparent!important;overflow:hidden;
 
 <script>
 var GEMINI_KEY   = """ + _json.dumps(_GEMINI_KEY) + """;
-var SYSTEM_PROMPT = """ + _json.dumps(SYSTEM_PROMPT) + """;
+var SYSTEM_PROMPT = """ + _json.dumps(_SYSTEM_PROMPT) + """;
 var chatHistory  = [];
 
 var panel = document.getElementById('cb-panel');
