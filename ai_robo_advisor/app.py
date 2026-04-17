@@ -1452,10 +1452,12 @@ def render_nav():
             avatar_html = f'<div class="nav-avi">{initials}</div>'
             
         auth_html = f"""
-          <div class="nav-user-pill">
-            {avatar_html}
-            <span>{short_name}</span>
-          </div>
+          <a href="?page=account{tp}" style="text-decoration:none;">
+            <div class="nav-user-pill">
+              {avatar_html}
+              <span>{short_name}</span>
+            </div>
+          </a>
           <span class="nav-sep"></span>
           <a class="nav-act-btn logout-btn" href="?logout=1{tp}">Logout</a>
         """
@@ -3519,7 +3521,209 @@ def page_more():
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
-# ══ FLOATING CHATBOT — Gemini AI powered ════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# MY ACCOUNT PAGE
+# ══════════════════════════════════════════════════════════════════════════════
+def page_account():
+    import base64, io
+    user_email = st.session_state.get("user_email", "guest") or "guest"
+    user_name  = st.session_state.get("user_name",  "Guest") or "Guest"
+    user_data  = database.get_user(user_email) if user_email != "guest" else None
+    prefs      = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
+    initials   = "".join(p[0].upper() for p in user_name.split()[:2]) if user_name != "Guest" else "?"
+
+    # ── Page header ────────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="padding:32px 0 28px;">
+      <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.12em;margin-bottom:8px;">MY ACCOUNT</div>
+      <div style="font-size:32px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin-bottom:6px;">
+        Profile &amp; Settings
+      </div>
+      <div style="font-size:14px;color:#8BA6D3;">Manage your identity, personal details, and connected services.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_left, col_right = st.columns([1, 2.2], gap="large")
+
+    # ── LEFT: avatar + quick info ───────────────────────────────────────────
+    with col_left:
+        # Avatar card
+        avatar_url  = st.session_state.get("user_avatar", "")
+        emoji_choice = prefs.get("avatar_emoji", "")
+
+        if avatar_url:
+            avatar_inner = f'<img src="{avatar_url}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(109,94,252,0.5);">'
+        elif emoji_choice:
+            avatar_inner = f'<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:40px;border:3px solid rgba(109,94,252,0.5);">{emoji_choice}</div>'
+        else:
+            avatar_inner = f'<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:#fff;border:3px solid rgba(109,94,252,0.4);">{initials}</div>'
+
+        bio_text = prefs.get("bio", "")
+        job_text = prefs.get("job", "")
+        loc_text = prefs.get("location", "")
+
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,rgba(109,94,252,0.12),rgba(59,164,255,0.06));
+                    border:1px solid rgba(109,94,252,0.25);border-radius:20px;
+                    padding:28px 22px;text-align:center;margin-bottom:16px;">
+          <div style="display:flex;justify-content:center;margin-bottom:14px;">{avatar_inner}</div>
+          <div style="font-size:20px;font-weight:800;color:#ffffff;margin-bottom:4px;">{user_name}</div>
+          <div style="font-size:12px;color:#8BA6D3;word-break:break-all;margin-bottom:{'10px' if not job_text else '4px'};">{user_email}</div>
+          {'<div style="font-size:13px;color:#D4E0F7;font-weight:500;">💼 ' + job_text + '</div>' if job_text else ''}
+          {'<div style="font-size:12px;color:#8BA6D3;">📍 ' + loc_text + '</div>' if loc_text else ''}
+          {'<div style="font-size:13px;color:#B0C4E8;margin-top:10px;line-height:1.5;">' + bio_text + '</div>' if bio_text else ''}
+          <div style="display:inline-flex;align-items:center;gap:6px;margin-top:14px;
+                      background:rgba(142,246,209,0.1);border:1px solid rgba(142,246,209,0.25);
+                      border-radius:20px;padding:5px 14px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#8EF6D1;display:inline-block;"></span>
+            <span style="font-size:11px;color:#8EF6D1;font-weight:700;">Active Account</span>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Quick nav links
+        st.markdown("""
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+                    border-radius:16px;padding:16px 18px;">
+          <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:12px;">NAVIGATE</div>
+          <a href="?page=dashboard" style="display:flex;align-items:center;gap:10px;padding:8px 0;
+             border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;color:#D4E0F7;font-size:13px;">&#128202;&nbsp; Dashboard</a>
+          <a href="?page=market" style="display:flex;align-items:center;gap:10px;padding:8px 0;
+             border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;color:#D4E0F7;font-size:13px;">&#128200;&nbsp; Live Markets</a>
+          <a href="?page=more" style="display:flex;align-items:center;gap:10px;padding:8px 0;
+             text-decoration:none;color:#D4E0F7;font-size:13px;">&#9881;&#65039;&nbsp; Preferences</a>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── RIGHT: edit sections ────────────────────────────────────────────────
+    with col_right:
+
+        # ── Profile Picture ───────────────────────────────────────────────
+        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:12px;">&#128247; Profile Picture</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                    border-radius:16px;padding:20px 22px;margin-bottom:20px;">""", unsafe_allow_html=True)
+
+        st.markdown('<p style="font-size:12px;color:#8BA6D3;margin:0 0 10px;">Upload a photo or choose an avatar emoji</p>', unsafe_allow_html=True)
+        up_col, em_col = st.columns([1.2, 1])
+        with up_col:
+            uploaded = st.file_uploader("Upload photo", type=["png","jpg","jpeg","webp"],
+                                        key="avatar_upload", label_visibility="collapsed")
+            if uploaded:
+                img_bytes = uploaded.read()
+                b64 = base64.b64encode(img_bytes).decode()
+                mime = uploaded.type
+                data_url = f"data:{mime};base64,{b64}"
+                st.session_state.user_avatar = data_url
+                st.success("✅ Photo updated!")
+                st.rerun()
+        with em_col:
+            emoji_opts = ["🐻","🦊","🐼","🦁","🐯","🦋","🌙","⚡","🔥","💎","🚀","🎯"]
+            chosen_emoji = st.selectbox("Or pick an emoji avatar", [""] + emoji_opts,
+                                        key="emoji_avatar_sel", label_visibility="collapsed")
+            if chosen_emoji:
+                st.session_state.user_avatar = ""
+                prefs["avatar_emoji"] = chosen_emoji
+
+        if st.button("🗑️ Remove photo / reset", key="rm_avatar"):
+            st.session_state.user_avatar = ""
+            prefs.pop("avatar_emoji", None)
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── About Me ──────────────────────────────────────────────────────
+        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:12px;">&#128100; About Me</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                    border-radius:16px;padding:20px 22px;margin-bottom:20px;">""", unsafe_allow_html=True)
+
+        new_name = st.text_input("Full name", value=user_name, key="acc_name")
+        job_in   = st.text_input("Job title / occupation", value=prefs.get("job",""),
+                                 placeholder="e.g. Software Engineer", key="acc_job")
+        loc_in   = st.text_input("Location", value=prefs.get("location",""),
+                                 placeholder="e.g. London, UK", key="acc_loc")
+        bio_in   = st.text_area("Bio", value=prefs.get("bio",""),
+                                placeholder="Tell us a bit about yourself and your investment goals…",
+                                key="acc_bio", height=90)
+
+        if st.button("💾  Save Profile", type="primary", use_container_width=True, key="save_profile"):
+            if user_email != "guest":
+                prefs["job"] = job_in; prefs["location"] = loc_in; prefs["bio"] = bio_in
+                if chosen_emoji: prefs["avatar_emoji"] = chosen_emoji
+                database.update_user_preferences(user_email, prefs)
+                if new_name and new_name != user_name:
+                    st.session_state.user_name = new_name
+                st.toast("✅ Profile saved!")
+                st.rerun()
+            else:
+                st.error("Please login to save your profile.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Connected Bank Account ─────────────────────────────────────────
+        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:12px;">&#127981; Connected Accounts</div>""", unsafe_allow_html=True)
+
+        connected_bank = prefs.get("bank_connected", False)
+        bank_name      = prefs.get("bank_name", "")
+        bank_mask      = prefs.get("bank_mask", "")
+
+        if connected_bank:
+            st.markdown(f"""
+            <div style="background:rgba(142,246,209,0.06);border:1px solid rgba(142,246,209,0.2);
+                        border-radius:16px;padding:18px 22px;margin-bottom:8px;
+                        display:flex;align-items:center;gap:14px;">
+              <div style="font-size:28px;">🏦</div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:#ffffff;">{bank_name}</div>
+                <div style="font-size:12px;color:#8BA6D3;">Account ending ···· {bank_mask}</div>
+                <div style="font-size:11px;color:#8EF6D1;margin-top:2px;">&#10003; Connected &amp; verified</div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("🔌 Disconnect bank", key="disconnect_bank"):
+                prefs["bank_connected"] = False; prefs["bank_name"] = ""; prefs["bank_mask"] = ""
+                database.update_user_preferences(user_email, prefs)
+                st.toast("Bank account disconnected."); st.rerun()
+        else:
+            st.markdown("""
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);
+                        border-radius:16px;padding:20px 22px;margin-bottom:8px;">
+              <div style="font-size:13px;color:#8BA6D3;margin-bottom:16px;">
+                Simulated open banking connection — link an account to enable automatic portfolio funding.
+              </div>
+            """, unsafe_allow_html=True)
+
+            banks = ["🏦 Barclays","🏦 HSBC","🏦 Lloyds","🏦 NatWest","🏦 Monzo",
+                     "🏦 Starling","🏦 Revolut","🏦 Santander"]
+            sel_bank = st.selectbox("Select your bank", banks, key="bank_sel", label_visibility="collapsed")
+            acc_num  = st.text_input("Account number (simulated)", placeholder="12345678", key="bank_acc",
+                                     max_chars=8)
+
+            if st.button("🔗  Connect Bank Account", type="primary", use_container_width=True, key="connect_bank"):
+                if not acc_num or len(acc_num) < 6:
+                    st.error("Please enter at least 6 digits for the account number.")
+                elif user_email == "guest":
+                    st.error("Please login to connect a bank account.")
+                else:
+                    prefs["bank_connected"] = True
+                    prefs["bank_name"]      = sel_bank.replace("🏦 ", "")
+                    prefs["bank_mask"]      = acc_num[-4:]
+                    database.update_user_preferences(user_email, prefs)
+                    st.success(f"✅ {sel_bank} connected successfully! (Simulation only — no real data transferred)")
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;color:rgba(139,166,211,0.5);">&#128274; Simulated connection — no real bank data is accessed or stored.</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── Danger zone ───────────────────────────────────────────────────
+        st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+        with st.expander("⚠️  Danger Zone"):
+            st.markdown('<p style="color:#FF6B6B;font-size:13px;">These actions are permanent and cannot be undone.</p>', unsafe_allow_html=True)
+            if st.button("🚪  Log out of all sessions", use_container_width=True):
+                st.session_state.clear(); st.rerun()
+
+
 import streamlit.components.v1 as _cv1
 
 # Read Gemini key from secrets (fallback to empty string so the app doesn't crash)
@@ -3772,4 +3976,5 @@ else:
         "market":    page_market,
         "insights":  page_insights,
         "more":      page_more,
+        "account":   page_account,
     }.get(page, page_home)()
