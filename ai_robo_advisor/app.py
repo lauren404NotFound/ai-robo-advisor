@@ -1775,20 +1775,74 @@ def render_auth_modal():
         st.markdown("<br>", unsafe_allow_html=True)
 
         if tab == "email":
-            email_in = st.text_input("Email address", placeholder="you@example.com",
-                                     key="auth_email_field")
+            # ── Required-field labels ─────────────────────────────────────────
             if mode == "signup":
-                name_in = st.text_input("Full name", placeholder="Jane Smith",
-                                        key="auth_name_field")
+                st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:0 0 -12px;">&#8727; Required fields</p>', unsafe_allow_html=True)
+
+            st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Email address <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+            email_in = st.text_input("", placeholder="you@example.com",
+                                     key="auth_email_field", label_visibility="collapsed")
+
+            # Inline email validation
+            if email_in and not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email_in):
+                st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Please enter a valid email, e.g. name@domain.com</p>', unsafe_allow_html=True)
+            elif email_in:
+                st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Looks good</p>', unsafe_allow_html=True)
+
+            if mode == "signup":
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                name_in = st.text_input("", placeholder="Jane Smith",
+                                        key="auth_name_field", label_visibility="collapsed")
+                if name_in and len(name_in.strip()) < 2:
+                    st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Please enter your full name (at least 2 characters)</p>', unsafe_allow_html=True)
+                elif name_in:
+                    st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Looks good</p>', unsafe_allow_html=True)
+
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Date of Birth <span style="color:#FF6B6B;">*</span> <span style="font-size:11px;font-weight:400;">(must be 18+)</span></label>', unsafe_allow_html=True)
                 default_dob = st.session_state.get("auth_dob_field", datetime.date(1990,1,1))
-                dob_in  = st.date_input("Date of Birth", value=default_dob, 
+                dob_in  = st.date_input("", value=default_dob,
                                         min_value=datetime.date(1920,1,1),
                                         max_value=datetime.date.today(), key="auth_dob_field",
-                                        help="You must be at least 18 years old to use DeepIQ.")
-                pw_in   = st.text_input("Password", type="password",
-                                        placeholder="At least 8 characters", key="auth_pw_field")
+                                        label_visibility="collapsed")
+                if dob_in:
+                    today = datetime.date.today()
+                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
+                    if age < 18:
+                        st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; You must be at least 18 years old to use DeepAtomicIQ</p>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Age verified ({age} years old)</p>', unsafe_allow_html=True)
+
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                pw_in = st.text_input("", type="password",
+                                      placeholder="At least 8 characters", key="auth_pw_field",
+                                      label_visibility="collapsed")
+                if pw_in:
+                    has_len   = len(pw_in) >= 8
+                    has_upper = any(c.isupper() for c in pw_in)
+                    has_digit = any(c.isdigit() for c in pw_in)
+                    strength  = sum([has_len, has_upper, has_digit])
+                    color  = ["#FF6B6B", "#FFB347", "#8EF6D1"][min(strength-1, 2)]
+                    label  = ["Weak", "Fair", "Strong"][min(strength-1, 2)]
+                    bar_w  = ["33%", "66%", "100%"][min(strength-1, 2)]
+                    hints  = []
+                    if not has_len:   hints.append("8+ chars")
+                    if not has_upper: hints.append("uppercase letter")
+                    if not has_digit: hints.append("number")
+                    hint_txt = "  ·  Missing: " + ", ".join(hints) if hints else ""
+                    st.markdown(f'''
+                    <div style="margin:-8px 0 8px;">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:4px;">
+                          <div style="width:{bar_w};height:100%;background:{color};border-radius:4px;transition:width .3s;"></div>
+                        </div>
+                        <span style="font-size:12px;color:{color};font-weight:700;min-width:44px;">{label}</span>
+                      </div>
+                      <span style="font-size:11px;color:#8BA6D3;">{hint_txt}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
             else:
-                pw_in   = st.text_input("Password", type="password", key="auth_pw_field_login")
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                pw_in   = st.text_input("", type="password", key="auth_pw_field_login", label_visibility="collapsed")
                 name_in = ""
 
             st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
@@ -1797,106 +1851,150 @@ def render_auth_modal():
             btn_label = "Create Account" if mode == "signup" else "Sign In"
             if st.button(btn_label, use_container_width=True, type="primary", key="auth_submit"):
                 if not email_in:
-                    st.error("Please enter your email."); return
-                
-                # Check for standard email format string
+                    st.error("&#9888; Email address is required."); return
                 if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email_in):
-                    st.error("Please enter a valid, complete email address (e.g. name@domain.com)."); return
+                    st.error("&#9888; Please enter a valid email address (e.g. name@domain.com)."); return
 
                 if mode == "signup":
-                    if not name_in:
-                        st.error("Please enter your name."); return
+                    if not name_in or len(name_in.strip()) < 2:
+                        st.error("&#9888; Please enter your full name."); return
                     if not dob_in:
-                        st.error("Please enter your date of birth."); return
-                    
-                    # Age verification logic
+                        st.error("&#9888; Please enter your date of birth."); return
                     today = datetime.date.today()
                     age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
                     if age < 18:
-                        st.error("Access Denied: You must be 18 or older to invest."); return
-
+                        st.error("&#9888; You must be 18 or older to create an account."); return
                     if len(pw_in) < 8:
-                        st.error("Password must be at least 8 characters."); return
-                    
+                        st.error("&#9888; Password must be at least 8 characters."); return
                     if database.get_user(email_in):
-                        st.error("An account with this email already exists."); return
-                        
-                    # TRIGGER 2FA VERIFICATION
+                        st.error("&#9888; An account with this email already exists. Please sign in instead."); return
+
                     st.session_state.auth_verify_pending = True
                     st.session_state.mock_code = str(random.randint(1000, 9999))
                     st.session_state.pending_action = "signup_email"
                     st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d"), "remember": remember_me}
                     st.rerun()
-                    
+
                 else:
                     user = database.get_user(email_in)
                     if not user:
-                        st.error("No account found. Please sign up first.")
+                        st.error("&#9888; No account found. Please sign up first.")
                     elif user.get("provider", "email") != "email":
-                        # CRITICAL SECURITY DECISION: 
-                        # Do NOT skip the password and force login here. Anyone typing out the email could hack the account!
                         provider_name = str(user["provider"]).capitalize()
-                        st.warning(f"This email is linked to **{provider_name}**. Please use the {provider_name} button above to sign in.")
+                        st.warning(f"This email is linked to **{provider_name}**. Please use the {provider_name} button above.")
                     elif user["password_hash"] == database.hash_password(pw_in):
-                        # TRIGGER 2FA VERIFICATION
                         st.session_state.auth_verify_pending = True
                         st.session_state.mock_code = str(random.randint(1000, 9999))
                         st.session_state.pending_action = "login_email"
                         st.session_state.pending_data = {"email": email_in, "name": user["name"], "remember": remember_me}
                         st.rerun()
                     else:
-                        st.error("Incorrect password.")
+                        st.error("&#9888; Incorrect password. Please try again.")
 
         else:  # phone
             pc1, pc2 = st.columns([1, 2])
             with pc1:
-                cc_in = st.selectbox("Code", ["+44 (UK)", "+1 (US)", "+61 (AU)", "+91 (IN)", "+49 (DE)"], key="auth_cc")
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Code <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                cc_in = st.selectbox("", ["+44 (UK)", "+1 (US)", "+61 (AU)", "+91 (IN)", "+49 (DE)"],
+                                     key="auth_cc", label_visibility="collapsed")
             with pc2:
-                phone_in = st.text_input("Phone number", placeholder="7700 000000", key="auth_phone_field")
-            
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Phone number <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                phone_in = st.text_input("", placeholder="7700 000000", key="auth_phone_field",
+                                         label_visibility="collapsed")
+
+            # Inline phone validation
+            if phone_in:
+                phone_digits = re.sub(r"\D", "", phone_in)
+                if len(phone_digits) < 7 or len(phone_digits) > 15:
+                    st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Phone number must be 7–15 digits</p>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Valid number format</p>', unsafe_allow_html=True)
+
             if mode == "signup":
-                name_in = st.text_input("Full name", placeholder="Jane Smith", key="auth_phone_name")
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                name_in = st.text_input("", placeholder="Jane Smith", key="auth_phone_name",
+                                        label_visibility="collapsed")
+                if name_in and len(name_in.strip()) < 2:
+                    st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Please enter your full name</p>', unsafe_allow_html=True)
+                elif name_in:
+                    st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Looks good</p>', unsafe_allow_html=True)
+
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Date of Birth <span style="color:#FF6B6B;">*</span> <span style="font-size:11px;font-weight:400;">(must be 18+)</span></label>', unsafe_allow_html=True)
                 default_phone_dob = st.session_state.get("auth_phone_dob", datetime.date(1990,1,1))
-                dob_in  = st.date_input("Date of Birth", value=default_phone_dob, min_value=datetime.date(1920,1,1), max_value=datetime.date.today(), key="auth_phone_dob", help="You must be at least 18 years old to use DeepIQ.")
-                pw_in   = st.text_input("Password", type="password", placeholder="At least 8 characters", key="auth_phone_pw")
-            else:
-                pw_in   = st.text_input("Password", type="password", key="auth_phone_pw_login")
-                name_in = ""
-            
-            st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
-            remember_me_phone = st.checkbox("Keep me logged in", value=True, key="remember_me_phone")
-            
-            btn_label = "Create Account" if mode == "signup" else "Sign In"
-            if st.button(btn_label, use_container_width=True, type="primary", key="auth_phone_submit"):
-                phone_clean = re.sub(r"\D", "", phone_in) # Extract digits only
-                
-                if not phone_clean:
-                    st.error("Please enter your phone number."); return
-                if len(phone_clean) < 7 or len(phone_clean) > 15:
-                    st.error("Please enter a valid phone number length (between 7 and 15 digits)."); return
-                
-                full_phone = f"{cc_in.split(' ')[0]}{phone_clean}"
-                pseudo_email = f"{full_phone}@phone.auth"
-                
-                if mode == "signup":
-                    if not name_in:
-                        st.error("Please enter your full name."); return
-                    if not dob_in:
-                        st.error("Please enter your date of birth."); return
-                    
-                    # Age verification logic
+                dob_in = st.date_input("", value=default_phone_dob,
+                                       min_value=datetime.date(1920,1,1),
+                                       max_value=datetime.date.today(), key="auth_phone_dob",
+                                       label_visibility="collapsed")
+                if dob_in:
                     today = datetime.date.today()
                     age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
                     if age < 18:
-                        st.error("Access Denied: You must be 18 or older to invest."); return
+                        st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; You must be at least 18 years old</p>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Age verified ({age} years old)</p>', unsafe_allow_html=True)
 
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                pw_in = st.text_input("", type="password", placeholder="At least 8 characters",
+                                      key="auth_phone_pw", label_visibility="collapsed")
+                if pw_in:
+                    has_len   = len(pw_in) >= 8
+                    has_upper = any(c.isupper() for c in pw_in)
+                    has_digit = any(c.isdigit() for c in pw_in)
+                    strength  = sum([has_len, has_upper, has_digit])
+                    color  = ["#FF6B6B", "#FFB347", "#8EF6D1"][min(strength-1, 2)]
+                    label  = ["Weak", "Fair", "Strong"][min(strength-1, 2)]
+                    bar_w  = ["33%", "66%", "100%"][min(strength-1, 2)]
+                    hints  = []
+                    if not has_len:   hints.append("8+ chars")
+                    if not has_upper: hints.append("uppercase letter")
+                    if not has_digit: hints.append("number")
+                    hint_txt = "  ·  Missing: " + ", ".join(hints) if hints else ""
+                    st.markdown(f'''
+                    <div style="margin:-8px 0 8px;">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:4px;">
+                          <div style="width:{bar_w};height:100%;background:{color};border-radius:4px;"></div>
+                        </div>
+                        <span style="font-size:12px;color:{color};font-weight:700;min-width:44px;">{label}</span>
+                      </div>
+                      <span style="font-size:11px;color:#8BA6D3;">{hint_txt}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            else:
+                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                pw_in   = st.text_input("", type="password", key="auth_phone_pw_login",
+                                        label_visibility="collapsed")
+                name_in = ""
+
+            st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
+            remember_me_phone = st.checkbox("Keep me logged in", value=True, key="remember_me_phone")
+
+            btn_label = "Create Account" if mode == "signup" else "Sign In"
+            if st.button(btn_label, use_container_width=True, type="primary", key="auth_phone_submit"):
+                phone_clean = re.sub(r"\D", "", phone_in)
+
+                if not phone_clean:
+                    st.error("&#9888; Please enter your phone number."); return
+                if len(phone_clean) < 7 or len(phone_clean) > 15:
+                    st.error("&#9888; Please enter a valid phone number (7–15 digits)."); return
+
+                full_phone   = f"{cc_in.split(' ')[0]}{phone_clean}"
+                pseudo_email = f"{full_phone}@phone.auth"
+
+                if mode == "signup":
+                    if not name_in or len(name_in.strip()) < 2:
+                        st.error("&#9888; Please enter your full name."); return
+                    if not dob_in:
+                        st.error("&#9888; Please enter your date of birth."); return
+                    today = datetime.date.today()
+                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
+                    if age < 18:
+                        st.error("&#9888; You must be 18 or older to create an account."); return
                     if len(pw_in) < 8:
-                        st.error("Password must be at least 8 characters."); return
-                    
+                        st.error("&#9888; Password must be at least 8 characters."); return
                     if database.get_user(pseudo_email):
-                        st.error("An account with this phone number already exists."); return
+                        st.error("&#9888; An account with this phone number already exists."); return
 
-                    # TRIGGER 2FA VERIFICATION
                     st.session_state.auth_verify_pending = True
                     st.session_state.mock_code = str(random.randint(1000, 9999))
                     st.session_state.pending_action = "signup_phone"
@@ -1906,19 +2004,20 @@ def render_auth_modal():
                 else:
                     user = database.get_user(pseudo_email)
                     if not user:
-                        st.error("No account found for this number. Please sign up first.")
-                    elif user.get("provider", "email") != "phone" and user.get("provider", "email") != "email":
+                        st.error("&#9888; No account found for this number. Please sign up first.")
+                    elif user.get("provider", "email") not in ("phone", "email"):
                         provider_name = str(user["provider"]).capitalize()
-                        st.warning(f"This number is linked to **{provider_name}**. Please use the {provider_name} button to sign in.")
+                        st.warning(f"This number is linked to **{provider_name}**. Please use the {provider_name} button.")
                     elif user["password_hash"] == database.hash_password(pw_in):
-                        # TRIGGER 2FA VERIFICATION
                         st.session_state.auth_verify_pending = True
                         st.session_state.mock_code = str(random.randint(1000, 9999))
                         st.session_state.pending_action = "login_phone"
                         st.session_state.pending_data = {"email": pseudo_email, "name": user["name"], "display_contact": full_phone, "remember": remember_me_phone}
                         st.rerun()
                     else:
-                        st.error("Incorrect password.")
+                        st.error("&#9888; Incorrect password. Please try again.")
+
+
 
         # Switch mode
         switch_label = "Already have an account? Sign in" if mode == "signup" else "Don't have an account? Sign up"
