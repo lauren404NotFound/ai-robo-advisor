@@ -3316,7 +3316,7 @@ def page_more():
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
-# ══ FLOATING CHATBOT ════════════════════════════════════════════
+# ══ FLOATING CHATBOT — HTML/CSS (renders fine via st.markdown) ══════════════
 st.markdown("""
 <style>
 #diq-chat-btn {
@@ -3355,7 +3355,7 @@ st.markdown("""
 }
 #diq-chat-header .bot-name{font-weight:700;color:#fff;font-size:14px;}
 #diq-chat-header .bot-status{font-size:11px;color:#8EF6D1;}
-#diq-chat-close{margin-left:auto;background:none;border:none;color:#8BA6D3;font-size:18px;cursor:pointer;padding:4px;}
+.diq-chat-close{margin-left:auto;background:none;border:none;color:#8BA6D3;font-size:18px;cursor:pointer;padding:4px;}
 #diq-chat-msgs {
     flex:1; overflow-y:auto; padding:14px;
     display:flex; flex-direction:column; gap:10px;
@@ -3400,7 +3400,7 @@ st.markdown("""
 .diq-chip:hover{background:rgba(109,94,252,0.3);color:#fff;}
 </style>
 
-<button id="diq-chat-btn" onclick="toggleChat()" title="Ask DeepAtomicIQ">🤖</button>
+<button id="diq-chat-btn" onclick="window.diqToggleChat()" title="Ask DeepAtomicIQ">🤖</button>
 
 <div id="diq-chat-panel">
   <div id="diq-chat-header">
@@ -3409,91 +3409,110 @@ st.markdown("""
       <div class="bot-name">DeepAtomicIQ Assistant</div>
       <div class="bot-status">● Online · Markowitz MINN</div>
     </div>
-    <button class="diq-chat-close" onclick="toggleChat()">✕</button>
+    <button class="diq-chat-close" onclick="window.diqToggleChat()">✕</button>
   </div>
   <div id="diq-chat-msgs">
     <div class="diq-msg-bot">
       Hi! I'm your DeepAtomicIQ assistant. I can help with portfolio questions, explain how the MINN works, or guide you through getting started.
       <div class="diq-chip-row">
-        <span class="diq-chip" onclick="askChip('How does the MINN work?')">How does MINN work?</span>
-        <span class="diq-chip" onclick="askChip('How do I start?')">How do I start?</span>
-        <span class="diq-chip" onclick="askChip('What is my risk profile?')">Risk profiles</span>
-        <span class="diq-chip" onclick="askChip('What is the Sharpe ratio?')">Sharpe ratio</span>
+        <span class="diq-chip" onclick="window.diqAskChip('How does the MINN work?')">How does MINN work?</span>
+        <span class="diq-chip" onclick="window.diqAskChip('How do I start?')">How do I start?</span>
+        <span class="diq-chip" onclick="window.diqAskChip('What is my risk profile?')">Risk profiles</span>
+        <span class="diq-chip" onclick="window.diqAskChip('What is the Sharpe ratio?')">Sharpe ratio</span>
       </div>
     </div>
   </div>
   <div id="diq-chat-input-row">
     <input id="diq-chat-input" type="text" placeholder="Ask me anything..."
-           onkeydown="if(event.key==='Enter')sendChat()">
-    <button id="diq-chat-send" onclick="sendChat()">➤</button>
+           onkeydown="if(event.key==='Enter') window.diqSendChat()">
+    <button id="diq-chat-send" onclick="window.diqSendChat()">➤</button>
   </div>
 </div>
+""", unsafe_allow_html=True)
 
+# ══ FLOATING CHATBOT — JS (must use components.html so it actually executes) ═
+import streamlit.components.v1 as _cv1
+_cv1.html("""
 <script>
-function toggleChat(){
-    var p=document.getElementById('diq-chat-panel');
-    p.classList.toggle('open');
-    if(p.classList.contains('open')){
-        document.getElementById('diq-chat-input').focus();
+(function() {
+    var p = window.parent;
+
+    function scrollMsgs() {
+        var m = p.document.getElementById('diq-chat-msgs');
+        if (m) m.scrollTop = m.scrollHeight;
+    }
+
+    p.diqToggleChat = function() {
+        var panel = p.document.getElementById('diq-chat-panel');
+        if (!panel) return;
+        panel.classList.toggle('open');
+        if (panel.classList.contains('open')) {
+            var inp = p.document.getElementById('diq-chat-input');
+            if (inp) inp.focus();
+            scrollMsgs();
+        }
+    };
+
+    p.diqAskChip = function(q) {
+        var inp = p.document.getElementById('diq-chat-input');
+        if (inp) inp.value = q;
+        p.diqSendChat();
+    };
+
+    function addMsg(text, isUser) {
+        var msgs = p.document.getElementById('diq-chat-msgs');
+        if (!msgs) return;
+        var d = p.document.createElement('div');
+        d.className = isUser ? 'diq-msg-user' : 'diq-msg-bot';
+        d.innerHTML = text;
+        msgs.appendChild(d);
         scrollMsgs();
     }
-}
-function scrollMsgs(){
-    var m=document.getElementById('diq-chat-msgs');
-    m.scrollTop=m.scrollHeight;
-}
-function askChip(q){
-    document.getElementById('diq-chat-input').value=q;
-    sendChat();
-}
-function addMsg(text,isUser){
-    var msgs=document.getElementById('diq-chat-msgs');
-    var d=document.createElement('div');
-    d.className=isUser?'diq-msg-user':'diq-msg-bot';
-    d.innerHTML=text;
-    msgs.appendChild(d);
-    scrollMsgs();
-}
-function botReply(q){
-    var t=q.toLowerCase();
-    if(t.match(/minn|markowitz|neural|network|how.*work/)){
-        return "The <b>Markowitz-Informed Neural Network (MINN)</b> learns to build portfolios that maximise the Sharpe Ratio by modelling how assets co-move. It combines Markowitz portfolio theory with deep learning — your survey answers tune the model\'s risk threshold (δ) and temporal decay (γ) parameters.";
-    } else if(t.match(/start|begin|how do i|sign.?up|get started/)){
-        return "Getting started is simple!<br>1. <b>Sign Up</b> using the button in the top right<br>2. Complete the <b>10-question investor assessment</b><br>3. Our MINN will build your <b>personalised portfolio</b> in seconds<br>4. Explore your results in the <b>Dashboard</b>";
-    } else if(t.match(/risk.?profile|profile|conservative|aggressive|moderate/)){
-        return "DeepAtomicIQ maps you to one of <b>6 risk profiles</b>:<br>● Very Conservative · Conservative<br>● Moderate · Moderate-Aggressive<br>● Aggressive · Very Aggressive<br><br>Your profile is determined by your survey answers covering risk tolerance, investment horizon, age, and reaction to market drops.";
-    } else if(t.match(/sharpe|sharpe.?ratio/)){
-        return "The <b>Sharpe Ratio</b> measures how much return you get per unit of risk.<br><br>Formula: <b>(Return − Risk-Free Rate) ÷ Volatility</b><br><br>A ratio above 1.0 is generally good. The MINN specifically optimises your portfolio to <i>maximise</i> the Sharpe Ratio.";
-    } else if(t.match(/volatility|risk|vol/)){
-        return "<b>Volatility</b> measures how much your portfolio\'s value bounces up and down. A lower volatility means a smoother ride — higher means bigger swings in both directions. The MINN balances your expected return against volatility to find the sweet spot for your risk profile.";
-    } else if(t.match(/esg|sustainable|green|ethical/)){
-        return "ESG stands for <b>Environmental, Social & Governance</b>. We include <b>ESGU</b> (iShares ESG S&P 500) in our ETF universe for investors who want socially responsible exposure. Your survey answers determine how much weight the model allocates to ESG assets.";
-    } else if(t.match(/monte.?carlo|simulation|scenario/)){
-        return "The <b>Monte Carlo simulation</b> on your dashboard runs <b>2,000 different possible futures</b> for your portfolio based on historical return distributions. It shows you the range of outcomes — from best case to worst case — giving you a realistic picture of your investment journey.";
-    } else if(t.match(/etf|fund|voo|qqq|bond|gold|gld/)){
-        return "We invest exclusively in <b>broad-market ETFs</b> — low-cost, diversified, and liquid. Our universe includes:<br>● <b>VOO</b> (S&P 500) · <b>QQQ</b> (Nasdaq 100)<br>● <b>VWRA</b> (Global) · <b>AGG</b> (Bonds)<br>● <b>GLD</b> (Gold) · <b>VNQ</b> (Real Estate)<br>● <b>ESGU</b> (ESG) · <b>PDBC</b> (Commodities)";
-    } else if(t.match(/login|sign.?in|password|account/)){
-        return "Click <b>Login</b> in the top navigation bar. You can sign in with your <b>email & password</b> or use <b>Google OAuth</b>. Tick \'Keep me logged in\' to stay signed in across browser sessions.";
-    } else if(t.match(/market|stock|price|index|sp500|nasdaq/)){
-        return "Check out the <b>Markets</b> page for live ETF prices, sparkline charts, a 30-day interactive price chart, and a sector performance heatmap — all powered by the Yahoo Finance API.";
-    } else if(t.match(/hello|hi|hey|good/)){
-        return "Hello! How can I help you with your portfolio today? 😊";
-    } else if(t.match(/thank/)){
-        return "You're welcome! Feel free to ask anything else. 🚀";
-    } else {
-        return "I\'m not sure about that specific query, but I can help with: portfolio questions, the MINN model, risk profiles, ETFs, the Sharpe ratio, or getting started. Try one of those topics!";
+
+    function botReply(q) {
+        var t = q.toLowerCase();
+        if (t.match(/minn|markowitz|neural|network|how.*work/))
+            return "The <b>Markowitz-Informed Neural Network (MINN)</b> learns to build portfolios that maximise the Sharpe Ratio. It combines Markowitz portfolio theory with deep learning — your survey answers tune the model's risk threshold (δ) and temporal decay (γ).";
+        if (t.match(/start|begin|how do i|sign.?up|get started/))
+            return "Getting started is simple!<br>1. <b>Sign Up</b> top-right<br>2. Complete the <b>10-question assessment</b><br>3. MINN builds your <b>personalised portfolio</b> instantly<br>4. Explore results in the <b>Dashboard</b>";
+        if (t.match(/risk.?profile|profile|conservative|aggressive|moderate/))
+            return "DeepAtomicIQ maps you to one of <b>6 risk profiles</b>:<br>● Very Conservative · Conservative<br>● Moderate · Moderate-Aggressive<br>● Aggressive · Very Aggressive<br><br>Determined by your tolerance, horizon, age & reaction to drops.";
+        if (t.match(/sharpe|sharpe.?ratio/))
+            return "The <b>Sharpe Ratio</b> = (Return − Risk-Free Rate) ÷ Volatility.<br><br>Above 1.0 is generally good. The MINN <i>maximises</i> this during optimisation.";
+        if (t.match(/volatility|vol/))
+            return "<b>Volatility</b> measures how much your portfolio bounces up and down. Lower = smoother ride. The MINN balances return against volatility for your risk profile.";
+        if (t.match(/esg|sustainable|green|ethical/))
+            return "ESG = <b>Environmental, Social & Governance</b>. We include <b>ESGU</b> (iShares ESG S&P 500) for socially responsible exposure without sacrificing returns.";
+        if (t.match(/monte.?carlo|simulation|scenario/))
+            return "The <b>Monte Carlo simulation</b> runs <b>2,000 possible futures</b> for your portfolio, showing the full range from worst-case to best-case outcomes.";
+        if (t.match(/etf|fund|voo|qqq|bond|gold|gld/))
+            return "Our ETF universe:<br>● <b>VOO</b> (S&P 500) · <b>QQQ</b> (Nasdaq 100)<br>● <b>VWRA</b> (Global) · <b>AGG</b> (Bonds)<br>● <b>GLD</b> (Gold) · <b>VNQ</b> (Real Estate)<br>● <b>ESGU</b> (ESG) · <b>PDBC</b> (Commodities)";
+        if (t.match(/login|sign.?in|password|account/))
+            return "Click <b>Login</b> in the nav bar. Sign in with email/password or Google OAuth. Tick 'Keep me logged in' to stay signed in.";
+        if (t.match(/market|stock|price|index|sp500|nasdaq/))
+            return "The <b>Markets</b> page shows live ETF prices, sparkline charts, a 30-day price chart, and a sector performance heatmap — powered by Yahoo Finance.";
+        if (t.match(/invest|buy|how much|lump|monthl/))
+            return "Check the <b>Portfolio Implementation Guide</b> on your Dashboard — it shows exactly how much to put in each ETF based on your investment amount and monthly contribution.";
+        if (t.match(/hello|hi |hey|good/))
+            return "Hello! How can I help with your portfolio today? 😊";
+        if (t.match(/thank/))
+            return "You're welcome! Feel free to ask anything else. 🚀";
+        return "I can help with: the MINN model, risk profiles, ETFs, Sharpe ratio, how to invest, or getting started. Try one of those topics!";
     }
-}
-function sendChat(){
-    var inp=document.getElementById('diq-chat-input');
-    var q=inp.value.trim();
-    if(!q)return;
-    addMsg(q,true);
-    inp.value='';
-    setTimeout(function(){addMsg(botReply(q),false);},420);
-}
+
+    p.diqSendChat = function() {
+        var inp = p.document.getElementById('diq-chat-input');
+        if (!inp) return;
+        var q = inp.value.trim();
+        if (!q) return;
+        addMsg(q, true);
+        inp.value = '';
+        setTimeout(function() { addMsg(botReply(q), false); }, 420);
+    };
+})();
 </script>
-""", unsafe_allow_html=True)
+""", height=0, width=0)
+
 
 # ── Main render ──────────────────────────────────────────────────────────────
 render_nav()
