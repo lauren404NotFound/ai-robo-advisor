@@ -1452,14 +1452,33 @@ def render_nav():
             avatar_html = f'<div class="nav-avi">{initials}</div>'
             
         auth_html = f"""
-          <a href="?page=account{tp}" style="text-decoration:none;">
-            <div class="nav-user-pill">
-              {avatar_html}
-              <span>{short_name}</span>
+          <div class="nav-profile-wrap">
+            <a href="?page=account{tp}" style="text-decoration:none;">
+              <div class="nav-user-pill">
+                {avatar_html}
+                <span>{short_name}</span>
+                <svg style="width:10px;height:10px;opacity:0.5;margin-left:2px;" viewBox="0 0 10 6" fill="none">
+                  <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </a>
+            <!-- Hover dropdown -->
+            <div class="nav-dropdown">
+              <div class="nav-dd-header">
+                <div class="nav-dd-av">{avatar_html}</div>
+                <div>
+                  <div class="nav-dd-name">{name}</div>
+                  <div class="nav-dd-sub">DeepAtomicIQ Member</div>
+                </div>
+              </div>
+              <div class="nav-dd-divider"></div>
+              <a class="nav-dd-item" href="?page=account{tp}">&#128100;&nbsp; My Profile</a>
+              <a class="nav-dd-item" href="?page=dashboard{tp}">&#128202;&nbsp; My Portfolio</a>
+              <a class="nav-dd-item" href="?page=more{tp}">&#9881;&#65039;&nbsp; Preferences</a>
+              <div class="nav-dd-divider"></div>
+              <a class="nav-dd-item nav-dd-logout" href="?logout=1{tp}">&#128682;&nbsp; Sign Out</a>
             </div>
-          </a>
-          <span class="nav-sep"></span>
-          <a class="nav-act-btn logout-btn" href="?logout=1{tp}">Logout</a>
+          </div>
         """
     else:
         auth_html = f"""
@@ -1507,14 +1526,19 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   box-shadow: inset 0 0 0 1px rgba(155,114,242,0.22);
 }}
 .diq-auth {{
-  display: flex; align-items: center; gap: 9px; min-width: 310px; justify-content: flex-end;
+  display: flex; align-items: center; gap: 9px; min-width: 260px; justify-content: flex-end;
+}}
+.nav-profile-wrap {{
+  position: relative; display: flex; align-items: center;
 }}
 .nav-user-pill {{
   display: flex; align-items: center; gap: 8px;
   background: rgba(155,114,242,0.1); border: 1px solid rgba(155,114,242,0.28);
-  border-radius: 22px; padding: 4px 14px 4px 5px;
+  border-radius: 22px; padding: 4px 12px 4px 5px;
   font-size: 13px; font-weight: 600; color: #E6D5FF; white-space: nowrap;
+  cursor: pointer; transition: background .15s;
 }}
+.nav-user-pill:hover {{ background: rgba(155,114,242,0.2); }}
 .nav-avi {{
   width: 26px; height: 26px; border-radius: 50%;
   background: linear-gradient(135deg, #9B72F2, #4AE3A0);
@@ -1522,6 +1546,34 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0;
 }}
 .nav-sep {{ width: 1px; height: 20px; background: rgba(155,114,242,0.25); }}
+/* Hover dropdown */
+.nav-dropdown {{
+  display: none; position: absolute; top: calc(100% + 10px); right: 0;
+  width: 230px;
+  background: rgba(10,10,28,0.98); backdrop-filter: blur(20px);
+  border: 1px solid rgba(109,94,252,0.3); border-radius: 16px;
+  padding: 6px 0; z-index: 99999;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  animation: ddFade .15s ease;
+}}
+@keyframes ddFade {{ from{{opacity:0;transform:translateY(-6px)}} to{{opacity:1;transform:translateY(0)}} }}
+.nav-profile-wrap:hover .nav-dropdown {{ display: block; }}
+.nav-dd-header {{
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px 12px;
+}}
+.nav-dd-av {{ flex-shrink: 0; }}
+.nav-dd-name {{ font-size: 13px; font-weight: 700; color: #fff; }}
+.nav-dd-sub  {{ font-size: 11px; color: #8BA6D3; margin-top: 1px; }}
+.nav-dd-divider {{ height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }}
+.nav-dd-item {{
+  display: flex; align-items: center; gap: 0;
+  padding: 10px 16px; font-size: 13px; color: #D4E0F7;
+  text-decoration: none; transition: background .12s;
+}}
+.nav-dd-item:hover {{ background: rgba(109,94,252,0.15); }}
+.nav-dd-logout {{ color: rgba(255,107,107,0.85); }}
+.nav-dd-logout:hover {{ background: rgba(255,107,107,0.1); }}
 .nav-act-btn {{
   font-size: 12.5px; font-weight: 600; border-radius: 9px; border: none;
   padding: 7px 17px; cursor: pointer; white-space: nowrap; font-family: inherit;
@@ -3532,6 +3584,32 @@ def page_account():
     prefs      = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
     initials   = "".join(p[0].upper() for p in user_name.split()[:2]) if user_name != "Guest" else "?"
 
+    # ── Dark-mode CSS overrides for Streamlit form inputs ─────────────────────
+    st.markdown("""
+    <style>
+    /* Dark inputs for account page */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {
+        background: rgba(255,255,255,0.05) !important;
+        color: #E8EAF6 !important;
+        border: 1px solid rgba(109,94,252,0.3) !important;
+        border-radius: 10px !important;
+    }
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #6D5EFC !important;
+        box-shadow: 0 0 0 2px rgba(109,94,252,0.2) !important;
+    }
+    .stTextInput label, .stTextArea label, .stSelectbox label,
+    .stFileUploader label { color: #8BA6D3 !important; font-size: 12px !important; }
+    .stFileUploader > div { background: rgba(255,255,255,0.03) !important;
+        border: 1px dashed rgba(109,94,252,0.3) !important; border-radius:10px !important;}
+    div[data-testid="stExpander"] { border: 1px solid rgba(255,107,107,0.2) !important;
+        border-radius: 12px !important; background: rgba(255,107,107,0.04) !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
     # ── Page header ────────────────────────────────────────────────────────────
     st.markdown("""
     <div style="padding:32px 0 28px;">
@@ -3759,26 +3837,22 @@ _GEMINI_KEY_JS      = _json.dumps(_GEMINI_KEY)
 # CSS in the parent page to reposition the iframe container as fixed bottom-right
 st.markdown("""
 <style>
-/* Pin the LAST custom component (chatbot) to bottom-right corner */
-section.main > div > div:last-child [data-testid="stCustomComponentV1"]:last-child,
-[data-testid="stCustomComponentV1"]:last-of-type {
+/* Chatbot component — collapse layout space & pin to bottom-right */
+div[data-testid="stCustomComponentV1"]:has(iframe[height="640"]) {
     position: fixed !important;
-    bottom: 0 !important;
-    right: 0 !important;
-    width: 420px !important;
-    height: 640px !important;
+    bottom: 0 !important; right: 0 !important;
+    width: 420px !important; height: 640px !important;
     z-index: 99998 !important;
     pointer-events: none !important;
-    border: none !important;
     overflow: visible !important;
 }
-[data-testid="stCustomComponentV1"]:last-of-type > iframe {
+div[data-testid="stCustomComponentV1"]:has(iframe[height="640"]) > iframe {
     pointer-events: auto !important;
     border: none !important;
-    background: transparent !important;
-    width: 420px !important;
-    height: 640px !important;
+    width: 420px !important; height: 640px !important;
 }
+/* Collapse any blank space left behind in the layout flow */
+div[data-testid="stCustomComponentV1"]:has(iframe[height="640"]) ~ * { margin-top: -640px !important; }
 </style>
 """, unsafe_allow_html=True)
 
