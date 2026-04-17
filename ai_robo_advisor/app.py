@@ -3097,22 +3097,9 @@ def page_market():
     .mkt-section-title span { font-size: 13px; font-weight: 500; color: #8BA6D3; }
     </style>
     """, unsafe_allow_html=True)
-
-    # ── Header ───────────────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div style="padding:28px 0 8px;">
-      <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;">
-        📈 Markets
-      </div>
-      <div style="font-size:13px;color:{MUTED};margin-top:4px;">
-        <strong style="color:#8EF6D1;">● Live</strong> &nbsp;Real-time indicative quotes · Yahoo Finance API · Refreshed every 60s
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.spinner("Fetching live market data..."):
-        markets = get_live_market_data()
-        hist_df = get_sparkline_data()
+    
+    markets = get_live_market_data()
+    hist_df = get_sparkline_data()
 
     # ── Ticker tape ──────────────────────────────────────────────────────────
     tape_items = ""
@@ -3262,67 +3249,147 @@ def page_market():
 
 # ── MORE 
 def page_more():
+    user_email = st.session_state.get("user_email", "guest") or "guest"
+    user_name  = st.session_state.get("user_name",  "Guest") or "Guest"
+    user_data  = database.get_user(user_email) if user_email != "guest" else None
+    prefs      = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
+    initials   = "".join(p[0].upper() for p in user_name.split()[:2]) if user_name != "Guest" else "?"
+
     st.markdown("""
-    <div style="padding:32px 0 20px 0;">
-      <div style="font-size:26px;font-weight:800;color:#ffffff;margin-bottom:6px;">Settings & Support</div>
-      <div style="font-size:14px;color:rgba(237,237,243,0.5);">Manage your profile and find resources</div>
+    <div style="padding:32px 0 28px;">
+      <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.12em;margin-bottom:8px;">ACCOUNT</div>
+      <div style="font-size:32px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin-bottom:6px;">
+        Settings &amp; Support
+      </div>
+      <div style="font-size:14px;color:#8BA6D3;">Manage your profile, notifications, and get help.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    tab1, tab2, tab3 = st.tabs(["⚙️ Preferences", "❔ FAQ", "📧 Support"])
+    col_left, col_right = st.columns([1, 2], gap="large")
 
-    user_email = st.session_state.get("user_email", "guest") or "guest"
+    with col_left:
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,rgba(109,94,252,0.14),rgba(59,164,255,0.07));
+                    border:1px solid rgba(109,94,252,0.28);border-radius:20px;
+                    padding:28px 22px;text-align:center;margin-bottom:16px;">
+          <div style="width:70px;height:70px;border-radius:50%;
+                      background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:26px;font-weight:900;color:#fff;margin:0 auto 14px;">
+            {initials}
+          </div>
+          <div style="font-size:19px;font-weight:800;color:#ffffff;margin-bottom:4px;">{user_name}</div>
+          <div style="font-size:12px;color:#8BA6D3;word-break:break-all;margin-bottom:16px;">{user_email}</div>
+          <div style="display:inline-flex;align-items:center;gap:6px;
+                      background:rgba(142,246,209,0.1);border:1px solid rgba(142,246,209,0.25);
+                      border-radius:20px;padding:5px 14px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#8EF6D1;display:inline-block;"></span>
+            <span style="font-size:11px;color:#8EF6D1;font-weight:700;">Active Account</span>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+                    border-radius:16px;padding:18px 20px;">
+          <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:14px;">NAVIGATE</div>
+          <a href="?page=dashboard" style="display:flex;align-items:center;gap:10px;padding:9px 0;
+             border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;
+             color:#D4E0F7;font-size:13px;font-weight:500;">&#128202;&nbsp; My Dashboard</a>
+          <a href="?page=market" style="display:flex;align-items:center;gap:10px;padding:9px 0;
+             border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;
+             color:#D4E0F7;font-size:13px;font-weight:500;">&#128200;&nbsp; Live Markets</a>
+          <a href="?page=insights" style="display:flex;align-items:center;gap:10px;padding:9px 0;
+             text-decoration:none;color:#D4E0F7;font-size:13px;font-weight:500;">&#128240;&nbsp; News &amp; Insights</a>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with tab1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        # Load existing preferences if available
-        user_data = database.get_user(user_email) if user_email != "guest" else None
-        prefs = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
-        
-        reports = st.checkbox("Receive Weekly Portfolio Reports", value=prefs.get("reports", True))
-        alerts = st.checkbox("Real-Time Volatility Alerts", value=prefs.get("alerts", False))
-        currency = st.selectbox("Default Currency", ["GBP (£)", "USD ($)", "EUR (€)"], 
-                                index=["GBP (£)", "USD ($)", "EUR (€)"].index(prefs.get("currency", "GBP (£)")))
-        
-        if st.button("Save Preferences", type="primary"):
-            if user_email == "guest":
-                st.error("Please login to save preferences.")
-            else:
-                new_prefs = {"reports": reports, "alerts": alerts, "currency": currency}
-                database.update_user_preferences(user_email, new_prefs)
-                st.session_state.preferences = new_prefs
-                st.toast("Preferences saved to database!")
-        
-        if st.button("Refresh Application State", key="ref_app"):
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    with col_right:
+        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
+          &#9881;&#65039; Preferences</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                    border-radius:16px;padding:22px 24px;margin-bottom:8px;">
+          <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:14px;">NOTIFICATIONS</div>
+        """, unsafe_allow_html=True)
 
-    with tab2:
-        faqs = [
-            ("How does the AI work?", "We use a Markowitz-Informed Neural Network (MINN) to learn optimal risk-return trade-offs directly from market regimes."),
-            ("Is my money safe?", "DeepIQ is an educational research prototype. In a production environment, investments would be held by FCA-regulated custodians."),
-            ("What is the Sharpe Ratio?", "It's a measure of risk-adjusted return. A higher Sharpe ratio suggests better returns for the level of risk taken."),
-            ("How often should I rebalance?", "DeepIQ recommends reviewing your portfolio every quarter or after significant life events.")
-        ]
-        for q, a in faqs:
+        reports = st.checkbox("📊  Weekly Portfolio Report emails",
+                              value=prefs.get("reports", True),
+                              help="Receive a weekly email summary of your portfolio performance")
+        alerts  = st.checkbox("🔔  Real-Time Volatility Alerts",
+                              value=prefs.get("alerts", False),
+                              help="Get notified when market volatility spikes")
+
+        st.markdown("""<div style="border-top:1px solid rgba(255,255,255,0.07);margin:18px 0 16px;"></div>
+          <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:12px;">DISPLAY</div>
+        """, unsafe_allow_html=True)
+
+        curr_opts = ["GBP (£)", "USD ($)", "EUR (€)"]
+        currency = st.selectbox("💱  Default Currency", curr_opts,
+                                index=curr_opts.index(prefs.get("currency", "GBP (£)")),
+                                help="Sets how monetary values display across the dashboard")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        sc1, sc2 = st.columns(2, gap="small")
+        with sc1:
+            if st.button("💾  Save Preferences", type="primary", use_container_width=True):
+                if user_email == "guest":
+                    st.error("Please login to save preferences.")
+                else:
+                    new_prefs = {"reports": reports, "alerts": alerts, "currency": currency}
+                    database.update_user_preferences(user_email, new_prefs)
+                    st.session_state.preferences = new_prefs
+                    st.toast("Preferences saved!")
+        with sc2:
+            if st.button("🔄  Refresh App", use_container_width=True, key="ref_app"):
+                st.rerun()
+
+        st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
+          &#10067; Frequently Asked Questions</div>""", unsafe_allow_html=True)
+
+        for q, a in [
+            ("🧠 How does the AI work?",
+             "DeepAtomicIQ uses a **Markowitz-Informed Neural Network (MINN)** that learns optimal "
+             "risk-return trade-offs from historical market data. Your survey answers tune the risk "
+             "threshold (δ) and temporal decay (γ), personalising your portfolio to you."),
+            ("🔒 Is my data secure?",
+             "Credentials are hashed with **bcrypt**. Portfolio data lives in a secure SQLite database. "
+             "DeepAtomicIQ is a research prototype — production deployments would be GDPR-compliant."),
+            ("📈 What is the Sharpe Ratio?",
+             "**Sharpe Ratio = (Return − Risk-Free Rate) ÷ Volatility.** It measures return per unit "
+             "of risk. A ratio above **1.0** is generally good. The MINN maximises this during optimisation."),
+            ("🔁 How often should I rebalance?",
+             "DeepAtomicIQ recommends reviewing your portfolio **every quarter** or after major life events "
+             "(new job, inheritance, etc.). Markets drift, so rebalancing keeps your allocation on-target."),
+            ("💰 What are ETFs?",
+             "ETFs (Exchange-Traded Funds) are baskets of stocks/bonds that trade like a single share. "
+             "They offer **instant diversification** at very low cost — buying **VOO** gives you exposure "
+             "to all 500 S&P 500 companies at once."),
+            ("⚖️ Is this regulated financial advice?",
+             "**No.** DeepAtomicIQ is an educational research prototype and does not constitute regulated "
+             "financial advice. Always consult a qualified financial adviser before making real investment decisions."),
+        ]:
             with st.expander(q):
-                st.write(a)
+                st.markdown(a)
 
-    with tab3:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown("### Contact Support")
-        subj = st.text_input("Subject", key="support_subj")
-        msg = st.text_area("How can we help?", key="support_msg")
-        if st.button("Submit Support Ticket"):
+        st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
+          &#128231; Contact Support</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                    border-radius:16px;padding:22px 24px;">
+          <p style="font-size:13px;color:#8BA6D3;margin:0 0 18px;">
+            Have a bug report or question? Fill in below and we'll reply within 24 hours.
+          </p>""", unsafe_allow_html=True)
+
+        subj = st.text_input("Subject", placeholder="e.g. Dashboard not loading", key="support_subj")
+        msg  = st.text_area("Message", placeholder="Describe your issue in detail...",
+                            key="support_msg", height=110)
+        if st.button("📨  Send Message", type="primary", use_container_width=True):
             if user_email == "guest":
-                st.warning("Please login to submit a ticket.")
+                st.warning("Please login to submit a support ticket.")
             elif not subj or not msg:
-                st.error("Please fill in all fields.")
+                st.error("Please fill in both Subject and Message.")
             else:
                 database.save_ticket(user_email, subj, msg)
-                st.success("Your inquiry has been stored in our database. We'll contact you soon.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
+                st.success("Ticket submitted! We'll be in touch soon.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
