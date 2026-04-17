@@ -530,10 +530,20 @@ div[role='radiogroup'] > label {{
   border: 1px solid {BORDER}; border-radius: 12px; padding: 10px 18px;
   margin-bottom: 8px; cursor: pointer; transition: all 0.2s;
   background: rgba(255,255,255,0.02);
+  color: #ffffff !important;
+}}
+div[role='radiogroup'] > label p {{
+  color: #ffffff !important;
 }}
 div[role='radiogroup'] > label:hover {{
   border-color: rgba(191,148,255,0.5);
   background: rgba(138,43,226,0.08);
+  color: #ffffff !important;
+}}
+div[role='radiogroup'] > label[data-checked="true"] {{
+  border-color: rgba(191,148,255,0.7);
+  background: rgba(138,43,226,0.15);
+  color: #ffffff !important;
 }}
 
 /* primary button lilac */
@@ -571,8 +581,81 @@ div[data-baseweb="input"]:focus-within {{
   border-color: #B18AFF !important;
   box-shadow: 0 0 0 1px #B18AFF !important;
 }}
+/* ══ RICH TOOLTIP POPOVER CARDS ══ */
+.rich-tooltip {{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}}
+.rich-tooltip .tt-icon {{
+  font-size: 13px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}}
+.rich-tooltip:hover .tt-icon {{ opacity: 1; }}
+.tooltip-text {{
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 300px;
+  z-index: 9999;
+  background: rgba(15, 15, 35, 0.97);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(109, 94, 252, 0.35);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #C8D6F0;
+  line-height: 1.65;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(109,94,252,0.1);
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+  white-space: normal;
+  text-align: left;
+}}
+.tooltip-text::before {{
+  content: "";
+  position: absolute;
+  bottom: -7px; left: 18px;
+  width: 12px; height: 12px;
+  background: rgba(15,15,35,0.97);
+  border-right: 1px solid rgba(109,94,252,0.35);
+  border-bottom: 1px solid rgba(109,94,252,0.35);
+  transform: rotate(45deg);
+}}
+.tooltip-text .tt-header {{
+  font-size: 11px; font-weight: 700; color: #6D5EFC;
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}}
+.rich-tooltip.tt-open .tooltip-text {{
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}}
 </style>
+<script>
+(function(){{
+  document.addEventListener('click', function(e){{
+    var trigger = e.target.closest('.rich-tooltip');
+    document.querySelectorAll('.rich-tooltip.tt-open').forEach(function(el){{
+      if (el !== trigger) el.classList.remove('tt-open');
+    }});
+    if (trigger) trigger.classList.toggle('tt-open');
+  }});
+}})();
+</script>
 """, unsafe_allow_html=True)
+
 
 
 # DeepAtomicIQ Data Loader
@@ -587,17 +670,30 @@ def _user_email() -> str:
 def _user_name() -> str:
     return st.session_state.get("user_name", "")
 
+# ── Server-side session cache (survives browser URL navigation) ───────────────
+@st.cache_resource
+def _session_cache():
+    """Shared in-memory dict: {token -> auth dict}. Lives for the lifetime of
+    the Streamlit server process — survives individual session reruns."""
+    return {}
+
 def _do_login(email: str, name: str, provider: str = "email", avatar: str = None, remember: bool = True):
-    st.session_state.authenticated = True
-    st.session_state.user_email    = email
-    st.session_state.user_name     = name
-    st.session_state.user_provider = provider
-    st.session_state.user_avatar   = avatar
-    st.session_state.show_auth     = False
+    import uuid as _uuid
+    token = str(_uuid.uuid4())
+    _session_cache()[token] = {
+        "email": email, "name": name, "provider": provider, "avatar": avatar
+    }
+    st.session_state.session_token  = token
+    st.session_state.authenticated  = True
+    st.session_state.user_email     = email
+    st.session_state.user_name      = name
+    st.session_state.user_provider  = provider
+    st.session_state.user_avatar    = avatar
+    st.session_state.show_auth      = False
 
     if remember:
         st.session_state.save_login_email = email
-        st.session_state.save_login_name = name
+        st.session_state.save_login_name  = name
 
     # Rest of existing code (saved assessment, preferences...)
     saved = database.get_latest_assessment(email)
@@ -623,10 +719,103 @@ def get_currency_symbol() -> str:
     return "£"
 
 def _do_logout():
+    tok = st.session_state.get("session_token")
+    if tok:
+        _session_cache().pop(tok, None)
     st.session_state.clear_login_token = True
-    
-    for k in ["authenticated","user_email","user_name","user_provider","user_avatar"]:
+    for k in ["authenticated", "user_email", "user_name", "user_provider",
+              "user_avatar", "session_token"]:
         st.session_state.pop(k, None)
+
+# ────────────────────────────────────────────────────────────────────────────────
+def render_actionable_advice(port: dict, initial_investment: float, monthly_contribution: float) -> str:
+    """Return HTML showing exactly which ETFs to buy, in what amounts."""
+    alloc = port.get("allocation_pct", {})
+
+    ETF_INFO = {
+        "VOO":  {"name": "Vanguard S&P 500 ETF",                        "note": "Core US market growth — available on any major platform"},
+        "QQQ":  {"name": "Invesco QQQ Trust (Nasdaq 100)",               "note": "Top tech companies — higher growth, higher risk"},
+        "VWRA": {"name": "Vanguard FTSE All-World UCITS ETF",            "note": "Global diversification across 50+ countries"},
+        "AGG":  {"name": "iShares Core US Aggregate Bond ETF",           "note": "Capital protection — cushions stock market drops"},
+        "GLD":  {"name": "SPDR Gold Shares",                             "note": "Inflation hedge — rises when currencies weaken"},
+        "VNQ":  {"name": "Vanguard Real Estate ETF (REITs)",             "note": "Property exposure with regular dividend income"},
+        "ESGU": {"name": "iShares ESG Aware MSCI USA ETF",              "note": "S&P 500 exposure — excludes unethical companies"},
+        "PDBC": {"name": "Invesco Optimum Yield Diversified Commodity", "note": "Oil, metals & agriculture — real asset diversifier"},
+    }
+
+    rows_html = ""
+    sorted_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)
+    for ticker, pct in sorted_alloc:
+        if pct <= 0:
+            continue
+        short = ticker.replace(".L", "")
+        info  = ETF_INFO.get(short, {"name": short, "note": "Broad market exposure"})
+        lump  = initial_investment * (pct / 100)
+        mo    = monthly_contribution * (pct / 100)
+        rows_html += f"""
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+          <td style="padding:11px 12px;">
+            <div style="font-weight:700;color:#fff;font-size:13px;">{info['name']}</div>
+            <div style="font-size:11px;color:#6D5EFC;margin-top:2px;">{info['note']}</div>
+          </td>
+          <td style="padding:11px 12px;font-family:'JetBrains Mono',monospace;color:#8EF6D1;font-weight:700;font-size:13px;">{short}</td>
+          <td style="padding:11px 12px;text-align:center;font-weight:700;color:#fff;">{pct:.0f}%</td>
+          <td style="padding:11px 12px;text-align:right;font-size:14px;font-weight:800;color:#fff;">£{lump:,.0f}</td>
+          <td style="padding:11px 12px;text-align:right;font-size:13px;font-weight:700;color:#8EF6D1;">£{mo:,.0f}</td>
+        </tr>"""
+
+    total_monthly = monthly_contribution
+    return f"""
+    <div style="background:linear-gradient(135deg,rgba(109,94,252,0.08),rgba(0,0,0,0.25));
+                border:1px solid rgba(109,94,252,0.3);border-radius:18px;
+                padding:24px 24px 20px;margin:18px 0;">
+
+      <h3 style="color:#E6D5FF;margin:0 0 6px;font-size:18px;font-weight:800;
+                 display:flex;align-items:center;gap:8px;">📋 What To Buy &#8212; Step by Step</h3>
+      <p style="color:#8BA6D3;font-size:13px;margin:0 0 18px;">
+        Based on your profile, here are the <b style='color:#fff;'>exact ETFs to purchase</b>.
+        Buy them through any brokerage (Vanguard, Fidelity, Hargreaves Lansdown, Trading 212).
+        Search the ticker symbol and buy in the proportions shown.
+      </p>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:rgba(109,94,252,0.18);">
+              <th style="padding:10px 12px;text-align:left;color:#8BA6D3;font-size:11px;letter-spacing:.06em;font-weight:700;">ETF NAME</th>
+              <th style="padding:10px 12px;text-align:left;color:#8BA6D3;font-size:11px;letter-spacing:.06em;font-weight:700;">TICKER</th>
+              <th style="padding:10px 12px;text-align:center;color:#8BA6D3;font-size:11px;letter-spacing:.06em;font-weight:700;">WEIGHT</th>
+              <th style="padding:10px 12px;text-align:right;color:#8BA6D3;font-size:11px;letter-spacing:.06em;font-weight:700;">LUMP SUM (&#163;)</th>
+              <th style="padding:10px 12px;text-align:right;color:#8BA6D3;font-size:11px;letter-spacing:.06em;font-weight:700;">MONTHLY (&#163;)</th>
+            </tr>
+          </thead>
+          <tbody>{rows_html}</tbody>
+          <tfoot>
+            <tr style="background:rgba(109,94,252,0.1);border-top:1px solid rgba(109,94,252,0.35);">
+              <td colspan="3" style="padding:11px 12px;font-weight:800;color:#fff;">TOTAL</td>
+              <td style="padding:11px 12px;text-align:right;font-size:16px;font-weight:900;color:#fff;">&#163;{initial_investment:,.0f}</td>
+              <td style="padding:11px 12px;text-align:right;font-size:14px;font-weight:800;color:#8EF6D1;">&#163;{total_monthly:,.0f}/mo</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div style="margin-top:18px;padding:14px 16px;background:rgba(0,0,0,0.3);
+                  border-radius:12px;border-left:3px solid #6D5EFC;">
+        <p style="margin:0;color:#D4E0F7;font-size:13px;line-height:1.7;">
+          <b style='color:#8EF6D1;'>&#128161; How to use this:</b>
+          Open a brokerage account (e.g., <b>Hargreaves Lansdown</b>, <b>Trading 212</b>, or <b>Vanguard UK</b>).
+          Search for each <b>ticker symbol</b> above. If you have
+          <b style='color:#fff;'>&#163;{initial_investment:,.0f}</b> to invest today,
+          buy the <b>Lump Sum</b> amounts shown.
+          Then set up a <b>monthly direct debit</b> of
+          <b style='color:#fff;'>&#163;{total_monthly:,.0f}</b>
+          divided across the same tickers using the <b>Monthly</b> column.
+          Most platforms allow automatic monthly investing &#8212; set it and forget it.
+        </p>
+      </div>
+    </div>
+    """
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -790,6 +979,65 @@ def restore_session_from_storage():
         st.rerun()
 
 restore_session_from_storage()
+
+# ══ SPLASH SCREEN (first load only) ════════════════════════════════════════════
+if not st.session_state.get("splash_done", False):
+    st.session_state.splash_done = True
+    st.markdown("""
+    <style>
+    #diq-splash {
+        position: fixed; inset: 0;
+        background: #080818;
+        z-index: 99999;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        animation: splashOut 0.7s ease 2.4s forwards;
+    }
+    @keyframes splashOut {
+        0%   { opacity:1; }
+        100% { opacity:0; pointer-events:none; }
+    }
+    .splash-logo {
+        font-size: 42px; font-weight: 900; letter-spacing: -0.04em;
+        background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 60%, #8EF6D1 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        animation: splashPulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes splashPulse {
+        0%   { opacity: 0.7; transform: scale(0.98); }
+        100% { opacity: 1;   transform: scale(1.02); }
+    }
+    .splash-tagline {
+        margin-top: 14px; font-size: 14px; font-weight: 500;
+        color: rgba(139,166,211,0.7); letter-spacing: 0.15em;
+        text-transform: uppercase;
+        animation: fadeIn 0.8s ease 0.4s both;
+    }
+    .splash-bar {
+        margin-top: 40px; width: 120px; height: 3px;
+        background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden;
+    }
+    .splash-bar-fill {
+        height: 100%; width: 0;
+        background: linear-gradient(90deg, #6D5EFC, #3BA4FF);
+        border-radius: 99px;
+        animation: loadBar 2.2s ease forwards;
+    }
+    @keyframes loadBar  { 0%{width:0} 100%{width:100%} }
+    @keyframes fadeIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    </style>
+    <div id="diq-splash">
+      <div class="splash-logo">DeepAtomicIQ</div>
+      <div class="splash-tagline">AI-Powered Portfolio Intelligence</div>
+      <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+    </div>
+    <script>
+    setTimeout(function(){
+      var s = document.getElementById('diq-splash');
+      if(s) s.style.display = 'none';
+    }, 3200);
+    </script>
+    """, unsafe_allow_html=True)
 
 if "explanation_mode" not in st.session_state:
     st.session_state.explanation_mode = "simple"   # "simple" or "advanced"
@@ -1093,9 +1341,30 @@ def _handle_query_params():
     """Read URL query params set by the HTML nav and update session state."""
     params = st.query_params
 
+    # ── Restore auth from server-side session token ─────────────────────────
+    if "_tok" in params:
+        token = params["_tok"]
+        if not st.session_state.get("authenticated"):
+            cached = _session_cache().get(token)
+            if cached:
+                st.session_state.authenticated  = True
+                st.session_state.user_email     = cached["email"]
+                st.session_state.user_name      = cached["name"]
+                st.session_state.user_provider  = cached["provider"]
+                st.session_state.user_avatar    = cached["avatar"]
+                st.session_state.session_token  = token
+                # Reload saved assessment too
+                saved = database.get_latest_assessment(cached["email"])
+                if saved:
+                    st.session_state.result = saved["result"]
+                    st.session_state.survey_answers = saved["answers"]
+                    st.session_state.survey_page = "portfolio"
+        # Keep _tok in params across reruns so it travels with every navigation
+        # (Don't delete it so the next nav link pick-up still works)
+
     if "page" in params:
         pg = params["page"]
-        if pg in {"home", "dashboard", "market", "news", "insights"}:
+        if pg in {"home", "dashboard", "market", "news", "insights", "more"}:
             st.session_state.nav_page = pg
         del st.query_params["page"]
 
@@ -1150,6 +1419,8 @@ def render_nav():
     page = st.session_state.nav_page
     auth = st.session_state.get("authenticated", False)
     name = st.session_state.get("user_name", "")
+    tok  = st.session_state.get("session_token", "")
+    tp   = f"&_tok={tok}" if tok else ""   # token query param suffix
 
     def _active(p):
         return "active" if page == p else ""
@@ -1170,13 +1441,13 @@ def render_nav():
             <span>{short_name}</span>
           </div>
           <span class="nav-sep"></span>
-          <a class="nav-act-btn logout-btn" data-action="logout" href="javascript:void(0);">Logout</a>
+          <a class="nav-act-btn logout-btn" href="?logout=1{tp}">Logout</a>
         """
     else:
-        auth_html = """
-          <a class="nav-act-btn login-btn"  data-action="login" href="javascript:void(0);">Login</a>
-          <a class="nav-act-btn signup-btn" data-action="signup" href="javascript:void(0);">Sign Up</a>
-          <a class="nav-act-btn cta-btn"    data-action="signup" href="javascript:void(0);">Get Started →</a>
+        auth_html = f"""
+          <a class="nav-act-btn login-btn"  href="?auth=login{tp}">Login</a>
+          <a class="nav-act-btn signup-btn" href="?auth=signup{tp}">Sign Up</a>
+          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}">Get Started →</a>
         """
 
     st.markdown(f"""
@@ -1253,11 +1524,11 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 <div id="diq-navbar">
   <div class="diq-brand"><div class="diq-dot"></div>DeepAtomicIQ</div>
   <div class="diq-links">
-    <a class="diq-lnk {_active('home')}"      data-route="home"      href="javascript:void(0);">Home</a>
-    <a class="diq-lnk {_active('dashboard')}" data-route="dashboard" href="javascript:void(0);">Dashboard</a>
-    <a class="diq-lnk {_active('market')}"    data-route="market"    href="javascript:void(0);">Markets</a>
-    <a class="diq-lnk {_active('insights')}"  data-route="insights"  href="javascript:void(0);">News & Insights</a>
-    <a class="diq-lnk {_active('more')}"      data-route="more"      href="javascript:void(0);">Preferences</a>
+    <a class="diq-lnk {_active('home')}"      href="?page=home{tp}">Home</a>
+    <a class="diq-lnk {_active('dashboard')}" href="?page=dashboard{tp}">Dashboard</a>
+    <a class="diq-lnk {_active('market')}"    href="?page=market{tp}">Markets</a>
+    <a class="diq-lnk {_active('insights')}"  href="?page=insights{tp}">News &amp; Insights</a>
+    <a class="diq-lnk {_active('more')}"      href="?page=more{tp}">Preferences</a>
   </div>
   <div class="diq-auth">{auth_html}</div>
 </div>
@@ -1266,24 +1537,15 @@ header[data-testid="stHeader"] {{ display: none !important; }}
     # Spacer so content clears the fixed nav
     st.markdown('<div style="height:70px"></div>', unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════════════
-    # JS PROXY ROUTER (Prevents HTML <a> tags from killing SessionState)
-    # ══════════════════════════════════════════════════════════════════════════════
+    # Hidden proxy buttons for auth actions (login/signup/logout) still needed
     with st.expander("System Hooks", expanded=False):
         st.markdown("""
         <style>
-        /* Safely isolate and hide the expansion container exclusively */
         details:has(#proxy-anchor) { display: none !important; }
         </style>
         <div id="proxy-anchor"></div>
         """, unsafe_allow_html=True)
-        
-        # Hidden Proxy Buttons
-        for pg in ["home", "dashboard", "market", "insights", "more"]:
-            if st.button(f"nav_to_{pg}", key=f"proxy_nav_{pg}"):
-                st.session_state.nav_page = pg
-                st.rerun()
-        
+
         if st.button("auth_login_proxy", key="proxy_auth_login"):
             st.session_state.show_auth = True
             st.session_state.auth_mode = "login"
@@ -1297,41 +1559,6 @@ header[data-testid="stHeader"] {{ display: none !important; }}
         if st.button("auth_logout_proxy", key="proxy_auth_logout"):
             _do_logout()
             st.rerun()
-
-    import streamlit.components.v1 as components
-    components.html("""
-    <script>
-    const parentDoc = window.parent.document;
-    
-    // Attach a single, permanent delegated listener to the React Root!
-    if (!parentDoc.diqProxyReady) {
-        parentDoc.addEventListener('click', function(e) {
-            const lnk = e.target.closest('a.diq-lnk, a.nav-act-btn');
-            if (lnk) {
-                // Intercept the click instantly before React or Browser Native logic executes!
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const route = lnk.getAttribute('data-route');
-                const action = lnk.getAttribute('data-action');
-                
-                if (route) {
-                    const btn = parentDoc.evaluate('//button[.//p[text()="nav_to_' + route + '"]]', parentDoc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                    if (btn) btn.click();
-                } else if (action === 'login' || action === 'signup') {
-                    const btn = parentDoc.evaluate('//button[.//p[text()="auth_' + action + '_proxy"]]', parentDoc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                    if (btn) btn.click();
-                } else if (action === 'logout') {
-                    const btn = parentDoc.evaluate('//button[.//p[text()="auth_logout_proxy"]]', parentDoc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                    if (btn) btn.click();
-                }
-            }
-        }, true); // TRUE = Capture Phase (Extremely important to beat Streamlit's native handlers)
-        
-        parentDoc.diqProxyReady = true;
-    }
-    </script>
-    """, height=0, width=0)
 
 
 
@@ -2034,21 +2261,47 @@ def page_home():
       </div>
     </div>
     
-    <div class="explain-section">
-      <div class="explain-title">Why This Portfolio Fits You</div>
-      <div class="chat-box">
-        <div style="display:flex; align-items:center; margin-bottom:12px;">
-          <div style="background:#3BA4FF; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:12px;">🤖</div>
-          <div style="font-weight:700; color:#fff;">DeepAtomicIQ Interpreter</div>
-        </div>
-        <div style="color:#8BA6D3; line-height:1.7; font-size:15px; margin-bottom:16px;">
-          "Based on your inputs, our models infer a <b>Moderate-Aggressive</b> profile with <b>87%</b> confidence.<br><br>
-          We allocate heavily towards technology and large-cap equities (expected growth: <b>7.8%</b>) to capitalize on 
-          your 15-year horizon, while embedding a 30% defensive wing to hedge against predicted short-term volatility."
-        </div>
-      </div>
-    </div>
     """, unsafe_allow_html=True)
+
+    # ── Only show if logged in with a completed assessment ──
+    result    = st.session_state.get("result")
+    is_auth   = st.session_state.get("authenticated", False)
+
+    if is_auth and result:
+        port    = result.get("portfolio", {})
+        cat     = port.get("risk_category", "Balanced")
+        score   = result.get("score", 5)
+        summary = result.get("ai_summary", "")
+        # Take just paragraphs 2 and 3 (skip the MINN technical intro)
+        paragraphs = [p.strip() for p in summary.split("\n\n") if p.strip()]
+        preview = "\n\n".join(paragraphs[1:3]) if len(paragraphs) > 1 else paragraphs[0] if paragraphs else ""
+
+        # Convert **markdown bold** → <b>HTML bold</b> for proper rendering
+        import re
+        preview_html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', preview)
+        preview_html = preview_html.replace("\n\n", "<br><br>").replace("\n", "<br>")
+
+        st.markdown(f"""
+        <div class="explain-section">
+          <div class="explain-title">Why This Portfolio Fits You</div>
+          <div class="chat-box">
+            <div style="display:flex; align-items:center; margin-bottom:12px;">
+              <div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF); width:32px; height:32px;
+                          border-radius:50%; display:flex; align-items:center; justify-content:center;
+                          margin-right:12px; font-size:16px;">🤖</div>
+              <div>
+                <div style="font-weight:700; color:#fff; font-size:14px;">DeepAtomicIQ Interpreter</div>
+                <div style="font-size:11px; color:#8BA6D3;">
+                  Personalised for your {cat} profile · Based on your survey responses
+                </div>
+              </div>
+            </div>
+            <div style="color:#8BA6D3; line-height:1.8; font-size:15px;">
+              {preview_html}
+            </div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ── SURVEY + PORTFOLIO ─────────────────────────────────────────────────────────
@@ -2291,6 +2544,36 @@ def _render_portfolio():
     kpi_html += "</div>"
     st.markdown(kpi_html, unsafe_allow_html=True)
 
+    # ── ACTIONABLE ADVICE ─────────────────────────────────────────────────────────────
+    st.markdown(f"""
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:24px 0 4px;">
+      🛒 Portfolio Implementation Guide
+    </div>
+    <div style="font-size:13px;color:{MUTED};margin-bottom:14px;">
+      Enter your numbers below to get a personalised shopping list for your brokerage account.
+    </div>
+    """, unsafe_allow_html=True)
+
+    ai_col1, ai_col2, _ = st.columns([1, 1, 1])
+    with ai_col1:
+        lump_sum = st.number_input(
+            "How much can you invest right now? (£)",
+            min_value=0, max_value=10_000_000,
+            value=st.session_state.get("_lump_sum", 10000),
+            step=500, key="_lump_sum",
+            help="Your one-off starting investment"
+        )
+    with ai_col2:
+        monthly_contrib = st.number_input(
+            "How much can you add each month? (£)",
+            min_value=0, max_value=100_000,
+            value=st.session_state.get("_monthly_contrib", 500),
+            step=50, key="_monthly_contrib",
+            help="Regular monthly investment top-up"
+        )
+
+    st.markdown(render_actionable_advice(port, lump_sum, monthly_contrib), unsafe_allow_html=True)
+
     import re
     summary = res.get("ai_summary", "")
     summary = re.sub(r'<div class="ai-explain-box">', '', summary, flags=re.IGNORECASE)
@@ -2334,7 +2617,7 @@ def _render_portfolio():
     # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
     col1, col2 = st.columns([1, 1.4], gap="large")
     with col1:
-        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation ℹ️<span class="tooltip-text">This chart shows exactly how your money is divided. By spreading your investment across different areas (like stocks and bonds), you reduce the risk of losing money if one area performs poorly.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📊 Asset Allocation</div>This chart shows how your money is divided across asset classes. Spreading across different areas reduces the risk of losing money if one area performs poorly — this is the core of Markowitz portfolio theory.</span></div></div>', unsafe_allow_html=True)
         # Sort weights for cleaner display
         sorted_weights = dict(sorted(port["allocation_pct"].items(), key=lambda x: x[1], reverse=True))
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
@@ -2345,7 +2628,7 @@ def _render_portfolio():
         st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
 
     with col2:
-        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">DeepIQ Architecture Diagnostics ℹ️<span class="tooltip-text">Behind the scenes, our neural network calculates parameters to balance your portfolio. Threshold (δ) controls how much risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">🧠 Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
         
         ic1, ic2 = st.columns(2)
         with ic1:
@@ -2366,7 +2649,7 @@ def _render_portfolio():
             """, unsafe_allow_html=True)
             
         st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability ℹ️<span class="tooltip-text">Financial markets go through different \'regimes\' or phases—like normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This graph shows which market conditions the AI believes are most likely right now, and how it has prepared your portfolio to handle them.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📈 Market Regimes</div>Financial markets go through different phases — normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This shows which regime the MINN believes is active, and how it has weighted your portfolio to handle it.</span></div></div>', unsafe_allow_html=True)
         regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
         r_names = list(regimes.keys())
         r_vals = list(regimes.values())
@@ -2392,15 +2675,222 @@ def _render_portfolio():
     # ── Row 2: Performance | Growth ──────────────────────────────
     c1, c2 = st.columns([1.3, 1.0], gap="large")
     with c1:
-        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation ℹ️<span class="tooltip-text">We simulated 2,000 different possible futures for the stock market based on historical data. This graph shows the range of possible outcomes for your specific portfolio over time, giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">🎲 Monte Carlo Simulation</div>We ran 2,000 different simulated futures for your portfolio based on historical data. This shows the range of possible outcomes over time — giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
         st.plotly_chart(monte_chart(sim, color), use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
-        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Compounding Projection ℹ️<span class="tooltip-text">This line shows the expected average growth of your money over your investment horizon. It assumes you continue to consistently invest, showing how \'compounding interest\'—earning returns on your previous returns—accelerates your wealth over decades.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Compounding Projection <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📈 Compounding Growth</div>This line shows the expected average growth of your money over your investment horizon. It assumes consistent investment, showing how compounding interest — earning returns on your previous returns — accelerates wealth over decades.</span></div></div>', unsafe_allow_html=True)
         st.plotly_chart(growth_line(port["growth_curve"], color), use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ── INVESTMENT PLANNER ────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown(f"""
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:10px 0 4px;">
+      💷 Investment Planner
+    </div>
+    <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
+      Enter how much you want to invest — we'll show you exactly where to put it and what to expect back.
+    </div>
+    """, unsafe_allow_html=True)
+
+    inv_col, _ = st.columns([1, 1])
+    with inv_col:
+        invest_amt = st.number_input(
+            "How much would you like to invest? (£)",
+            min_value=100, max_value=10_000_000,
+            value=st.session_state.get("invest_amount", 10000),
+            step=500, key="invest_amount",
+            help="Enter your total investment amount in pounds"
+        )
+
+    currency = get_currency_symbol()
+    exp_r  = stats.get("expected_annual_return", 0) / 100
+    vol_r  = stats.get("expected_volatility", 0) / 100
+    sharpe = stats.get("sharpe_ratio", 0)
+    alloc  = port.get("allocation_pct", {})
+    sorted_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)
+
+    # ETF role descriptions
+    ETF_ROLES = {
+        "VOO":  ("S&P 500 — US Large Cap Growth",  "Core growth engine. Tracks America's 500 largest companies for broad market exposure."),
+        "QQQ":  ("Nasdaq 100 — Tech & Innovation",  "High-growth technology exposure. Amplifies returns in bull markets via top tech firms."),
+        "VWRA": ("Global Equities — Diversification", "International diversification. Reduces single-country risk across 3,700+ global stocks."),
+        "AGG":  ("US Bonds — Capital Protection",    "Defensive anchor. Bonds cushion losses during stock market downturns."),
+        "GLD":  ("Gold — Inflation Hedge",           "Store of value. Gold rises when inflation or geopolitical uncertainty increases."),
+        "VNQ":  ("Real Estate — Income & Stability", "Property exposure without buying bricks. Regular dividends and inflation protection."),
+        "ESGU": ("ESG S&P 500 — Ethical Growth",     "Socially responsible investing. Same broad US exposure but excludes ethical concerns."),
+        "PDBC": ("Commodities — Real Asset Exposure","Raw materials like oil & metals. Diversifies away from financial asset risk."),
+    }
+
+    # Build planner table
+    planner_rows = ""
+    for asset, pct in sorted_alloc:
+        amt = invest_amt * (pct / 100)
+        gain_1y = amt * exp_r
+        short_name = asset.replace(".L", "")
+        role_title, role_desc = ETF_ROLES.get(short_name, (asset, "Broad market exposure."))
+        pct_color = "#8EF6D1" if exp_r >= 0 else "#FF6B6B"
+        planner_rows += f"""
+        <tr>
+          <td style="padding:12px 10px;">
+            <div style="font-weight:700;color:#ffffff;font-size:14px;">{short_name}</div>
+            <div style="font-size:11px;color:#6D5EFC;font-weight:600;">{role_title}</div>
+          </td>
+          <td style="padding:12px 10px;text-align:center;">
+            <div style="font-size:13px;color:#8BA6D3;font-weight:600;">{pct:.1f}%</div>
+          </td>
+          <td style="padding:12px 10px;text-align:right;">
+            <div style="font-size:16px;font-weight:800;color:#ffffff;">£{amt:,.0f}</div>
+          </td>
+          <td style="padding:12px 10px;text-align:right;">
+            <div style="font-size:14px;font-weight:700;color:{pct_color};">
+              {'▲' if gain_1y >= 0 else '▼'} £{abs(gain_1y):,.0f}/yr
+            </div>
+          </td>
+          <td style="padding:12px 16px;font-size:12px;color:#8BA6D3;max-width:200px;">{role_desc}</td>
+        </tr>"""
+
+    total_gain_1y = invest_amt * exp_r
+    st.markdown(f"""
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                border-radius:16px;overflow:hidden;margin-bottom:10px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:rgba(109,94,252,0.12);border-bottom:1px solid rgba(255,255,255,0.08);">
+            <th style="padding:10px 10px;text-align:left;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">ASSET</th>
+            <th style="padding:10px 10px;text-align:center;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">WEIGHT</th>
+            <th style="padding:10px 10px;text-align:right;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">INVEST</th>
+            <th style="padding:10px 10px;text-align:right;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">EST. ANNUAL GAIN</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">ROLE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {planner_rows}
+        </tbody>
+        <tfoot>
+          <tr style="background:rgba(109,94,252,0.08);border-top:1px solid rgba(109,94,252,0.3);">
+            <td colspan="2" style="padding:12px 10px;font-weight:800;color:#ffffff;">TOTAL PORTFOLIO</td>
+            <td style="padding:12px 10px;text-align:right;font-size:18px;font-weight:900;color:#ffffff;">£{invest_amt:,.0f}</td>
+            <td style="padding:12px 10px;text-align:right;font-size:16px;font-weight:800;color:#8EF6D1;">▲ £{total_gain_1y:,.0f}/yr</td>
+            <td style="padding:12px 16px;font-size:12px;color:#8BA6D3;">Based on {exp_r*100:.1f}% expected annual return</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ── PROJECTED RETURNS TIMELINE ────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    st.markdown(f"""
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:28px 0 4px;">
+      📅 Projected Returns Timeline
+    </div>
+    <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
+      If you invest <b style="color:#ffffff;">£{invest_amt:,.0f}</b> today and reinvest all returns (compound growth at {exp_r*100:.1f}% p.a.):
+    </div>
+    """, unsafe_allow_html=True)
+
+    horizons = [1, 3, 5, 10, 20]
+    projected = [invest_amt * ((1 + exp_r) ** yr) for yr in horizons]
+    gains     = [p - invest_amt for p in projected]
+
+    proj_fig = go.Figure()
+    proj_fig.add_trace(go.Bar(
+        x=[f"{y}yr" for y in horizons],
+        y=projected,
+        name="Portfolio Value",
+        marker=dict(
+            color=projected,
+            colorscale=[[0,"#3BA4FF"],[1,"#8EF6D1"]],
+            line=dict(width=0)
+        ),
+        text=[f"£{p:,.0f}" for p in projected],
+        textposition="outside",
+        textfont=dict(color="#ffffff", size=12),
+        hovertemplate="<b>%{x}</b><br>Value: £%{y:,.0f}<extra></extra>"
+    ))
+    proj_fig.add_trace(go.Bar(
+        x=[f"{y}yr" for y in horizons],
+        y=[invest_amt] * len(horizons),
+        name="Initial Investment",
+        marker=dict(color="rgba(255,255,255,0.08)", line=dict(width=0)),
+        hovertemplate="Initial: £%{y:,.0f}<extra></extra>"
+    ))
+    proj_fig.update_layout(
+        barmode="overlay", height=280,
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10,r=10,t=30,b=10),
+        xaxis=dict(showgrid=False, color="#8BA6D3"),
+        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#8BA6D3",
+                   tickprefix="£", tickformat=",.0f"),
+        legend=dict(font=dict(color="#8BA6D3"), bgcolor="rgba(0,0,0,0)", orientation="h",
+                    yanchor="bottom", y=1.02, xanchor="right", x=1),
+        hoverlabel=dict(bgcolor="rgba(15,15,35,0.95)", font_color="#ffffff")
+    )
+    st.plotly_chart(proj_fig, use_container_width=True, config={"displayModeBar": False}, key="proj_timeline")
+
+    # Summary tiles
+    tile_cols = st.columns(len(horizons))
+    for i, (yr, val, gain) in enumerate(zip(horizons, projected, gains)):
+        with tile_cols[i]:
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                        border-radius:14px;padding:14px;text-align:center;margin-bottom:8px;">
+              <div style="font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;margin-bottom:6px;">{yr} YEAR{'S' if yr>1 else ''}</div>
+              <div style="font-size:18px;font-weight:900;color:#ffffff;">£{val:,.0f}</div>
+              <div style="font-size:12px;font-weight:700;color:#8EF6D1;margin-top:4px;">+£{gain:,.0f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ── WHY EACH ASSET ────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    st.markdown(f"""
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:28px 0 4px;">
+      🧩 Why Each Asset Was Chosen
+    </div>
+    <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
+      The MINN selected these specific ETFs based on your risk score of <b style="color:#ffffff;">{res.get('score',5):.0f}/10</b> and how they interact in the co-movement model.
+    </div>
+    """, unsafe_allow_html=True)
+
+    ASSET_DETAIL = {
+        "VOO":  {"icon":"📈","colour":"#3BA4FF","why":"VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
+        "QQQ":  {"icon":"💻","colour":"#6D5EFC","why":"QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
+        "VWRA": {"icon":"🌍","colour":"#8EF6D1","why":"VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
+        "AGG":  {"icon":"🛡️","colour":"#8BA6D3","why":"AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
+        "GLD":  {"icon":"🏅","colour":"#FFD700","why":"Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
+        "VNQ":  {"icon":"🏢","colour":"#FF9B6B","why":"VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
+        "ESGU": {"icon":"🌱","colour":"#4CAF50","why":"ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
+        "PDBC": {"icon":"⛽","colour":"#FF6B6B","why":"PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
+    }
+
+    why_cols = st.columns(2)
+    for i, (asset, pct) in enumerate(sorted_alloc):
+        short = asset.replace(".L","")
+        detail = ASSET_DETAIL.get(short, {"icon":"📊","colour":"#8BA6D3","why":f"{short} provides diversified exposure to its target market segment."})
+        amt = invest_amt * (pct / 100)
+        with why_cols[i % 2]:
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);
+                        border-left:3px solid {detail['colour']};
+                        border-radius:14px;padding:16px 18px;margin-bottom:12px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <span style="font-size:22px;">{detail['icon']}</span>
+                <div>
+                  <div style="font-weight:800;color:#ffffff;font-size:15px;">{short}</div>
+                  <div style="font-size:11px;color:{detail['colour']};font-weight:700;">{pct:.1f}% · £{amt:,.0f} of your investment</div>
+                </div>
+              </div>
+              <div style="font-size:13px;color:#8BA6D3;line-height:1.65;">{detail['why']}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     # ── Survey summary expander ───────────────────────────────────────────────
     with st.expander("📋 Survey Summary"):
@@ -2408,6 +2898,7 @@ def _render_portfolio():
         for q in QUESTIONS:
             val = st.session_state.survey_answers.get(q["key"], "—")
             st.markdown(f"- **{q['number']}** {q['text'][:55]}…  →  `{val}`")
+
 
     # ── Disclaimer ────────────────────────────────────────────────────────────
     st.markdown(f"""
@@ -2552,32 +3043,209 @@ def get_live_market_data():
             ("PDBC", "Invesco Commodities","$14.22", "+0.22%", True),
         ]
 
+@st.cache_data(ttl=300)
+def get_sparkline_data():
+    """Fetch 30-day history for sparklines and the main chart."""
+    tickers = ["VOO", "QQQ", "VWRA.L", "AGG", "GLD", "VNQ", "ESGU", "PDBC"]
+    try:
+        hist = yf.download(" ".join(tickers), period="30d", progress=False)["Close"]
+        return hist
+    except:
+        return None
+
 def page_market():
+    # ── Ticker tape CSS ──────────────────────────────────────────────────────
+    st.markdown("""
+    <style>
+    .ticker-wrap {
+      overflow: hidden; background: rgba(255,255,255,0.03);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 10px 0; margin-bottom: 28px;
+    }
+    .ticker-track {
+      display: flex; gap: 0;
+      animation: ticker 40s linear infinite;
+      white-space: nowrap;
+    }
+    @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    .ticker-item {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 0 32px; font-size: 13px; font-weight: 600;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+    .ticker-sym { color: #ffffff; }
+    .ticker-price { color: #8BA6D3; }
+    .ticker-up { color: #8EF6D1; }
+    .ticker-dn { color: #FF6B6B; }
+    .mkt-section-title {
+      font-size: 18px; font-weight: 800; color: #ffffff;
+      margin: 28px 0 14px; letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .mkt-section-title span { font-size: 13px; font-weight: 500; color: #8BA6D3; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── Header ───────────────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="padding:32px 0 20px 0;">
-      <div style="font-size:22px;font-weight:800;color:#ffffff;margin-bottom:6px;">Market Overview</div>
-      <div style="font-size:13px;color:{MUTED};"><strong style="color:#8EF6D1;">Live Connection Active:</strong> Real-time indicative quotes powered by Yahoo Finance API</div>
+    <div style="padding:28px 0 8px;">
+      <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;">
+        📈 Markets
+      </div>
+      <div style="font-size:13px;color:{MUTED};margin-top:4px;">
+        <strong style="color:#8EF6D1;">● Live</strong> &nbsp;Real-time indicative quotes · Yahoo Finance API · Refreshed every 60s
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
     with st.spinner("Fetching live market data..."):
         markets = get_live_market_data()
+        hist_df = get_sparkline_data()
+
+    # ── Ticker tape ──────────────────────────────────────────────────────────
+    tape_items = ""
+    for ticker, name, price, chg, up in markets:
+        cls = "ticker-up" if up else "ticker-dn"
+        arrow = "▲" if up else "▼"
+        tape_items += f'<div class="ticker-item"><span class="ticker-sym">{ticker}</span><span class="ticker-price">{price}</span><span class="{cls}">{arrow} {chg}</span></div>'
+    # Duplicate for seamless loop
+    st.markdown(f'<div class="ticker-wrap"><div class="ticker-track">{tape_items}{tape_items}</div></div>', unsafe_allow_html=True)
+
+    # ── ETF Cards with sparklines ─────────────────────────────────────────────
+    st.markdown('<div class="mkt-section-title">ETF Watchlist <span>· 8 tracked instruments</span></div>', unsafe_allow_html=True)
+
+    ticker_map = {"VOO":"VOO","QQQ":"QQQ","VWRA":"VWRA.L","AGG":"AGG","GLD":"GLD","VNQ":"VNQ","ESGU":"ESGU","PDBC":"PDBC"}
 
     cols = st.columns(4)
     for i, (ticker, name, price, chg, up) in enumerate(markets):
         with cols[i % 4]:
-            chg_class = "market-change-pos" if up else "market-change-neg"
-            arrow = "▲" if up else "▼" if chg != "N/A" else ""
+            yf_ticker = ticker_map.get(ticker, ticker)
+            color = "#8EF6D1" if up else "#FF6B6B"
+            arrow = "▲" if up else "▼"
+
+            # Build sparkline
+            if hist_df is not None and yf_ticker in hist_df.columns:
+                series = hist_df[yf_ticker].dropna()
+            else:
+                series = None
+
+            fig = go.Figure()
+            if series is not None and len(series) > 1:
+                y = series.values
+                x = list(range(len(y)))
+                fill_color = "rgba(142,246,209,0.08)" if up else "rgba(255,107,107,0.08)"
+                fig.add_trace(go.Scatter(
+                    x=x, y=y, mode="lines",
+                    line=dict(color=color, width=2),
+                    fill="tozeroy", fillcolor=fill_color,
+                    hovertemplate="%{y:.2f}<extra></extra>"
+                ))
+            fig.update_layout(
+                height=60, margin=dict(l=0,r=0,t=0,b=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(visible=False), yaxis=dict(visible=False),
+                showlegend=False
+            )
+
             st.markdown(f"""
-            <div class="market-card">
-              <div class="market-ticker">{ticker}</div>
-              <div class="market-name">{name}</div>
-              <div class="market-price">{price}</div>
-              <div class="{chg_class}">{arrow} {chg}</div>
+            <div class="market-card" style="padding:14px 16px 8px; cursor:pointer;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div class="market-ticker">{ticker}</div>
+                  <div class="market-name">{name}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="market-price" style="font-size:18px;">{price}</div>
+                  <div style="color:{color};font-size:12px;font-weight:700;">{arrow} {chg}</div>
+                </div>
+              </div>
             </div>
             """, unsafe_allow_html=True)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"spark_{ticker}")
 
+    # ── Main interactive price chart ──────────────────────────────────────────
+    st.markdown('<div class="mkt-section-title">Price Chart <span>· 30-day history</span></div>', unsafe_allow_html=True)
 
+    selected = st.selectbox("Select instrument", [m[0] for m in markets], label_visibility="collapsed", key="mkt_chart_select")
+    yf_selected = ticker_map.get(selected, selected)
+
+    if hist_df is not None and yf_selected in hist_df.columns:
+        series = hist_df[yf_selected].dropna()
+        up_overall = series.iloc[-1] >= series.iloc[0]
+        line_color = "#8EF6D1" if up_overall else "#FF6B6B"
+        fill_color = "rgba(142,246,209,0.07)" if up_overall else "rgba(255,107,107,0.07)"
+
+        big_fig = go.Figure()
+        big_fig.add_trace(go.Scatter(
+            x=series.index, y=series.values,
+            mode="lines", name=selected,
+            line=dict(color=line_color, width=2.5),
+            fill="tozeroy", fillcolor=fill_color,
+            hovertemplate="<b>%{x|%d %b}</b><br>Price: %{y:.2f}<extra></extra>"
+        ))
+        # Add 7-day MA
+        if len(series) >= 7:
+            ma7 = series.rolling(7).mean()
+            big_fig.add_trace(go.Scatter(
+                x=ma7.index, y=ma7.values,
+                mode="lines", name="7-day MA",
+                line=dict(color="#6D5EFC", width=1.5, dash="dot"),
+                hovertemplate="MA7: %{y:.2f}<extra></extra>"
+            ))
+
+        big_fig.update_layout(
+            height=340,
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10,r=10,t=10,b=10),
+            xaxis=dict(showgrid=False, color="#8BA6D3", tickformat="%d %b"),
+            yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#8BA6D3"),
+            legend=dict(font=dict(color="#8BA6D3"), bgcolor="rgba(0,0,0,0)"),
+            hovermode="x unified",
+            hoverlabel=dict(bgcolor="rgba(15,15,35,0.95)", font_color="#ffffff", bordercolor="rgba(109,94,252,0.4)")
+        )
+        st.plotly_chart(big_fig, use_container_width=True, config={"displayModeBar": False}, key="mkt_main_chart")
+    else:
+        st.info("Chart data unavailable — check your internet connection.")
+
+    # ── Sector performance heatmap ────────────────────────────────────────────
+    st.markdown('<div class="mkt-section-title">Sector Performance <span>· 30-day return</span></div>', unsafe_allow_html=True)
+
+    sectors = []
+    if hist_df is not None:
+        for ticker, name, price, chg, up in markets:
+            yf_t = ticker_map.get(ticker, ticker)
+            if yf_t in hist_df.columns:
+                s = hist_df[yf_t].dropna()
+                if len(s) >= 2:
+                    ret = ((s.iloc[-1] - s.iloc[0]) / s.iloc[0]) * 100
+                    sectors.append((ticker, name, ret))
+
+    if sectors:
+        labels = [f"{t}<br>{r:+.1f}%" for t, n, r in sectors]
+        values = [abs(r) + 1 for _, _, r in sectors]  # size
+        colors = [r for _, _, r in sectors]
+
+        heat = go.Figure(go.Treemap(
+            labels=labels,
+            parents=[""] * len(labels),
+            values=values,
+            marker=dict(
+                colors=colors,
+                colorscale=[[0,"#FF3B3B"],[0.5,"#1A1A3E"],[1,"#00C896"]],
+                cmid=0,
+                showscale=False,
+                line=dict(width=3, color="rgba(10,10,30,1)")
+            ),
+            textfont=dict(color="#ffffff", size=14),
+            hovertemplate="<b>%{label}</b><extra></extra>",
+        ))
+        heat.update_layout(
+            height=220,
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0,r=0,t=0,b=0),
+        )
+        st.plotly_chart(heat, use_container_width=True, config={"displayModeBar": False}, key="mkt_heatmap")
 
 
 
@@ -2648,7 +3316,186 @@ def page_more():
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
-# DeepAtomicIQ on-demand inference sequence
+# ══ FLOATING CHATBOT ════════════════════════════════════════════
+st.markdown("""
+<style>
+#diq-chat-btn {
+    position:fixed; bottom:28px; right:28px; z-index:9000;
+    width:56px; height:56px; border-radius:50%;
+    background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+    border:none; cursor:pointer;
+    box-shadow:0 8px 28px rgba(109,94,252,0.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px;
+    transition:transform 0.2s,box-shadow 0.2s;
+}
+#diq-chat-btn:hover{transform:scale(1.1);box-shadow:0 12px 36px rgba(109,94,252,0.7);}
+#diq-chat-panel {
+    position:fixed; bottom:96px; right:28px; z-index:9000;
+    width:360px; max-height:520px;
+    background:rgba(12,12,28,0.97);
+    backdrop-filter:blur(24px);
+    border:1px solid rgba(109,94,252,0.3);
+    border-radius:20px;
+    display:none; flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    overflow:hidden;
+}
+#diq-chat-panel.open{display:flex;}
+#diq-chat-header {
+    padding:16px 18px;
+    background:linear-gradient(135deg,rgba(109,94,252,0.2),rgba(59,164,255,0.1));
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    display:flex; align-items:center; gap:10px;
+}
+#diq-chat-header .bot-avatar {
+    width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+    display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+#diq-chat-header .bot-name{font-weight:700;color:#fff;font-size:14px;}
+#diq-chat-header .bot-status{font-size:11px;color:#8EF6D1;}
+#diq-chat-close{margin-left:auto;background:none;border:none;color:#8BA6D3;font-size:18px;cursor:pointer;padding:4px;}
+#diq-chat-msgs {
+    flex:1; overflow-y:auto; padding:14px;
+    display:flex; flex-direction:column; gap:10px;
+    scrollbar-width:thin; scrollbar-color:rgba(109,94,252,0.3) transparent;
+}
+.diq-msg-bot,.diq-msg-user{
+    max-width:85%; padding:10px 14px;
+    border-radius:16px; font-size:13px; line-height:1.55;
+}
+.diq-msg-bot{
+    background:rgba(109,94,252,0.15); color:#D4E0F7;
+    border:1px solid rgba(109,94,252,0.2); align-self:flex-start;
+    border-bottom-left-radius:4px;
+}
+.diq-msg-user{
+    background:linear-gradient(135deg,#6D5EFC,#3BA4FF); color:#fff;
+    align-self:flex-end; border-bottom-right-radius:4px;
+}
+#diq-chat-input-row{
+    display:flex; gap:8px; padding:12px 14px;
+    border-top:1px solid rgba(255,255,255,0.07);
+}
+#diq-chat-input{
+    flex:1; background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1); border-radius:20px;
+    padding:8px 14px; color:#fff; font-size:13px; outline:none;
+}
+#diq-chat-send{
+    background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+    border:none; border-radius:50%; width:36px;height:36px;
+    cursor:pointer;color:#fff;font-size:16px;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform 0.15s;
+}
+#diq-chat-send:hover{transform:scale(1.1);}
+.diq-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.diq-chip{
+    background:rgba(109,94,252,0.15);border:1px solid rgba(109,94,252,0.3);
+    border-radius:20px;padding:4px 10px;font-size:11px;color:#B0C4E8;
+    cursor:pointer;transition:background 0.15s;
+}
+.diq-chip:hover{background:rgba(109,94,252,0.3);color:#fff;}
+</style>
+
+<button id="diq-chat-btn" onclick="toggleChat()" title="Ask DeepAtomicIQ">🤖</button>
+
+<div id="diq-chat-panel">
+  <div id="diq-chat-header">
+    <div class="bot-avatar">🧠</div>
+    <div>
+      <div class="bot-name">DeepAtomicIQ Assistant</div>
+      <div class="bot-status">● Online · Markowitz MINN</div>
+    </div>
+    <button class="diq-chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="diq-chat-msgs">
+    <div class="diq-msg-bot">
+      Hi! I'm your DeepAtomicIQ assistant. I can help with portfolio questions, explain how the MINN works, or guide you through getting started.
+      <div class="diq-chip-row">
+        <span class="diq-chip" onclick="askChip('How does the MINN work?')">How does MINN work?</span>
+        <span class="diq-chip" onclick="askChip('How do I start?')">How do I start?</span>
+        <span class="diq-chip" onclick="askChip('What is my risk profile?')">Risk profiles</span>
+        <span class="diq-chip" onclick="askChip('What is the Sharpe ratio?')">Sharpe ratio</span>
+      </div>
+    </div>
+  </div>
+  <div id="diq-chat-input-row">
+    <input id="diq-chat-input" type="text" placeholder="Ask me anything..."
+           onkeydown="if(event.key==='Enter')sendChat()">
+    <button id="diq-chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<script>
+function toggleChat(){
+    var p=document.getElementById('diq-chat-panel');
+    p.classList.toggle('open');
+    if(p.classList.contains('open')){
+        document.getElementById('diq-chat-input').focus();
+        scrollMsgs();
+    }
+}
+function scrollMsgs(){
+    var m=document.getElementById('diq-chat-msgs');
+    m.scrollTop=m.scrollHeight;
+}
+function askChip(q){
+    document.getElementById('diq-chat-input').value=q;
+    sendChat();
+}
+function addMsg(text,isUser){
+    var msgs=document.getElementById('diq-chat-msgs');
+    var d=document.createElement('div');
+    d.className=isUser?'diq-msg-user':'diq-msg-bot';
+    d.innerHTML=text;
+    msgs.appendChild(d);
+    scrollMsgs();
+}
+function botReply(q){
+    var t=q.toLowerCase();
+    if(t.match(/minn|markowitz|neural|network|how.*work/)){
+        return "The <b>Markowitz-Informed Neural Network (MINN)</b> learns to build portfolios that maximise the Sharpe Ratio by modelling how assets co-move. It combines Markowitz portfolio theory with deep learning — your survey answers tune the model\'s risk threshold (δ) and temporal decay (γ) parameters.";
+    } else if(t.match(/start|begin|how do i|sign.?up|get started/)){
+        return "Getting started is simple!<br>1. <b>Sign Up</b> using the button in the top right<br>2. Complete the <b>10-question investor assessment</b><br>3. Our MINN will build your <b>personalised portfolio</b> in seconds<br>4. Explore your results in the <b>Dashboard</b>";
+    } else if(t.match(/risk.?profile|profile|conservative|aggressive|moderate/)){
+        return "DeepAtomicIQ maps you to one of <b>6 risk profiles</b>:<br>● Very Conservative · Conservative<br>● Moderate · Moderate-Aggressive<br>● Aggressive · Very Aggressive<br><br>Your profile is determined by your survey answers covering risk tolerance, investment horizon, age, and reaction to market drops.";
+    } else if(t.match(/sharpe|sharpe.?ratio/)){
+        return "The <b>Sharpe Ratio</b> measures how much return you get per unit of risk.<br><br>Formula: <b>(Return − Risk-Free Rate) ÷ Volatility</b><br><br>A ratio above 1.0 is generally good. The MINN specifically optimises your portfolio to <i>maximise</i> the Sharpe Ratio.";
+    } else if(t.match(/volatility|risk|vol/)){
+        return "<b>Volatility</b> measures how much your portfolio\'s value bounces up and down. A lower volatility means a smoother ride — higher means bigger swings in both directions. The MINN balances your expected return against volatility to find the sweet spot for your risk profile.";
+    } else if(t.match(/esg|sustainable|green|ethical/)){
+        return "ESG stands for <b>Environmental, Social & Governance</b>. We include <b>ESGU</b> (iShares ESG S&P 500) in our ETF universe for investors who want socially responsible exposure. Your survey answers determine how much weight the model allocates to ESG assets.";
+    } else if(t.match(/monte.?carlo|simulation|scenario/)){
+        return "The <b>Monte Carlo simulation</b> on your dashboard runs <b>2,000 different possible futures</b> for your portfolio based on historical return distributions. It shows you the range of outcomes — from best case to worst case — giving you a realistic picture of your investment journey.";
+    } else if(t.match(/etf|fund|voo|qqq|bond|gold|gld/)){
+        return "We invest exclusively in <b>broad-market ETFs</b> — low-cost, diversified, and liquid. Our universe includes:<br>● <b>VOO</b> (S&P 500) · <b>QQQ</b> (Nasdaq 100)<br>● <b>VWRA</b> (Global) · <b>AGG</b> (Bonds)<br>● <b>GLD</b> (Gold) · <b>VNQ</b> (Real Estate)<br>● <b>ESGU</b> (ESG) · <b>PDBC</b> (Commodities)";
+    } else if(t.match(/login|sign.?in|password|account/)){
+        return "Click <b>Login</b> in the top navigation bar. You can sign in with your <b>email & password</b> or use <b>Google OAuth</b>. Tick \'Keep me logged in\' to stay signed in across browser sessions.";
+    } else if(t.match(/market|stock|price|index|sp500|nasdaq/)){
+        return "Check out the <b>Markets</b> page for live ETF prices, sparkline charts, a 30-day interactive price chart, and a sector performance heatmap — all powered by the Yahoo Finance API.";
+    } else if(t.match(/hello|hi|hey|good/)){
+        return "Hello! How can I help you with your portfolio today? 😊";
+    } else if(t.match(/thank/)){
+        return "You're welcome! Feel free to ask anything else. 🚀";
+    } else {
+        return "I\'m not sure about that specific query, but I can help with: portfolio questions, the MINN model, risk profiles, ETFs, the Sharpe ratio, or getting started. Try one of those topics!";
+    }
+}
+function sendChat(){
+    var inp=document.getElementById('diq-chat-input');
+    var q=inp.value.trim();
+    if(!q)return;
+    addMsg(q,true);
+    inp.value='';
+    setTimeout(function(){addMsg(botReply(q),false);},420);
+}
+</script>
+""", unsafe_allow_html=True)
+
+# ── Main render ──────────────────────────────────────────────────────────────
 render_nav()
 
 if st.session_state.get("show_auth", False):
