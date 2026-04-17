@@ -2749,56 +2749,51 @@ def _render_portfolio():
         amt = invest_amt * (pct / 100)
         gain_1y = amt * exp_r
         short_name = asset.replace(".L", "")
-        role_title, role_desc = ETF_ROLES.get(short_name, (asset, "Broad market exposure."))
-        pct_color = "#8EF6D1" if exp_r >= 0 else "#FF6B6B"
-        planner_rows += f"""
-        <tr>
-          <td style="padding:12px 10px;">
-            <div style="font-weight:700;color:#ffffff;font-size:14px;">{short_name}</div>
-            <div style="font-size:11px;color:#6D5EFC;font-weight:600;">{role_title}</div>
-          </td>
-          <td style="padding:12px 10px;text-align:center;">
-            <div style="font-size:13px;color:#8BA6D3;font-weight:600;">{pct:.1f}%</div>
-          </td>
-          <td style="padding:12px 10px;text-align:right;">
-            <div style="font-size:16px;font-weight:800;color:#ffffff;">£{amt:,.0f}</div>
-          </td>
-          <td style="padding:12px 10px;text-align:right;">
-            <div style="font-size:14px;font-weight:700;color:{pct_color};">
-              {'▲' if gain_1y >= 0 else '▼'} £{abs(gain_1y):,.0f}/yr
-            </div>
-          </td>
-          <td style="padding:12px 16px;font-size:12px;color:#8BA6D3;max-width:200px;">{role_desc}</td>
-        </tr>"""
+        role_title, role_desc = ETF_ROLES.get(short_name, (short_name, "Broad market exposure."))
+        gain_color = "#8EF6D1" if gain_1y >= 0 else "#FF6B6B"
+        row_arrow  = "&#9650;" if gain_1y >= 0 else "&#9660;"
+        planner_rows += (
+            '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">'
+            '<td style="padding:12px 10px;">'
+            f'<div style="font-weight:700;color:#ffffff;font-size:14px;">{short_name}</div>'
+            f'<div style="font-size:11px;color:#6D5EFC;font-weight:600;">{role_title}</div>'
+            '</td>'
+            f'<td style="padding:12px 10px;text-align:center;font-size:13px;color:#8BA6D3;font-weight:600;">{pct:.1f}%</td>'
+            f'<td style="padding:12px 10px;text-align:right;font-size:16px;font-weight:800;color:#ffffff;">&pound;{amt:,.0f}</td>'
+            f'<td style="padding:12px 10px;text-align:right;font-size:14px;font-weight:700;color:{gain_color};">'
+            f'{row_arrow} &pound;{abs(gain_1y):,.0f}/yr</td>'
+            f'<td style="padding:12px 10px;font-size:12px;color:#8BA6D3;max-width:200px;">{role_desc}</td>'
+            '</tr>'
+        )
+
+
 
     total_gain_1y = invest_amt * exp_r
-    st.markdown(f"""
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
-                border-radius:16px;overflow:hidden;margin-bottom:10px;">
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="background:rgba(109,94,252,0.12);border-bottom:1px solid rgba(255,255,255,0.08);">
-            <th style="padding:10px 10px;text-align:left;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">ASSET</th>
-            <th style="padding:10px 10px;text-align:center;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">WEIGHT</th>
-            <th style="padding:10px 10px;text-align:right;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">INVEST</th>
-            <th style="padding:10px 10px;text-align:right;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">EST. ANNUAL GAIN</th>
-            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">ROLE</th>
-          </tr>
-        </thead>
-        <tbody>
-          {planner_rows}
-        </tbody>
-        <tfoot>
-          <tr style="background:rgba(109,94,252,0.08);border-top:1px solid rgba(109,94,252,0.3);">
-            <td colspan="2" style="padding:12px 10px;font-weight:800;color:#ffffff;">TOTAL PORTFOLIO</td>
-            <td style="padding:12px 10px;text-align:right;font-size:18px;font-weight:900;color:#ffffff;">£{invest_amt:,.0f}</td>
-            <td style="padding:12px 10px;text-align:right;font-size:16px;font-weight:800;color:#8EF6D1;">▲ £{total_gain_1y:,.0f}/yr</td>
-            <td style="padding:12px 16px;font-size:12px;color:#8BA6D3;">Based on {exp_r*100:.1f}% expected annual return</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-    """, unsafe_allow_html=True)
+    total_arrow = "&#9650;" if total_gain_1y >= 0 else "&#9660;"
+
+    table_html = (
+        '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);'
+        'border-radius:16px;overflow:hidden;margin-bottom:10px;">'
+        '<table style="width:100%;border-collapse:collapse;">'
+        '<thead><tr style="background:rgba(109,94,252,0.12);border-bottom:1px solid rgba(255,255,255,0.08);">'
+        '<th style="padding:10px;text-align:left;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">ASSET</th>'
+        '<th style="padding:10px;text-align:center;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">WEIGHT</th>'
+        '<th style="padding:10px;text-align:right;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">INVEST</th>'
+        '<th style="padding:10px;text-align:right;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">EST. ANNUAL GAIN</th>'
+        '<th style="padding:10px;text-align:left;font-size:11px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;">ROLE</th>'
+        '</tr></thead>'
+        '<tbody>' + planner_rows + '</tbody>'
+        '<tfoot><tr style="background:rgba(109,94,252,0.08);border-top:1px solid rgba(109,94,252,0.3);">'
+        '<td colspan="2" style="padding:12px 10px;font-weight:800;color:#ffffff;">TOTAL PORTFOLIO</td>'
+        '<td style="padding:12px 10px;text-align:right;font-size:18px;font-weight:900;color:#ffffff;">'
+        + f'&pound;{invest_amt:,.0f}' +
+        '</td><td style="padding:12px 10px;text-align:right;font-size:16px;font-weight:800;color:#8EF6D1;">'
+        + f'{total_arrow} &pound;{abs(total_gain_1y):,.0f}/yr' +
+        '</td><td style="padding:12px 10px;font-size:12px;color:#8BA6D3;">'
+        + f'Based on {exp_r*100:.1f}% expected annual return'
+        + '</td></tr></tfoot></table></div>'
+    )
+    st.markdown(table_html, unsafe_allow_html=True)
 
     # ══════════════════════════════════════════════════════════════════════
     # ── PROJECTED RETURNS TIMELINE ────────────────────────────────────────
