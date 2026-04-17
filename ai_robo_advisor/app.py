@@ -3724,11 +3724,34 @@ def page_account():
                 st.session_state.clear(); st.rerun()
 
 
+
+
+
+
+# ── Main render ──────────────────────────────────────────────────────────────
+render_nav()
+
+if st.session_state.get("show_auth", False):
+    render_auth_modal()
+else:
+    page = st.session_state.nav_page
+    {
+        "home":      page_home,
+        "dashboard": page_dashboard,
+        "market":    page_market,
+        "insights":  page_insights,
+        "more":      page_more,
+        "account":   page_account,
+    }.get(page, page_home)()
+
 import streamlit.components.v1 as _cv1
 
 # Read Gemini key from secrets (fallback to empty string so the app doesn't crash)
 import json as _json
-_GEMINI_KEY = st.secrets.get("gemini_api_key", "")
+try:
+    _GEMINI_KEY = st.secrets.get("gemini_api_key", "") or ""
+except Exception:
+    _GEMINI_KEY = ""
 
 _SYSTEM_PROMPT = (
     "You are DeepAtomicIQ, an AI investment assistant embedded in the DeepAtomicIQ "
@@ -3958,23 +3981,4 @@ _cv1.html(f"""
 
 }})();
 </script>
-""", height=0, width=0)
-
-
-
-
-# ── Main render ──────────────────────────────────────────────────────────────
-render_nav()
-
-if st.session_state.get("show_auth", False):
-    render_auth_modal()
-else:
-    page = st.session_state.nav_page
-    {
-        "home":      page_home,
-        "dashboard": page_dashboard,
-        "market":    page_market,
-        "insights":  page_insights,
-        "more":      page_more,
-        "account":   page_account,
-    }.get(page, page_home)()
+""", height=1, scrolling=False)
