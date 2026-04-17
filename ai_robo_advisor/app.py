@@ -1598,48 +1598,74 @@ def render_auth_modal():
         st.markdown("""
         <style>
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0;
+            position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
-            /* Softer, darker overlay – not too bright, not pitch black */
-            background: rgba(10, 20, 40, 0.6);
-            backdrop-filter: blur(2px); /* optional: adds subtle depth */
-            z-index: 999;
-            pointer-events: none;
+            background: rgba(4,8,22,0.72);
+            backdrop-filter: blur(6px);
+            z-index: 999; pointer-events: none;
         }
-
-        /* Modal container – now fits any screen */
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {
             position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
+            top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            
-            /* Responsive sizing – never too big */
-            width: 90vw !important;
-            max-width: 440px !important;
-            max-height: 90vh !important;
-            overflow-y: auto !important;
-            
-            padding: 28px !important;
-            border-radius: 16px !important;
-            background: linear-gradient(145deg, #0f172a, #1e293b) !important;
-            box-shadow: 0 0 40px rgba(109, 94, 252, 0.25) !important;
-            z-index: 1000 !important;
-            pointer-events: auto !important;
-            
-            /* Prevent content from spilling */
-            word-wrap: break-word !important;
+            width: 92vw !important; max-width: 460px !important;
+            max-height: 92vh !important; overflow-y: auto !important;
+            padding: 36px 32px 28px !important;
+            border-radius: 22px !important;
+            background: linear-gradient(160deg, #0d1630 0%, #121f3a 100%) !important;
+            border: 1px solid rgba(109,94,252,0.28) !important;
+            box-shadow: 0 0 0 1px rgba(109,94,252,0.12), 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(109,94,252,0.12) !important;
+            z-index: 1000 !important; pointer-events: auto !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar,
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar
+            { width: 4px; }
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar-thumb,
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar-thumb
+            { background: rgba(109,94,252,0.4); border-radius: 4px; }
+
+        /* ── Form field groups ── */
+        .auth-form-group { margin-bottom: 16px; }
+        .auth-label {
+            display: block; font-size: 12px; font-weight: 700;
+            color: #8BA6D3; letter-spacing: .06em;
+            text-transform: uppercase; margin-bottom: 5px;
+        }
+        .auth-required { color: #FF6B6B; margin-left: 2px; }
+
+        /* Tighten Streamlit input spacing inside modal */
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput,
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput { margin-bottom: 0 !important; }
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput input,
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput input {
+            background: rgba(255,255,255,0.04) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            border-radius: 10px !important;
+            color: #ffffff !important;
+            font-size: 14px !important;
+            padding: 10px 14px !important;
+            transition: border-color .2s, box-shadow .2s !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput input:focus,
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput input:focus {
+            border-color: #6D5EFC !important;
+            box-shadow: 0 0 0 3px rgba(109,94,252,0.18) !important;
         }
 
-        /* Optional: better scrollbar for long content */
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar,
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar {
-            width: 6px;
+        /* Validation pills */
+        .auth-ok  { font-size:11px; color:#8EF6D1; margin: 3px 0 10px; display:flex; align-items:center; gap:4px; }
+        .auth-err { font-size:11px; color:#FF6B6B; margin: 3px 0 10px; display:flex; align-items:center; gap:4px; }
+
+        /* Modal title */
+        .modal-title {
+            font-size: 26px; font-weight: 900; color: #ffffff;
+            letter-spacing: -0.03em; margin-bottom: 6px;
         }
+        .modal-sub { font-size: 13px; color: #8BA6D3; }
         </style>
         """, unsafe_allow_html=True)
+
 
         import re, random
         # 🟢 VERIFICATION TRAP SCENE
@@ -1777,28 +1803,28 @@ def render_auth_modal():
         if tab == "email":
             # ── Required-field labels ─────────────────────────────────────────
             if mode == "signup":
-                st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:0 0 -12px;">&#8727; Required fields</p>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:11px;color:rgba(255,107,107,0.7);margin:0 0 10px;text-align:right;"><span style="color:#FF6B6B;">*</span> Required fields</p>', unsafe_allow_html=True)
 
-            st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Email address <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+            st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Email address <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
             email_in = st.text_input("", placeholder="you@example.com",
                                      key="auth_email_field", label_visibility="collapsed")
 
             # Inline email validation
             if email_in and not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email_in):
-                st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Please enter a valid email, e.g. name@domain.com</p>', unsafe_allow_html=True)
+                st.markdown('<p class="auth-err">&#9888; Please enter a valid email, e.g. name@domain.com</p>', unsafe_allow_html=True)
             elif email_in:
-                st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Looks good</p>', unsafe_allow_html=True)
+                st.markdown('<p class="auth-ok">&#10003; Looks good</p>', unsafe_allow_html=True)
 
             if mode == "signup":
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
                 name_in = st.text_input("", placeholder="Jane Smith",
                                         key="auth_name_field", label_visibility="collapsed")
                 if name_in and len(name_in.strip()) < 2:
-                    st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Please enter your full name (at least 2 characters)</p>', unsafe_allow_html=True)
+                    st.markdown('<p class="auth-err">&#9888; Please enter your full name (at least 2 characters)</p>', unsafe_allow_html=True)
                 elif name_in:
-                    st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Looks good</p>', unsafe_allow_html=True)
+                    st.markdown('<p class="auth-ok">&#10003; Looks good</p>', unsafe_allow_html=True)
 
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Date of Birth <span style="color:#FF6B6B;">*</span> <span style="font-size:11px;font-weight:400;">(must be 18+)</span></label>', unsafe_allow_html=True)
+                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Date of Birth <span style="color:#FF6B6B;">*</span> <span style="font-size:10px;font-weight:400;color:#6B8CAE;">must be 18+</span></label>', unsafe_allow_html=True)
                 default_dob = st.session_state.get("auth_dob_field", datetime.date(1990,1,1))
                 dob_in  = st.date_input("", value=default_dob,
                                         min_value=datetime.date(1920,1,1),
@@ -1894,21 +1920,21 @@ def render_auth_modal():
         else:  # phone
             pc1, pc2 = st.columns([1, 2])
             with pc1:
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Code <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Code <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
                 cc_in = st.selectbox("", ["+44 (UK)", "+1 (US)", "+61 (AU)", "+91 (IN)", "+49 (DE)"],
                                      key="auth_cc", label_visibility="collapsed")
             with pc2:
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Phone number <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
+                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Phone number <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
                 phone_in = st.text_input("", placeholder="7700 000000", key="auth_phone_field",
                                          label_visibility="collapsed")
 
-            # Inline phone validation
-            if phone_in:
-                phone_digits = re.sub(r"\D", "", phone_in)
-                if len(phone_digits) < 7 or len(phone_digits) > 15:
-                    st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Phone number must be 7–15 digits</p>', unsafe_allow_html=True)
+            # Inline phone validation — only check once user has typed something
+            phone_digits_check = re.sub(r"\D", "", phone_in) if phone_in else ""
+            if phone_digits_check:
+                if len(phone_digits_check) < 7 or len(phone_digits_check) > 15:
+                    st.markdown('<p class="auth-err">&#9888; Phone number must be 7–15 digits</p>', unsafe_allow_html=True)
                 else:
-                    st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Valid number format</p>', unsafe_allow_html=True)
+                    st.markdown('<p class="auth-ok">&#10003; Valid number format</p>', unsafe_allow_html=True)
 
             if mode == "signup":
                 st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
