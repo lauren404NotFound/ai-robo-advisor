@@ -1929,7 +1929,13 @@ def render_auth_modal():
             dob_in = datetime.date(1990,1,1)
             if mode == "signup":
                 name_in = st.text_input("FULL NAME", placeholder="Jane Smith", key="auth_name_field_f")
-                dob_in = st.date_input("DATE OF BIRTH", value=datetime.date(1990,1,1), key="auth_dob_field_f")
+                dob_in = st.date_input(
+                    "DATE OF BIRTH",
+                    value=datetime.date(1990, 1, 1),
+                    min_value=datetime.date(1900, 1, 1),
+                    max_value=datetime.date.today(),
+                    key="auth_dob_field_f"
+                )
             
             pw_in = st.text_input("PASSWORD", type="password", key="auth_pw_field_f")
             st.checkbox("Keep me logged in", value=True, key="rem_f")
