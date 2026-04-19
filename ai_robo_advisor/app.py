@@ -1831,15 +1831,17 @@ def render_auth_modal():
         redirect_uri = prod_url if "streamlit.app" in prod_url else "http://localhost:8501"
 
         google_url, linkedin_url = "#", "#"
+        g_err, l_err = None, None
         try:
             google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "email", "profile"]))
-        except Exception as e: 
-            st.error(f"Google Link Error: {e}")
+        except Exception as e: g_err = str(e)
 
         try:
             linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "profile", "email"]))
-        except Exception as e: 
-            st.error(f"LinkedIn Link Error: {e}")
+        except Exception as e: l_err = str(e)
+
+        if g_err: st.error(f"Google Error: {g_err}")
+        if l_err: st.error(f"LinkedIn Error: {l_err}")
 
         # Single HTML block for both buttons
         st.markdown(f"""
