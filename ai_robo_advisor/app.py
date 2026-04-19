@@ -2188,9 +2188,12 @@ def render_auth_modal():
             st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("✕  Close", key="auth_close"):
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✕  Close", key="auth_close", use_container_width=True):
             st.session_state.show_auth = False
             st.rerun()
+
+        st.markdown('</div></div>', unsafe_allow_html=True) # CLOSE FORM SIDE AND SPLIT CONTAINER
 
 
 # ══════════════════════════════════════════════════════════════════════════════
