@@ -1762,13 +1762,25 @@ def render_auth_modal():
         }}
         .hero-welcome-sub {{ font-size: 16px; color: {MUTED}; line-height: 1.6; }}
 
-        .social-btn {{
-            display: flex; align-items: center; justify-content: center;
-            height: 48px; border-radius: 12px;
-            background: rgba(255,255,255,0.05); border: 1px solid {BORDER};
-            color: white; font-weight: 700; text-decoration: none; transition: all 0.2s;
-        }}
-        .social-btn:hover {{ background: rgba(255,255,255,0.1); border-color: {ACCENT}; }}
+        /* Advanced Social OAuth Buttons */
+        .social-btn {
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            height: 52px !important; border-radius: 12px !important;
+            background: rgba(255,255,255,0.08) !important; border: 1px solid {BORDER} !important;
+            color: #ffffff !important; font-weight: 700 !important; text-decoration: none !important; 
+            transition: all 0.25s ease !important; width: 100% !important; gap: 12px !important;
+            margin-bottom: 0 !important;
+        }
+        .social-btn:hover { 
+            background: rgba(255,255,255,0.15) !important; 
+            border-color: {ACCENT} !important;
+            box-shadow: 0 0 20px rgba(155, 114, 242, 0.2) !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        .social-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+        .google-icon { background: url("https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg") no-repeat center; background-size: contain; }
+        .linkedin-icon { background: url("https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg") no-repeat center; background-size: contain; }
 
         .modal-divider {{ display: flex; align-items: center; gap: 10px; margin: 24px 0; opacity: 0.5; }}
         .modal-divider-line {{ flex: 1; height: 1px; background: {BORDER}; }}
