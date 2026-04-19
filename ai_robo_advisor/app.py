@@ -1805,9 +1805,6 @@ def render_auth_modal():
                     {"Strategic insights await. Log in to your neural dashboard." if mode == "login" 
                      else "Welcome! We can't wait to have you join the future of wealth."}
                 </div>
-                <div style="display: flex; gap: 15px; margin-top: 30px; opacity: 0.5; color: white; font-family: monospace;">
-                    <span>fb</span> <span>tw</span> <span>ig</span> <span>yt</span>
-                </div>
             </div>
         """, unsafe_allow_html=True)
 
