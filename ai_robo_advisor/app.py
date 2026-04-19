@@ -35,6 +35,7 @@ try:
         GOOGLE_CLIENT_SECRET = st.secrets["oauth"]["google_client_secret"]
         LINKEDIN_CLIENT_ID = st.secrets["oauth"]["linkedin_client_id"]
         LINKEDIN_CLIENT_SECRET = st.secrets["oauth"]["linkedin_client_secret"]
+        REDIRECT_URI = st.secrets["oauth"].get("redirect_uri", "http://localhost:8501")
     else:
         raise KeyError
 except Exception:
@@ -45,9 +46,11 @@ except Exception:
         GOOGLE_CLIENT_SECRET = sec["oauth"]["google_client_secret"]
         LINKEDIN_CLIENT_ID = sec["oauth"]["linkedin_client_id"]
         LINKEDIN_CLIENT_SECRET = sec["oauth"]["linkedin_client_secret"]
+        REDIRECT_URI = sec["oauth"].get("redirect_uri", "http://localhost:8501")
     except Exception:
         GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
         LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
+        REDIRECT_URI = "http://localhost:8501"
 
 oauth2 = OAuth2Component(
     GOOGLE_CLIENT_ID,
@@ -1430,7 +1433,7 @@ def _handle_query_params():
         import asyncio, base64, json, httpx
         try:
             # Manually extract Google JWT Payload
-            token = asyncio.run(oauth2.client.get_access_token(code=code, redirect_uri="http://localhost:8501"))
+            token = asyncio.run(oauth2.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
             jwt = token["id_token"].split(".")[1]
             jwt += "=" * ((4 - len(jwt) % 4) % 4)
             user_info = json.loads(base64.urlsafe_b64decode(jwt).decode("utf-8"))
@@ -1441,7 +1444,7 @@ def _handle_query_params():
         except Exception:
             try:
                 # Fallback to LinkedIn API Endpoint
-                token = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri="http://localhost:8501"))
+                token = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
                 res = httpx.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"})
                 user_info = res.json()
                 _do_login(user_info.get("email"), user_info.get("name", "LinkedIn User"), "linkedin", user_info.get("picture"))
@@ -1827,17 +1830,14 @@ def render_auth_modal():
         
         # --- OAUTH (Safe Link Generation) ---
         import asyncio
-        prod_url = "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
-        redirect_uri = prod_url if "streamlit.app" in prod_url else "http://localhost:8501"
-
         google_url, linkedin_url = "#", "#"
         g_err, l_err = None, None
         try:
-            google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "email", "profile"]))
+            google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "email", "profile"]))
         except Exception as e: g_err = str(e)
 
         try:
-            linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "profile", "email"]))
+            linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "profile", "email"]))
         except Exception as e: l_err = str(e)
 
         if g_err: st.error(f"Google Error: {g_err}")
