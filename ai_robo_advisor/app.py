@@ -1801,20 +1801,27 @@ def render_auth_modal():
         hero_title = "Welcome<br>Back" if mode == "login" else "Join the<br>Intelligence"
         hero_sub = "Strategic insights await. Log in to your neural dashboard." if mode == "login" else "Welcome! We can't wait to have you join the future of wealth."
 
-        st.markdown(f"""
-        <div id="auth-modal-marker"></div>
-        <div class="auth-split-container">
-          <div class="auth-hero-side">
-            <div class="auth-brain-box">{get_svg("brain", 24, "#6D5EFC")}</div>
-            <div class="hero-welcome-title">{hero_title}</div>
-            <div class="hero-welcome-sub">{hero_sub}</div>
-          </div>
-          <div class="auth-form-side">
-            <div style="margin-bottom:24px;">
-              <div style="font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.02em;">{title}</div>
-              <div style="font-size:13px; color:#E6D5FF; opacity:0.8;">{sub}</div>
+        st.markdown('<div id="auth-modal-marker"></div>', unsafe_allow_html=True)
+        
+        # Split using native columns for layout reliability
+        h_col, f_col = st.columns([1, 1.2], gap="large")
+        
+        with h_col:
+            st.markdown(f"""
+            <div class="auth-hero-side" style="background:transparent; border-right:none; padding:10px 0;">
+                <div class="auth-brain-box">{get_svg("brain", 24, "#6D5EFC")}</div>
+                <div class="hero-welcome-title">{hero_title}</div>
+                <div class="hero-welcome-sub">{hero_sub}</div>
             </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+            
+        with f_col:
+            st.markdown(f"""
+            <div style="padding:10px 0;">
+                <div style="font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.02em;">{title}</div>
+                <div style="font-size:13px; color:#E6D5FF; opacity:0.8; margin-bottom:20px;">{sub}</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         if st.session_state.get("auth_verify_pending"):
             st.info(f"**Demo note:** Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
@@ -2192,8 +2199,6 @@ def render_auth_modal():
         if st.button("✕  Close", key="auth_close", use_container_width=True):
             st.session_state.show_auth = False
             st.rerun()
-
-        st.markdown('</div></div>', unsafe_allow_html=True) # CLOSE FORM SIDE AND SPLIT CONTAINER
 
 
 # ══════════════════════════════════════════════════════════════════════════════
