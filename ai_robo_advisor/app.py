@@ -1926,6 +1926,16 @@ def render_auth_modal():
             color: white !important;
             border: 1px solid {BORDER} !important;
         }}
+        
+        /* Stop native browser autofill from turning inputs bright yellow */
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill,
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill:hover,
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill:focus,
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill:active {{
+            -webkit-box-shadow: 0 0 0 30px #161628 inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }}
         </style>
         <div id="auth-modal-marker"></div>
     """, unsafe_allow_html=True)
