@@ -31,23 +31,24 @@ from streamlit_oauth import OAuth2Component
 # Securely load credentials from .streamlit/secrets.toml
 try:
     if "oauth" in st.secrets:
-        GOOGLE_CLIENT_ID = st.secrets["oauth"]["google_client_id"]
-        GOOGLE_CLIENT_SECRET = st.secrets["oauth"]["google_client_secret"]
+        # Google built-in auth uses [auth] section in secrets, but we keep [oauth] for LinkedIn
         LINKEDIN_CLIENT_ID = st.secrets["oauth"]["linkedin_client_id"]
         LINKEDIN_CLIENT_SECRET = st.secrets["oauth"]["linkedin_client_secret"]
-        REDIRECT_URI = st.secrets["oauth"].get("redirect_uri", "http://localhost:8501")
+        # LinkedIn manual redirect (no /oauth2callback)
+        REDIRECT_URI = st.secrets["oauth"].get("redirect_uri", "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app")
     else:
         raise KeyError
 except Exception:
     import toml
     try:
         sec = toml.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".streamlit", "secrets.toml"))
-        GOOGLE_CLIENT_ID = sec["oauth"]["google_client_id"]
-        GOOGLE_CLIENT_SECRET = sec["oauth"]["google_client_secret"]
         LINKEDIN_CLIENT_ID = sec["oauth"]["linkedin_client_id"]
         LINKEDIN_CLIENT_SECRET = sec["oauth"]["linkedin_client_secret"]
-        REDIRECT_URI = sec["oauth"].get("redirect_uri", "http://localhost:8501")
+        REDIRECT_URI = sec["oauth"].get("redirect_uri", "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app")
     except Exception:
+        LINKEDIN_CLIENT_ID = ""
+        LINKEDIN_CLIENT_SECRET = ""
+        REDIRECT_URI = "http://localhost:8501"
         GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
         LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
         REDIRECT_URI = "http://localhost:8501"
@@ -1468,7 +1469,26 @@ def _handle_query_params():
         st.rerun()
 
 
+def _handle_auth_bridge():
+    """
+    Bridge between built-in st.user (Google) and app's custom session_state.
+    """
+    if st.user.is_logged_in:
+        if not st.session_state.get("authenticated"):
+            # Auto-sync st.user to our state
+            st.session_state.authenticated = True
+            st.session_state.user_name = st.user.name
+            st.session_state.user_email = st.user.email
+            st.session_state.user_avatar = st.user.picture
+            st.session_state.auth_provider = "google"
+            
+            # Ensure user exists in DB
+            user = database.get_user(st.user.email)
+            if not user:
+                database.create_user(st.user.email, st.user.name, "google_oauth_fresh", "1990-01-01", "google")
+
 def render_nav():
+    _handle_auth_bridge()
     _handle_query_params()
 
     page = st.session_state.nav_page
@@ -1713,7 +1733,10 @@ document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(link =
             st.rerun()
             
         if st.button("auth_logout_proxy", key="proxy_auth_logout"):
-            _do_logout()
+            if st.session_state.get("auth_provider") == "google":
+                st.logout()
+            else:
+                _do_logout()
             st.rerun()
 
 
@@ -1830,32 +1853,27 @@ def render_auth_modal():
         
         # --- OAUTH (Safe Link Generation) ---
         import asyncio
-        google_url, linkedin_url = "#", "#"
-        g_err, l_err = None, None
-        try:
-            google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "email", "profile"]))
-        except Exception as e: g_err = str(e)
-
+        linkedin_url = "#"
+        l_err = None
+        
         try:
             linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "profile", "email"]))
         except Exception as e: l_err = str(e)
 
-        if g_err: st.error(f"Google Error: {g_err}")
         if l_err: st.error(f"LinkedIn Error: {l_err}")
 
-        # Single HTML block for both buttons
-        st.markdown(f"""
-            <div style="display: flex; gap: 16px; margin-bottom: 24px;">
-                <a href="{google_url}" target="_self" class="social-btn">
-                    <div class="social-icon google-icon"></div>
-                    <span>Google</span>
-                </a>
-                <a href="{linkedin_url}" target="_self" class="social-btn">
+        # Social Buttons
+        s1, s2 = st.columns(2)
+        with s1:
+            if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
+                st.login("google")
+        with s2:
+            st.markdown(f"""
+                <a href="{linkedin_url}" target="_self" class="social-btn" style="height: 38px !important; margin-top: 0 !important;">
                     <div class="social-icon linkedin-icon"></div>
-                    <span>LinkedIn</span>
+                    <span style="font-size: 14px;">LinkedIn</span>
                 </a>
-            </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         st.markdown('<div class="modal-divider"><div class="modal-divider-line"></div><div class="modal-divider-text">OR EMAIL</div><div class="modal-divider-line"></div></div>', unsafe_allow_html=True)
 
