@@ -1761,13 +1761,16 @@ def render_auth_modal():
         }
 
         .hero-welcome-title {
-            font-size: 38px; font-weight: 900; color: #ffffff;
-            line-height: 1.1; letter-spacing: -0.05em; margin-bottom: 12px;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            font-size: 44px; font-weight: 900; 
+            background: linear-gradient(90deg, #877cfc 0%, #3ba4ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.05; letter-spacing: -0.05em; margin-bottom: 16px;
+            filter: drop-shadow(0 4px 10px rgba(109,94,252,0.2));
         }
         .hero-welcome-sub {
-            font-size: 15px; color: #E6D5FF; font-weight: 500;
-            line-height: 1.5; opacity: 0.85; max-width: 220px;
+            font-size: 16px; color: #ffffff; font-weight: 500;
+            line-height: 1.6; opacity: 0.8; max-width: 260px;
         }
 
         /* ── Adjust Modal for Split ── */
@@ -1776,8 +1779,8 @@ def render_auth_modal():
             position: fixed !important;
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 90vw !important; max-width: 820px !important; /* WIDER FOR SPLIT */
-            padding: 0 !important; /* REMOVE PADDING FROM WRAPPER */
+            width: 90vw !important; max-width: 860px !important; /* MATCH TEMPLATE WIDTH */
+            padding: 0 !important;
             border-radius: 32px !important;
             background: rgba(13, 18, 42, 0.98) !important;
             backdrop-filter: blur(40px) !important;
