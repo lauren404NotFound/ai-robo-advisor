@@ -2642,6 +2642,10 @@ def page_dashboard():
 
     # Results check — survey not yet completed
     if not st.session_state.get("result"):
+        if sp == "survey":
+            _render_survey()
+            return
+            
         st.markdown(f"""
         <div class="coming-soon">
           <div class="coming-soon-icon" style="color:#6D5EFC;margin-bottom:15px;display:flex;justify-content:center;">{get_svg("news", 40)}</div>
@@ -2657,10 +2661,6 @@ def page_dashboard():
                 st.session_state.survey_step = 0
                 st.session_state.survey_answers = {}
                 st.rerun()
-        
-        if sp == "survey":
-            st.markdown("---")
-            _render_survey()
         return
 
     # Results exist — show portfolio or survey
