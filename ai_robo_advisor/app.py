@@ -1868,14 +1868,12 @@ def render_auth_modal():
         # Social Buttons
         s1, s2 = st.columns(2)
         with s1:
-            # We wrap this in a container to ensure CSS specificity
-            st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn")
-            if st.session_state.get("google_oauth_btn"):
+            if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
                 st.login("google")
         with s2:
             st.markdown(f"""
-                <a href="{linkedin_url}" target="_self" class="social-btn" style="height: 38px !important; margin: 0 !important; box-sizing: border-box;">
-                    <span style="font-size: 14px;">LinkedIn</span>
+                <a href="{linkedin_url}" target="_self" class="social-btn" style="height: 38px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none;">
+                    <span style="font-size: 14px; color: white !important;">LinkedIn</span>
                 </a>
             """, unsafe_allow_html=True)
 
