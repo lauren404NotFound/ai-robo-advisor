@@ -1725,480 +1725,185 @@ def render_auth_modal():
     mode = st.session_state.get("auth_mode", "login")
     tab  = st.session_state.get("auth_tab", "email")
 
-    title = "Sign in" if mode == "login" else "Create an Account"
-    sub   = "Sign in to access your portfolio" if mode == "login" else "Start your investment journey today"
-
-    # Render overlay first, independent of the form's stacking context
-    st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
+    title = "Sign in" if mode == "login" else "Create Account"
     
-    with st.container():
-        st.markdown("""
+    # Layout CSS - Split Side-by-Side
+    st.markdown(f"""
         <style>
-        /* ── Split Layout ── */
-        .auth-split-container {
-            display: flex; flex-direction: row;
-            width: 100%; min-height: 480px;
-        }
-        .auth-hero-side {
-            flex: 1.1; padding: 48px 40px;
-            background: linear-gradient(135deg,rgba(109,94,252,0.15) 0%,rgba(13,22,48,0.4) 100%);
-            border-right: 1px solid rgba(109,94,252,0.15);
-            display: flex; flex-direction: column; justify-content: center;
-        }
-        .auth-form-side { flex: 1.2; padding: 48px 40px; background: rgba(21, 28, 58, 0.4); }
-
-        .auth-brain-box { 
-            width: 48px; height: 48px; margin-bottom: 24px;
-            background: rgba(109,94,252,0.1); border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid rgba(109,94,252,0.3);
-            box-shadow: 0 0 20px rgba(109,94,252,0.1);
-            animation: pulse-glow 3s infinite ease-in-out;
-        }
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 15px rgba(109,94,252,0.1); border-color: rgba(109,94,252,0.3); }
-            50% { box-shadow: 0 0 35px rgba(109,94,252,0.3); border-color: rgba(109,94,252,0.6); }
-        }
-
-        .hero-welcome-title {
-            font-size: 44px; font-weight: 900; 
-            background: linear-gradient(90deg, #877cfc 0%, #3ba4ff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1.05; letter-spacing: -0.05em; margin-bottom: 16px;
-            filter: drop-shadow(0 4px 10px rgba(109,94,252,0.2));
-        }
-        .hero-welcome-sub {
-            font-size: 16px; color: #ffffff; font-weight: 500;
-            line-height: 1.6; opacity: 0.8; max-width: 260px;
-        }
-
-        /* ── Adjust Modal for Split ── */
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {
+        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {{
             position: fixed !important;
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 90vw !important; max-width: 860px !important; /* MATCH TEMPLATE WIDTH */
+            width: 90vw !important; max-width: 1000px !important;
             padding: 0 !important;
             border-radius: 32px !important;
-            background: rgba(13, 18, 42, 0.98) !important;
+            background: {PANEL} !important; 
             backdrop-filter: blur(40px) !important;
-            border: 1px solid rgba(135,124,252,0.45) !important;
-            box-shadow: 0 0 60px rgba(109,94,252,0.15), 0 32px 100px rgba(0,0,0,0.9) !important;
-            z-index: 1000 !important; overflow: hidden !important;
-        }
+            border: 1px solid {BORDER} !important;
+            box-shadow: 0 32px 100px rgba(0,0,0,0.9) !important;
+            z-index: 10000 !important;
+            overflow: hidden !important;
+        }}
 
-        @media (max-width: 768px) {
-            .auth-split-container { flex-direction: column; }
-            .auth-hero-side { padding: 32px; min-height: auto; border-right: none; border-bottom: 1px solid rgba(109,94,252,0.1); }
-            .auth-form-side { padding: 32px; }
-            .hero-welcome-title { font-size: 28px; }
-        }
+        .auth-hero-col {{
+            padding: 60px;
+            display: flex; flex-direction: column; justify-content: center;
+            border-right: 1px solid {BORDER};
+            height: 100%;
+            background: linear-gradient(135deg, rgba(155, 114, 242, 0.1), transparent);
+        }}
+        .auth-form-col {{ padding: 60px; display: flex; flex-direction: column; justify-content: center; }}
+
+        .hero-welcome-title {{
+            font-size: 64px; font-weight: 900; 
+            background: linear-gradient(90deg, #877cfc 0%, #3ba4ff 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            line-height: 1.1; margin-bottom: 20px; letter-spacing: -0.04em;
+        }}
+        .hero-welcome-sub {{ font-size: 16px; color: {MUTED}; line-height: 1.6; }}
+
+        .social-btn {{
+            display: flex; align-items: center; justify-content: center;
+            height: 48px; border-radius: 12px;
+            background: rgba(255,255,255,0.05); border: 1px solid {BORDER};
+            color: white; font-weight: 700; text-decoration: none; transition: all 0.2s;
+        }}
+        .social-btn:hover {{ background: rgba(255,255,255,0.1); border-color: {ACCENT}; }}
+
+        .modal-divider {{ display: flex; align-items: center; gap: 10px; margin: 24px 0; opacity: 0.5; }}
+        .modal-divider-line {{ flex: 1; height: 1px; background: {BORDER}; }}
+        .modal-divider-text {{ font-size: 11px; font-weight: 800; color: {MUTED}; text-transform: uppercase; }}
+
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) button[kind="primary"] {{
+            background: linear-gradient(135deg, {ACCENT}, {ACCENT2}) !important;
+            border-radius: 12px !important;
+            border: none !important;
+            padding: 12px 30px !important;
+        }}
+        
+        /* Input overrides */
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input {{
+            background: rgba(255,255,255,0.05) !important;
+            color: white !important;
+            border: 1px solid {BORDER} !important;
+        }}
         </style>
+        <div id="auth-modal-marker"></div>
+    """, unsafe_allow_html=True)
+
+    # 1. Split Layout Context
+    h_col, f_col = st.columns([1, 1.2], gap="large")
+
+    with h_col:
+        # LEFT SIDE HERO
+        welcome_txt = "Welcome<br>Back" if mode == "login" else "Join the<br>Family"
+        st.markdown(f"""
+            <div class="auth-hero-col">
+                <div style="margin-bottom: 24px;">{get_svg("brain", 40, ACCENT)}</div>
+                <div class="hero-welcome-title">{welcome_txt}</div>
+                <div class="hero-welcome-sub">
+                    {"Strategic insights await. Log in to your neural dashboard." if mode == "login" 
+                     else "Welcome! We can't wait to have you join the future of wealth."}
+                </div>
+                <div style="display: flex; gap: 15px; margin-top: 30px; opacity: 0.5; color: white; font-family: monospace;">
+                    <span>fb</span> <span>tw</span> <span>ig</span> <span>yt</span>
+                </div>
+            </div>
         """, unsafe_allow_html=True)
 
-        hero_title = "Welcome<br>Back" if mode == "login" else "Join the<br>Intelligence"
-        hero_sub = "Strategic insights await. Log in to your neural dashboard." if mode == "login" else "Welcome! We can't wait to have you join the future of wealth."
-
-        st.markdown('<div id="auth-modal-marker"></div>', unsafe_allow_html=True)
+    with f_col:
+        # RIGHT SIDE FORM
+        st.markdown(f'<div style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 5px;">{title}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size: 14px; color: {MUTED}; margin-bottom: 30px;">Sign in to access your portfolio</div>', unsafe_allow_html=True)
         
-        # Split using native columns for layout reliability
-        h_col, f_col = st.columns([1, 1.2], gap="large")
-        
-        with h_col:
-            st.markdown(f"""
-            <div class="auth-hero-side" style="background:transparent; border-right:none; padding:10px 0;">
-                <div class="auth-brain-box">{get_svg("brain", 24, "#6D5EFC")}</div>
-                <div class="hero-welcome-title">{hero_title}</div>
-                <div class="hero-welcome-sub">{hero_sub}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with f_col:
-            st.markdown(f"""
-            <div style="padding:10px 0;">
-                <div style="font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.02em;">{title}</div>
-                <div style="font-size:13px; color:#E6D5FF; opacity:0.8; margin-bottom:20px;">{sub}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        if st.session_state.get("auth_verify_pending"):
-            st.info(f"**Demo note:** Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
-            code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input", max_chars=4)
-            
-            vc1, vc2 = st.columns(2)
-            with vc1:
-                if st.button("Cancel", use_container_width=True):
-                    st.session_state.auth_verify_pending = False
-                    st.rerun()
-            with vc2:
-                if st.button("Verify & Proceed", type="primary", use_container_width=True):
-                    if code_in == st.session_state.get("mock_code"):
-                        action = st.session_state.get("pending_action")
-                        data   = st.session_state.get("pending_data")
-                        
-                        if action == "signup_email" or action == "signup_phone":
-                            provider_type = "phone" if action == "signup_phone" else "email"
-                            database.create_user(data["email"], data["name"], data["pw"], data["dob"], provider_type)
-                            _do_login(data["email"], data["name"], provider_type, remember=data.get("remember", True))
-                            st.success(f"Account certified! Welcome, {data['name']} 🎉")
-                        elif action == "login_email" or action == "login_phone":
-                            provider_type = "phone" if action == "login_phone" else "email"
-                            _do_login(data["email"], data["name"], provider_type, remember=data.get("remember", True))
-                            st.success(f"Security confirmed. Welcome back, {data['name']}!")
-                        
-                        st.session_state.auth_verify_pending = False
-                        time.sleep(0.6); st.rerun()
-                    else:
-                        st.error("Incorrect code. Please try again.")
-            return # IMPORTANT: EXIT early so the rest of the modal hides!
-            
-        # Social oauth buttons — proper styled row
-        # Social oauth buttons — proper styled row
-        st.markdown("""
-        <style>
-        .oauth-native-btn {
-            background-color: rgba(255, 255, 255, 0.12) !important;
-            border: 1px solid rgba(255, 255, 255, 0.25) !important;
-            color: #ffffff !important;
-            border-radius: 14px !important;
-            height: 52px !important;
-            font-weight: 800 !important;
-            transition: all 0.25s ease !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            text-decoration: none !important;
-            width: 100%;
-        }
-
-        .oauth-native-btn:hover {
-            background-color: rgba(255, 255, 255, 0.2) !important;
-            border-color: #877cfc !important;
-            box-shadow: 0 0 20px rgba(135,124,252,0.3) !important;
-            color: #ffffff !important;
-        }
-
-        .google-native::before {
-            content: "";
-            display: inline-block;
-            background: url("https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg") no-repeat center;
-            background-size: 20px;
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-        }
-
-        .linkedin-native::before {
-            content: "";
-            display: inline-block;
-            background: url("https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg") no-repeat center;
-            background-size: 20px;
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        c1, c2 = st.columns(2)
-
+        # --- OAUTH ---
         import asyncio
+        google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri="http://localhost:8501", scope=["openid", "email", "profile"]))
+        linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri="http://localhost:8501", scope=["openid", "profile", "email"]))
 
-        # GOOGLE
-        google_url = asyncio.run(oauth2.client.get_authorization_url(
-            redirect_uri="http://localhost:8501", 
-            scope=["openid", "email", "profile"]
-        ))
-        with c1:
-            st.markdown(f'<a href="{google_url}" target="_self" class="oauth-native-btn google-native">Google</a>', unsafe_allow_html=True)
+        o1, o2 = st.columns(2)
+        with o1: st.markdown(f'<a href="{google_url}" target="_self" class="social-btn">Google</a>', unsafe_allow_html=True)
+        with o2: st.markdown(f'<a href="{linkedin_url}" target="_self" class="social-btn">LinkedIn</a>', unsafe_allow_html=True)
 
-        # LINKEDIN
-        linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(
-            redirect_uri="http://localhost:8501", 
-            scope=["openid", "profile", "email"]
-        ))
-        with c2:
-            st.markdown(f'<a href="{linkedin_url}" target="_self" class="oauth-native-btn linkedin-native">LinkedIn</a>', unsafe_allow_html=True)
+        st.markdown('<div class="modal-divider"><div class="modal-divider-line"></div><div class="modal-divider-text">OR EMAIL</div><div class="modal-divider-line"></div></div>', unsafe_allow_html=True)
 
-        st.markdown("""
-        <div style="display:flex;align-items:center;gap:12px;margin:20px 0;">
-          <div style="flex:1;height:1px;background:rgba(109,94,252,0.3);"></div>
-          <span style="font-size:11px;color:#6D5EFC;text-transform:uppercase;letter-spacing:.12em;font-weight:700;">or continue with email</span>
-          <div style="flex:1;height:1px;background:rgba(109,94,252,0.3);"></div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Tab: Email / Phone
+        # Tabs
         t1, t2 = st.columns(2)
         with t1:
-            if st.button("✉️  Email", use_container_width=True, key="tab_email",
-                         type="primary" if tab == "email" else "secondary"):
+            if st.button("✉️ Email", use_container_width=True, type="primary" if tab == "email" else "secondary", key="email_tab_btn"):
                 st.session_state.auth_tab = "email"; st.rerun()
         with t2:
-            if st.button("📱  Phone", use_container_width=True, key="tab_phone",
-                         type="primary" if tab == "phone" else "secondary"):
+            if st.button("📱 Phone", use_container_width=True, type="primary" if tab == "phone" else "secondary", key="phone_tab_btn"):
                 st.session_state.auth_tab = "phone"; st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
 
+        import random, re
+        # VERIFICATION
+        if st.session_state.get("auth_verify_pending"):
+            st.info(f"**Demo note:** Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
+            code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input_final", max_chars=4)
+            vc1, vc2 = st.columns(2)
+            with vc1:
+                if st.button("Cancel", use_container_width=True, key="vc_cancel"):
+                    st.session_state.auth_verify_pending = False; st.rerun()
+            with vc2:
+                if st.button("Verify & Proceed", type="primary", use_container_width=True, key="vc_verify"):
+                    if code_in == st.session_state.get("mock_code"):
+                        action = st.session_state.get("pending_action")
+                        data   = st.session_state.get("pending_data")
+                        if action.startswith("signup"):
+                            database.create_user(data["email"], data["name"], data["pw"], data["dob"], "email")
+                            _do_login(data["email"], data["name"], "email")
+                        else:
+                            _do_login(data["email"], data["name"], "email")
+                        st.session_state.auth_verify_pending = False; st.rerun()
+                    else: st.error("Invalid code.")
+            return
+
+        # FORM FIELDS
         if tab == "email":
-            # ── Required-field labels ─────────────────────────────────────────
+            email_in = st.text_input("EMAIL ADDRESS", placeholder="you@example.com", key="auth_email_field_f")
+            name_in = ""
+            dob_in = datetime.date(1990,1,1)
             if mode == "signup":
-                st.markdown('<p style="font-size:11px;color:rgba(255,107,107,0.7);margin:0 0 10px;text-align:right;"><span style="color:#FF6B6B;">*</span> Required fields</p>', unsafe_allow_html=True)
+                name_in = st.text_input("FULL NAME", placeholder="Jane Smith", key="auth_name_field_f")
+                dob_in = st.date_input("DATE OF BIRTH", value=datetime.date(1990,1,1), key="auth_dob_field_f")
+            
+            pw_in = st.text_input("PASSWORD", type="password", key="auth_pw_field_f")
+            st.checkbox("Keep me logged in", value=True, key="rem_f")
 
-            st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Email address <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-            email_in = st.text_input("", placeholder="you@example.com",
-                                     key="auth_email_field", label_visibility="collapsed")
-
-            # Inline email validation
-            if email_in and not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email_in):
-                st.markdown('<p class="auth-err">&#9888; Please enter a valid email, e.g. name@domain.com</p>', unsafe_allow_html=True)
-            elif email_in:
-                st.markdown('<p class="auth-ok">&#10003; Looks good</p>', unsafe_allow_html=True)
-
-            if mode == "signup":
-                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                name_in = st.text_input("", placeholder="Jane Smith",
-                                        key="auth_name_field", label_visibility="collapsed")
-                if name_in and len(name_in.strip()) < 2:
-                    st.markdown('<p class="auth-err">&#9888; Please enter your full name (at least 2 characters)</p>', unsafe_allow_html=True)
-                elif name_in:
-                    st.markdown('<p class="auth-ok">&#10003; Looks good</p>', unsafe_allow_html=True)
-
-                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Date of Birth <span style="color:#FF6B6B;">*</span> <span style="font-size:10px;font-weight:400;color:#6B8CAE;">must be 18+</span></label>', unsafe_allow_html=True)
-                default_dob = st.session_state.get("auth_dob_field", datetime.date(1990,1,1))
-                dob_in  = st.date_input("", value=default_dob,
-                                        min_value=datetime.date(1920,1,1),
-                                        max_value=datetime.date.today(), key="auth_dob_field",
-                                        label_visibility="collapsed")
-                if dob_in:
-                    today = datetime.date.today()
-                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
-                    if age < 18:
-                        st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; You must be at least 18 years old to use DeepAtomicIQ</p>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Age verified ({age} years old)</p>', unsafe_allow_html=True)
-
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                pw_in = st.text_input("", type="password",
-                                      placeholder="At least 8 characters", key="auth_pw_field",
-                                      label_visibility="collapsed")
-                if pw_in:
-                    has_len   = len(pw_in) >= 8
-                    has_upper = any(c.isupper() for c in pw_in)
-                    has_digit = any(c.isdigit() for c in pw_in)
-                    strength  = sum([has_len, has_upper, has_digit])
-                    color  = ["#FF6B6B", "#FFB347", "#8EF6D1"][min(strength-1, 2)]
-                    label  = ["Weak", "Fair", "Strong"][min(strength-1, 2)]
-                    bar_w  = ["33%", "66%", "100%"][min(strength-1, 2)]
-                    hints  = []
-                    if not has_len:   hints.append("8+ chars")
-                    if not has_upper: hints.append("uppercase letter")
-                    if not has_digit: hints.append("number")
-                    hint_txt = "  ·  Missing: " + ", ".join(hints) if hints else ""
-                    st.markdown(f'''
-                    <div style="margin:-8px 0 8px;">
-                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                        <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:4px;">
-                          <div style="width:{bar_w};height:100%;background:{color};border-radius:4px;transition:width .3s;"></div>
-                        </div>
-                        <span style="font-size:12px;color:{color};font-weight:700;min-width:44px;">{label}</span>
-                      </div>
-                      <span style="font-size:11px;color:#8BA6D3;">{hint_txt}</span>
-                    </div>
-                    ''', unsafe_allow_html=True)
-            else:
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                pw_in   = st.text_input("", type="password", key="auth_pw_field_login", label_visibility="collapsed")
-                name_in = ""
-
-            st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
-            remember_me = st.checkbox("Keep me logged in", value=True, key="remember_me_email")
-
-            btn_label = "Create Account" if mode == "signup" else "Sign In"
-            if st.button(btn_label, use_container_width=True, type="primary", key="auth_submit"):
-                if not email_in:
-                    st.error("&#9888; Email address is required."); return
-                if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email_in):
-                    st.error("&#9888; Please enter a valid email address (e.g. name@domain.com)."); return
-
+            if st.button("Sign In Now" if mode == "login" else "Create Account", type="primary", use_container_width=True, key="auth_submit_f"):
+                if not email_in or not pw_in: st.error("All fields mandatory."); return
                 if mode == "signup":
-                    if not name_in or len(name_in.strip()) < 2:
-                        st.error("&#9888; Please enter your full name."); return
-                    if not dob_in:
-                        st.error("&#9888; Please enter your date of birth."); return
-                    today = datetime.date.today()
-                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
-                    if age < 18:
-                        st.error("&#9888; You must be 18 or older to create an account."); return
-                    if len(pw_in) < 8:
-                        st.error("&#9888; Password must be at least 8 characters."); return
-                    if database.get_user(email_in):
-                        st.error("&#9888; An account with this email already exists. Please sign in instead."); return
-
+                    if not name_in: st.error("Name mandatory."); return
+                    if database.get_user(email_in): st.error("Email exists."); return
                     st.session_state.auth_verify_pending = True
                     st.session_state.mock_code = str(random.randint(1000, 9999))
                     st.session_state.pending_action = "signup_email"
-                    st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d"), "remember": remember_me}
+                    st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d")}
                     st.rerun()
-
                 else:
                     user = database.get_user(email_in)
-                    if not user:
-                        st.error("&#9888; No account found. Please sign up first.")
-                    elif user.get("provider", "email") != "email":
-                        provider_name = str(user["provider"]).capitalize()
-                        st.warning(f"This email is linked to **{provider_name}**. Please use the {provider_name} button above.")
-                    elif user["password_hash"] == database.hash_password(pw_in):
+                    if user and user["password_hash"] == database.hash_password(pw_in):
                         st.session_state.auth_verify_pending = True
                         st.session_state.mock_code = str(random.randint(1000, 9999))
                         st.session_state.pending_action = "login_email"
-                        st.session_state.pending_data = {"email": email_in, "name": user["name"], "remember": remember_me}
+                        st.session_state.pending_data = {"email": email_in, "name": user["name"]}
                         st.rerun()
-                    else:
-                        st.error("&#9888; Incorrect password. Please try again.")
-
-        else:  # phone
-            pc1, pc2 = st.columns([1, 2])
-            with pc1:
-                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Code <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                cc_in = st.selectbox("", ["+44 (UK)", "+1 (US)", "+61 (AU)", "+91 (IN)", "+49 (DE)"],
-                                     key="auth_cc", label_visibility="collapsed")
-            with pc2:
-                st.markdown('<label style="font-size:12px;color:#8BA6D3;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Phone number <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                phone_in = st.text_input("", placeholder="7700 000000", key="auth_phone_field",
-                                         label_visibility="collapsed")
-
-            # Inline phone validation — only check once user has typed something
-            phone_digits_check = re.sub(r"\D", "", phone_in) if phone_in else ""
-            if phone_digits_check:
-                if len(phone_digits_check) < 7 or len(phone_digits_check) > 15:
-                    st.markdown('<p class="auth-err">&#9888; Phone number must be 7–15 digits</p>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<p class="auth-ok">&#10003; Valid number format</p>', unsafe_allow_html=True)
-
-            if mode == "signup":
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Full name <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                name_in = st.text_input("", placeholder="Jane Smith", key="auth_phone_name",
-                                        label_visibility="collapsed")
-                if name_in and len(name_in.strip()) < 2:
-                    st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; Please enter your full name</p>', unsafe_allow_html=True)
-                elif name_in:
-                    st.markdown('<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Looks good</p>', unsafe_allow_html=True)
-
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Date of Birth <span style="color:#FF6B6B;">*</span> <span style="font-size:11px;font-weight:400;">(must be 18+)</span></label>', unsafe_allow_html=True)
-                default_phone_dob = st.session_state.get("auth_phone_dob", datetime.date(1990,1,1))
-                dob_in = st.date_input("", value=default_phone_dob,
-                                       min_value=datetime.date(1920,1,1),
-                                       max_value=datetime.date.today(), key="auth_phone_dob",
-                                       label_visibility="collapsed")
-                if dob_in:
-                    today = datetime.date.today()
-                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
-                    if age < 18:
-                        st.markdown('<p style="font-size:12px;color:#FF6B6B;margin:-8px 0 6px;">&#9888; You must be at least 18 years old</p>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<p style="font-size:12px;color:#8EF6D1;margin:-8px 0 6px;">&#10003; Age verified ({age} years old)</p>', unsafe_allow_html=True)
-
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                pw_in = st.text_input("", type="password", placeholder="At least 8 characters",
-                                      key="auth_phone_pw", label_visibility="collapsed")
-                if pw_in:
-                    has_len   = len(pw_in) >= 8
-                    has_upper = any(c.isupper() for c in pw_in)
-                    has_digit = any(c.isdigit() for c in pw_in)
-                    strength  = sum([has_len, has_upper, has_digit])
-                    color  = ["#FF6B6B", "#FFB347", "#8EF6D1"][min(strength-1, 2)]
-                    label  = ["Weak", "Fair", "Strong"][min(strength-1, 2)]
-                    bar_w  = ["33%", "66%", "100%"][min(strength-1, 2)]
-                    hints  = []
-                    if not has_len:   hints.append("8+ chars")
-                    if not has_upper: hints.append("uppercase letter")
-                    if not has_digit: hints.append("number")
-                    hint_txt = "  ·  Missing: " + ", ".join(hints) if hints else ""
-                    st.markdown(f'''
-                    <div style="margin:-8px 0 8px;">
-                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                        <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:4px;">
-                          <div style="width:{bar_w};height:100%;background:{color};border-radius:4px;"></div>
-                        </div>
-                        <span style="font-size:12px;color:{color};font-weight:700;min-width:44px;">{label}</span>
-                      </div>
-                      <span style="font-size:11px;color:#8BA6D3;">{hint_txt}</span>
-                    </div>
-                    ''', unsafe_allow_html=True)
-            else:
-                st.markdown('<label style="font-size:13px;color:#8BA6D3;font-weight:600;">Password <span style="color:#FF6B6B;">*</span></label>', unsafe_allow_html=True)
-                pw_in   = st.text_input("", type="password", key="auth_phone_pw_login",
-                                        label_visibility="collapsed")
-                name_in = ""
-
-            st.markdown('<div style="height:5px;"></div>', unsafe_allow_html=True)
-            remember_me_phone = st.checkbox("Keep me logged in", value=True, key="remember_me_phone")
-
-            btn_label = "Create Account" if mode == "signup" else "Sign In"
-            if st.button(btn_label, use_container_width=True, type="primary", key="auth_phone_submit"):
-                phone_clean = re.sub(r"\D", "", phone_in)
-
-                if not phone_clean:
-                    st.error("&#9888; Please enter your phone number."); return
-                if len(phone_clean) < 7 or len(phone_clean) > 15:
-                    st.error("&#9888; Please enter a valid phone number (7–15 digits)."); return
-
-                full_phone   = f"{cc_in.split(' ')[0]}{phone_clean}"
-                pseudo_email = f"{full_phone}@phone.auth"
-
-                if mode == "signup":
-                    if not name_in or len(name_in.strip()) < 2:
-                        st.error("&#9888; Please enter your full name."); return
-                    if not dob_in:
-                        st.error("&#9888; Please enter your date of birth."); return
-                    today = datetime.date.today()
-                    age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
-                    if age < 18:
-                        st.error("&#9888; You must be 18 or older to create an account."); return
-                    if len(pw_in) < 8:
-                        st.error("&#9888; Password must be at least 8 characters."); return
-                    if database.get_user(pseudo_email):
-                        st.error("&#9888; An account with this phone number already exists."); return
-
-                    st.session_state.auth_verify_pending = True
-                    st.session_state.mock_code = str(random.randint(1000, 9999))
-                    st.session_state.pending_action = "signup_phone"
-                    st.session_state.pending_data = {"email": pseudo_email, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d"), "display_contact": full_phone, "remember": remember_me_phone}
-                    st.rerun()
-
-                else:
-                    user = database.get_user(pseudo_email)
-                    if not user:
-                        st.error("&#9888; No account found for this number. Please sign up first.")
-                    elif user.get("provider", "email") not in ("phone", "email"):
-                        provider_name = str(user["provider"]).capitalize()
-                        st.warning(f"This number is linked to **{provider_name}**. Please use the {provider_name} button.")
-                    elif user["password_hash"] == database.hash_password(pw_in):
-                        st.session_state.auth_verify_pending = True
-                        st.session_state.mock_code = str(random.randint(1000, 9999))
-                        st.session_state.pending_action = "login_phone"
-                        st.session_state.pending_data = {"email": pseudo_email, "name": user["name"], "display_contact": full_phone, "remember": remember_me_phone}
-                        st.rerun()
-                    else:
-                        st.error("&#9888; Incorrect password. Please try again.")
-
-
-
-        # Switch mode
-        switch_label = "Already have an account? Sign in" if mode == "signup" else "Don't have an account? Sign up"
-        if st.button(switch_label, key="auth_switch_mode"):
-            st.session_state.auth_mode = "login" if mode == "signup" else "signup"
-            st.rerun()
+                    else: st.error("Invalid credentials.")
+        else:
+            st.text_input("PHONE NUMBER", placeholder="+44 ...", key="phone_f_final")
+            st.text_input("PASSWORD", type="password", key="phone_pw_f_final")
+            st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("✕  Close", key="auth_close", use_container_width=True):
-            st.session_state.show_auth = False
-            st.rerun()
+        lbl_mode = "Don't have an account? Sign up" if mode == "login" else "Already have an account? Sign in"
+        if st.button(lbl_mode, key="mode_toggle_f"):
+            st.session_state.auth_mode = "signup" if mode == "login" else "login"; st.rerun()
+
+        if st.button("✕ Close Modal", use_container_width=True, key="close_f_final"):
+            st.session_state.show_auth = False; st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
