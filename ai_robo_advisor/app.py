@@ -1920,21 +1920,35 @@ def render_auth_modal():
             padding: 12px 30px !important;
         }}
         
-        /* Input overrides */
-        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input {{
+        /* Wrapper overrides (fixes squished password eye icon) */
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"] {{
             background: rgba(255,255,255,0.05) !important;
-            color: white !important;
             border: 1px solid {BORDER} !important;
+            border-radius: 10px !important;
+        }}
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"]:focus-within {{
+            border-color: {ACCENT} !important;
+            box-shadow: 0 0 0 1px {ACCENT} !important;
+        }}
+        
+        /* Input tag text styling */
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"] input {{
+            background: transparent !important;
+            color: white !important;
+            -webkit-text-fill-color: white !important;
+            border: none !important;
+            box-shadow: none !important;
         }}
         
         /* Stop native browser autofill from turning inputs bright yellow */
-        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill,
-        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill:hover,
-        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill:focus,
-        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) .stTextInput input:-webkit-autofill:active {{
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"] input:-webkit-autofill,
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"] input:-webkit-autofill:hover,
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"] input:-webkit-autofill:focus,
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="input"] input:-webkit-autofill:active {{
             -webkit-box-shadow: 0 0 0 30px #161628 inset !important;
             -webkit-text-fill-color: #ffffff !important;
             transition: background-color 5000s ease-in-out 0s !important;
+            border-radius: 10px !important;
         }}
         </style>
         <div id="auth-modal-marker"></div>
