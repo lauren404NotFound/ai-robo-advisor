@@ -2104,6 +2104,16 @@ def render_auth_modal():
                         else: st.error("Invalid credentials.")
         else:
             # PHONE PICKER RESTORED
+            if mode == "signup":
+                name_in_phone = st.text_input("FULL NAME", placeholder="John Doe", key="phone_name_f")
+                dob_in_phone = st.date_input(
+                    "DATE OF BIRTH",
+                    value=datetime.date(1990, 1, 1),
+                    min_value=datetime.date(1900, 1, 1),
+                    max_value=datetime.date.today(),
+                    key="phone_dob_f"
+                )
+
             country_codes = ["+44 (UK)", "+1 (USA/Canada)", "+34 (Spain)", "+33 (France)", "+49 (Germany)", "+91 (India)", "+61 (Australia)", "+81 (Japan)"]
             p1, p2 = st.columns([0.4, 0.6])
             with p1:
@@ -2111,19 +2121,36 @@ def render_auth_modal():
             with p2:
                 p_num = st.text_input("NUMBER", placeholder="7123 456789", key="phone_f_final")
             
-            st.text_input("PASSWORD", type="password", key="phone_pw_f_final")
+            phone_pw_in = st.text_input("PASSWORD", type="password", key="phone_pw_f_final")
+            st.checkbox("Keep me logged in", value=True, key="rem_f_phone")
             
             _btn_col2, _ = st.columns(2)
             with _btn_col2:
-                if st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton"):
-                    if not p_num: st.error("Enter phone number."); return
-                    # Handle phone login here
+                btn_text = "Sign In Now" if mode == "login" else "Create Account"
+                if st.button(btn_text, type="primary", use_container_width=True, key="phone_gobutton"):
+                    if not p_num or not phone_pw_in: st.error("All fields mandatory."); return
+                    
                     full_phone = f"{p_code} {p_num}"
-                    st.info(f"Verification sent to {full_phone}")
                     st.session_state.auth_verify_pending = True
                     st.session_state.mock_code = "1234"
-                    st.session_state.pending_action = "login_phone"
-                    st.session_state.pending_data = {"phone": full_phone}
+                    
+                    if mode == "signup":
+                        if not name_in_phone: st.error("Name mandatory."); return
+                        
+                        from datetime import date
+                        today = date.today()
+                        age = today.year - dob_in_phone.year - ((today.month, today.day) < (dob_in_phone.month, dob_in_phone.day))
+                        if age < 18:
+                            st.error("You must be at least 18 years old to create an account.")
+                            return
+                            
+                        # Here you'd check DB if phone exists
+                        st.session_state.pending_action = "signup_phone"
+                        st.session_state.pending_data = {"phone": full_phone, "name": name_in_phone, "pw": phone_pw_in, "dob": dob_in_phone.strftime("%Y-%m-%d")}
+                    else:
+                        st.session_state.pending_action = "login_phone"
+                        st.session_state.pending_data = {"phone": full_phone}
+                    
                     st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
