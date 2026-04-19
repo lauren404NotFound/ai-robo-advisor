@@ -94,6 +94,52 @@ PROFILE_COLORS = {
 
 MODEL_PATH = os.path.join(_PKG_DIR, "model.pkl")
 
+GLOBAL_CURRENCIES = [
+    "AED (د.إ)", "AFN (؋)", "ALL (L)", "AMD (֏)", "ANG (ƒ)", "AOA (Kz)", "ARS ($)", "AUD (A$)", "AWG (ƒ)", "AZN (₼)", "BAM (KM)", "BBD ($)", 
+    "BDT (৳)", "BGN (лв)", "BHD (.د.ب)", "BIF (Fr)", "BMD ($)", "BND ($)", "BOB (Bs.)", "BRL (R$)", "BSD ($)", "BTN (Nu.)", "BWP (P)", "BYN (Br)", 
+    "BZD ($)", "CAD (C$)", "CDF (Fr)", "CHF (Fr)", "CLP ($)", "CNY (¥)", "COP ($)", "CRC (₡)", "CUP ($)", "CVE ($)", "CZK (Kč)", "DJF (Fr)", 
+    "DKK (kr)", "DOP ($)", "DZD (د.ج)", "EGP (£)", "ERN (Nfk)", "ETB (Br)", "EUR (€)", "FJD ($)", "FKP (£)", "GBP (£)", "GEL (₾)", "GHS (₵)", 
+    "GIP (£)", "GMD (D)", "GNF (Fr)", "GTQ (Q)", "GYD ($)", "HKD ($)", "HNL (L)", "HRK (kn)", "HTG (G)", "HUF (Ft)", "IDR (Rp)", "ILS (₪)", 
+    "INR (₹)", "IQD (ع.د)", "IRR (﷼)", "ISK (kr)", "JMD ($)", "JOD (د.ا)", "JPY (¥)", "KES (Sh)", "KGS (с)", "KHR (៛)", "KMF (Fr)", "KPW (₩)", 
+    "KRW (₩)", "KWD (د.ك)", "KYD ($)", "KZT (₸)", "LAK (₭)", "LBP (ل.ل)", "LKR (Rs)", "LRD ($)", "LSL (L)", "LYD (ل.د)", "MAD (د.م.)", "MDL (L)", 
+    "MGA (Ar)", "MKD (ден)", "MMK (Ks)", "MNT (₮)", "MOP (P)", "MRU (UM)", "MUR (₨)", "MVR (MVR)", "MWK (MK)", "MXN ($)", "MYR (RM)", "MZN (MT)", 
+    "NAD ($)", "NGN (₦)", "NIO (C$)", "NOK (kr)", "NPR (₨)", "NZD ($)", "OMR (ر.ع.)", "PAB (B/.)", "PEN (S/.)", "PGK (K)", "PHP (₱)", "PKR (₨)", 
+    "PLN (zł)", "PYG (₲)", "QAR (ر.ق)", "RON (lei)", "RSD (дин.)", "RUB (₽)", "RWF (Fr)", "SAR (ر.س)", "SBD ($)", "SCR (₨)", "SDG (ج.س.)", 
+    "SEK (kr)", "SGD ($)", "SHP (£)", "SLL (Le)", "SOS (Sh)", "SRD ($)", "SSP (£)", "STN (Db)", "SYP (£)", "SZL (L)", "THB (฿)", "TJS (SM)", 
+    "TMT (T)", "TND (د.ت)", "TOP (T$)", "TRY (₺)", "TTD ($)", "TWD (NT$)", "TZS (Sh)", "UAH (₴)", "UGX (Sh)", "USD ($)", "UYU ($)", "UZS (so'm)", 
+    "VES (Bs.S)", "VND (₫)", "VUV (Vt)", "WST (T)", "XAF (Fr)", "XCD ($)", "XOF (Fr)", "XPF (Fr)", "YER (﷼)", "ZAR (R)", "ZMW (ZK)", "ZWL ($)"
+]
+
+GLOBAL_COUNTRIES = [
+    "+1 (USA/Canada)", "+7 (Russia/Kazakhstan)", "+20 (Egypt)", "+27 (South Africa)", "+30 (Greece)", "+31 (Netherlands)", "+32 (Belgium)", 
+    "+33 (France)", "+34 (Spain)", "+36 (Hungary)", "+39 (Italy)", "+40 (Romania)", "+41 (Switzerland)", "+43 (Austria)", "+44 (UK)", 
+    "+45 (Denmark)", "+46 (Sweden)", "+47 (Norway)", "+48 (Poland)", "+49 (Germany)", "+51 (Peru)", "+52 (Mexico)", "+53 (Cuba)", "+54 (Argentina)", 
+    "+55 (Brazil)", "+56 (Chile)", "+57 (Colombia)", "+58 (Venezuela)", "+60 (Malaysia)", "+61 (Australia)", "+62 (Indonesia)", "+63 (Philippines)", 
+    "+64 (New Zealand)", "+65 (Singapore)", "+66 (Thailand)", "+81 (Japan)", "+82 (South Korea)", "+84 (Vietnam)", "+86 (China)", "+90 (Turkey)", 
+    "+91 (India)", "+92 (Pakistan)", "+93 (Afghanistan)", "+94 (Sri Lanka)", "+95 (Myanmar)", "+98 (Iran)", "+212 (Morocco)", "+213 (Algeria)", 
+    "+216 (Tunisia)", "+218 (Libya)", "+220 (Gambia)", "+221 (Senegal)", "+222 (Mauritania)", "+223 (Mali)", "+224 (Guinea)", "+225 (Ivory Coast)", 
+    "+226 (Burkina Faso)", "+227 (Niger)", "+228 (Togo)", "+229 (Benin)", "+230 (Mauritius)", "+231 (Liberia)", "+232 (Sierra Leone)", "+233 (Ghana)", 
+    "+234 (Nigeria)", "+235 (Chad)", "+236 (CAR)", "+237 (Cameroon)", "+238 (Cape Verde)", "+239 (STP)", "+240 (Equatorial Guinea)", "+241 (Gabon)", 
+    "+242 (Congo)", "+243 (DRC)", "+244 (Angola)", "+245 (Guinea-Bissau)", "+246 (Diego Garcia)", "+247 (Ascension)", "+248 (Seychelles)", "+249 (Sudan)", 
+    "+250 (Rwanda)", "+251 (Ethiopia)", "+252 (Somalia)", "+253 (Djibouti)", "+254 (Kenya)", "+255 (Tanzania)", "+256 (Uganda)", "+257 (Burundi)", 
+    "+258 (Mozambique)", "+260 (Zambia)", "+261 (Madagascar)", "+262 (Reunion/Mayotte)", "+263 (Zimbabwe)", "+264 (Namibia)", "+265 (Malawi)", 
+    "+266 (Lesotho)", "+267 (Botswana)", "+268 (Eswatini)", "+269 (Comoros)", "+290 (St Helena)", "+291 (Eritrea)", "+297 (Aruba)", "+298 (Faroe Islands)", 
+    "+299 (Greenland)", "+350 (Gibraltar)", "+351 (Portugal)", "+352 (Luxembourg)", "+353 (Ireland)", "+354 (Iceland)", "+355 (Albania)", "+356 (Malta)", 
+    "+357 (Cyprus)", "+358 (Finland)", "+359 (Bulgaria)", "+370 (Lithuania)", "+371 (Latvia)", "+372 (Estonia)", "+373 (Moldova)", "+374 (Armenia)", 
+    "+375 (Belarus)", "+376 (Andorra)", "+377 (Monaco)", "+378 (San Marino)", "+380 (Ukraine)", "+381 (Serbia)", "+382 (Montenegro)", "+383 (Kosovo)", 
+    "+385 (Croatia)", "+386 (Slovenia)", "+387 (Bosnia)", "+389 (North Macedonia)", "+420 (Czech Republic)", "+421 (Slovakia)", "+423 (Liechtenstein)", 
+    "+500 (Falkland Islands)", "+501 (Belize)", "+502 (Guatemala)", "+503 (El Salvador)", "+504 (Honduras)", "+505 (Nicaragua)", "+506 (Costa Rica)", 
+    "+507 (Panama)", "+508 (St Pierre & Miquelon)", "+509 (Haiti)", "+590 (Guadeloupe)", "+591 (Bolivia)", "+592 (Guyana)", "+593 (Ecuador)", 
+    "+594 (French Guiana)", "+595 (Paraguay)", "+596 (Martinique)", "+597 (Suriname)", "+598 (Uruguay)", "+599 (Curacao/Bonaire)", "+670 (East Timor)", 
+    "+672 (Antarctica/Norfolk)", "+673 (Brunei)", "+674 (Nauru)", "+675 (Papua New Guinea)", "+676 (Tonga)", "+677 (Solomon Islands)", "+678 (Vanuatu)", 
+    "+679 (Fiji)", "+680 (Palau)", "+681 (Wallis & Futuna)", "+682 (Cook Islands)", "+683 (Niue)", "+685 (Samoa)", "+686 (Kiribati)", "+687 (New Caledonia)", 
+    "+688 (Tuvalu)", "+689 (French Polynesia)", "+690 (Tokelau)", "+691 (Micronesia)", "+692 (Marshall Islands)", "+850 (North Korea)", "+852 (Hong Kong)", 
+    "+853 (Macau)", "+855 (Cambodia)", "+856 (Laos)", "+880 (Bangladesh)", "+886 (Taiwan)", "+960 (Maldives)", "+961 (Lebanon)", "+962 (Jordan)", 
+    "+963 (Syria)", "+964 (Iraq)", "+965 (Kuwait)", "+966 (Saudi Arabia)", "+967 (Yemen)", "+968 (Oman)", "+970 (Palestine)", "+971 (UAE)", "+972 (Israel)", 
+    "+973 (Bahrain)", "+974 (Qatar)", "+975 (Bhutan)", "+976 (Mongolia)", "+977 (Nepal)", "+992 (Tajikistan)", "+993 (Turkmenistan)", "+994 (Azerbaijan)", 
+    "+995 (Georgia)", "+996 (Kyrgyzstan)", "+998 (Uzbekistan)"
+]
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ICONS (Lucide-style Outline)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2113,10 +2159,9 @@ def render_auth_modal():
                     key="phone_dob_f"
                 )
 
-            country_codes = ["+44 (UK)", "+1 (USA/Canada)", "+34 (Spain)", "+33 (France)", "+49 (Germany)", "+91 (India)", "+61 (Australia)", "+81 (Japan)"]
             p1, p2 = st.columns([0.4, 0.6])
             with p1:
-                p_code = st.selectbox("CODE", country_codes, key="auth_p_code_f")
+                p_code = st.selectbox("CODE", GLOBAL_COUNTRIES, index=14, key="auth_p_code_f") # default +44 UK
             with p2:
                 p_num = st.text_input("NUMBER", placeholder="7123 456789", key="phone_f_final")
             
@@ -4035,9 +4080,8 @@ def page_more():
           <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:12px;">DISPLAY</div>
         """, unsafe_allow_html=True)
 
-        curr_opts = ["GBP (£)", "USD ($)", "EUR (€)", "JPY (¥)", "AUD (A$)", "CAD (C$)", "CHF (Fr)", "CNY (¥)", "INR (₹)", "HKD ($)", "SGD ($)"]
-        currency = st.selectbox("Default Currency", curr_opts,
-                                index=curr_opts.index(prefs.get("currency", "GBP (£)")) if prefs.get("currency") in curr_opts else 0,
+        currency = st.selectbox("Default Currency", GLOBAL_CURRENCIES,
+                                index=GLOBAL_CURRENCIES.index(prefs.get("currency", "GBP (£)")) if prefs.get("currency") in GLOBAL_CURRENCIES else 45,
                                 help="Sets how monetary values display across the dashboard")
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -4349,9 +4393,8 @@ def page_account():
             st.markdown(f'<div style="font-size:12px;color:#6D5EFC;font-weight:800;margin-bottom:12px;">CONTACT & IDENTITY</div>', unsafe_allow_html=True)
             c_col1, c_col2 = st.columns(2)
             with c_col1:
-                country_codes = ["+44 (UK)", "+1 (USA/Canada)", "+34 (Spain)", "+33 (France)", "+49 (Germany)", "+91 (India)", "+61 (Australia)", "+81 (Japan)"]
                 curr_code = prefs.get("phone_code", "+44 (UK)")
-                phone_code = st.selectbox("Country Code", country_codes, index=country_codes.index(curr_code) if curr_code in country_codes else 0)
+                phone_code = st.selectbox("Country Code", GLOBAL_COUNTRIES, index=GLOBAL_COUNTRIES.index(curr_code) if curr_code in GLOBAL_COUNTRIES else 14)
                 phone_num = st.text_input("Phone Number", value=prefs.get("phone", ""), placeholder="e.g. 7123 456789")
             with c_col2:
                 import datetime
