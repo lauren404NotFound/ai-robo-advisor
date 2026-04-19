@@ -1925,9 +1925,26 @@ def render_auth_modal():
                         st.rerun()
                     else: st.error("Invalid credentials.")
         else:
-            st.text_input("PHONE NUMBER", placeholder="+44 ...", key="phone_f_final")
+            # PHONE PICKER RESTORED
+            country_codes = ["+44 (UK)", "+1 (USA/Canada)", "+34 (Spain)", "+33 (France)", "+49 (Germany)", "+91 (India)", "+61 (Australia)", "+81 (Japan)"]
+            p1, p2 = st.columns([0.4, 0.6])
+            with p1:
+                p_code = st.selectbox("CODE", country_codes, key="auth_p_code_f")
+            with p2:
+                p_num = st.text_input("NUMBER", placeholder="7123 456789", key="phone_f_final")
+            
             st.text_input("PASSWORD", type="password", key="phone_pw_f_final")
-            st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton")
+            
+            if st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton"):
+                if not p_num: st.error("Enter phone number."); return
+                # Handle phone login here
+                full_phone = f"{p_code} {p_num}"
+                st.info(f"Verification sent to {full_phone}")
+                st.session_state.auth_verify_pending = True
+                st.session_state.mock_code = "1234"
+                st.session_state.pending_action = "login_phone"
+                st.session_state.pending_data = {"phone": full_phone}
+                st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
         lbl_mode = "Don't have an account? Sign up" if mode == "login" else "Already have an account? Sign in"
