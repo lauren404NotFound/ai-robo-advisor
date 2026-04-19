@@ -2047,6 +2047,14 @@ def render_auth_modal():
 
                     if mode == "signup":
                         if not name_in: st.error("Name mandatory."); return
+                        
+                        from datetime import date
+                        today = date.today()
+                        age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
+                        if age < 18:
+                            st.error("You must be at least 18 years old to create an account.")
+                            return
+                            
                         if database.get_user(email_in): st.error("Email exists."); return
                         st.session_state.auth_verify_pending = True
                         vcode = str(random.randint(1000, 9999))
