@@ -1825,15 +1825,23 @@ def render_auth_modal():
         st.markdown(f'<div style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 5px;">{title}</div>', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size: 14px; color: {MUTED}; margin-bottom: 30px;">Sign in to access your portfolio</div>', unsafe_allow_html=True)
         
-        # --- OAUTH (Dynamic Redirect Detection) ---
+        # --- OAUTH (Safe Link Generation) ---
         import asyncio
         prod_url = "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
         redirect_uri = prod_url if "streamlit.app" in prod_url else "http://localhost:8501"
 
-        google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "email", "profile"]))
-        linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "profile", "email"]))
+        google_url, linkedin_url = "#", "#"
+        try:
+            google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "email", "profile"]))
+        except Exception as e: 
+            st.error(f"Google Link Error: {e}")
 
-        # Single HTML block for both buttons - 100% stable
+        try:
+            linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "profile", "email"]))
+        except Exception as e: 
+            st.error(f"LinkedIn Link Error: {e}")
+
+        # Single HTML block for both buttons
         st.markdown(f"""
             <div style="display: flex; gap: 16px; margin-bottom: 24px;">
                 <a href="{google_url}" target="_self" class="social-btn">
