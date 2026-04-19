@@ -773,6 +773,52 @@ def get_currency_symbol() -> str:
     if "EUR" in curr: return "€"
     return "£"
 
+# ────────────────────────────────────────────────────────────────────────────────
+# SMTP REAL EMAIL VERIFICATION ENGINE
+# ────────────────────────────────────────────────────────────────────────────────
+def send_verification_email(to_email: str, code: str) -> bool:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    smtp_creds = st.secrets.get("smtp", {})
+    sender_email = smtp_creds.get("email", "")
+    sender_pw = smtp_creds.get("password", "")
+    
+    if not sender_email or not sender_pw:
+        return False # Fall back to mock
+        
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Your LEM StratIQ Verification Code"
+    msg["From"] = f"LEM StratIQ <{sender_email}>"
+    msg["To"] = to_email
+    
+    html = f"""
+    <html>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0A0A1C; color: #ffffff; padding: 40px 20px; text-align: center;">
+        <h2 style="color: #6D5EFC; font-weight: 800; letter-spacing: -0.5px;">Welcome to LEM StratIQ</h2>
+        <p style="color: #8BA6D3; font-size: 16px;">We're thrilled to have you! Your verification code is below:</p>
+        <div style="margin: 30px auto; background: #1E1F35; display: inline-block; padding: 15px 30px; border-radius: 12px; border: 1px solid rgba(109,94,252,0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h1 style="font-size: 42px; margin: 0; letter-spacing: 8px; color: #ffffff;">{code}</h1>
+        </div>
+        <p style="color: #556789; font-size: 12px;">This code will expire in 10 minutes. Do not share this code.</p>
+      </body>
+    </html>
+    """
+    
+    msg.attach(MIMEText(html, "html"))
+    
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_pw)
+        server.sendmail(sender_email, to_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"SMTP Flow Failed: {{e}}")
+        return False
+
 def _do_logout():
     tok = st.session_state.get("session_token")
     if tok:
@@ -1947,7 +1993,10 @@ def render_auth_modal():
         import random, re
         # VERIFICATION
         if st.session_state.get("auth_verify_pending"):
-            st.info(f"**Demo note:** Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
+            if st.session_state.get("real_email_sent"):
+                st.success(f"📧 A verification code was securely emailed to you!")
+            else:
+                st.info(f"**Demo note:** App Password not configured. Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
             code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input_final", max_chars=4)
             vc1, vc2 = st.columns(2)
             with vc1:
@@ -2000,17 +2049,25 @@ def render_auth_modal():
                         if not name_in: st.error("Name mandatory."); return
                         if database.get_user(email_in): st.error("Email exists."); return
                         st.session_state.auth_verify_pending = True
-                        st.session_state.mock_code = str(random.randint(1000, 9999))
+                        vcode = str(random.randint(1000, 9999))
+                        st.session_state.mock_code = vcode
                         st.session_state.pending_action = "signup_email"
                         st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d")}
+                        
+                        email_sent = send_verification_email(email_in, vcode)
+                        st.session_state.real_email_sent = email_sent
                         st.rerun()
                     else:
                         user = database.get_user(email_in)
                         if user and user["password_hash"] == database.hash_password(pw_in):
                             st.session_state.auth_verify_pending = True
-                            st.session_state.mock_code = str(random.randint(1000, 9999))
+                            vcode = str(random.randint(1000, 9999))
+                            st.session_state.mock_code = vcode
                             st.session_state.pending_action = "login_email"
                             st.session_state.pending_data = {"email": email_in, "name": user["name"]}
+                            
+                            email_sent = send_verification_email(email_in, vcode)
+                            st.session_state.real_email_sent = email_sent
                             st.rerun()
                         else: st.error("Invalid credentials.")
         else:
