@@ -30,14 +30,10 @@ from streamlit_oauth import OAuth2Component
 
 # Securely load credentials from .streamlit/secrets.toml
 try:
-    if "oauth" in st.secrets:
-        # Google built-in auth uses [auth] section in secrets, but we keep [oauth] for LinkedIn
-        LINKEDIN_CLIENT_ID = st.secrets["oauth"]["linkedin_client_id"]
-        LINKEDIN_CLIENT_SECRET = st.secrets["oauth"]["linkedin_client_secret"]
-        # LinkedIn manual redirect (no /oauth2callback)
-        REDIRECT_URI = st.secrets["oauth"].get("redirect_uri", "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app")
-    else:
-        raise KeyError
+    LINKEDIN_CLIENT_ID = st.secrets["linkedin"]["client_id"]
+    LINKEDIN_CLIENT_SECRET = st.secrets["linkedin"]["client_secret"]
+    # LinkedIn redirect — no /oauth2callback (that suffix is only for Google's built-in flow)
+    REDIRECT_URI = st.secrets["auth"].get("redirect_uri", "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app")
 except Exception:
     LINKEDIN_CLIENT_ID = ""
     LINKEDIN_CLIENT_SECRET = ""
