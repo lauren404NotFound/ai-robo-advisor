@@ -2652,7 +2652,7 @@ def page_dashboard():
         
         c1, c2, c3 = st.columns([1,2,1])
         with c2:
-            if st.button("Start Neural Assessment <span style='margin-left:4px;font-size:11px;'>→</span>", type="primary", use_container_width=True):
+            if st.button("Start Neural Assessment →", type="primary", use_container_width=True):
                 st.session_state.survey_page = "survey"
                 st.session_state.survey_step = 0
                 st.session_state.survey_answers = {}
