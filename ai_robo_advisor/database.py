@@ -1,173 +1,212 @@
 """
 database.py
 ===========
-SQLite-based persistence layer for DeepAtomicIQ.
-Stores user credentials (hashed) and historical assessment responses.
+MongoDB persistence layer for LEM StratIQ (powered by DeepAtomicIQ).
+Drop-in replacement for the previous SQLite layer.
+All function signatures are identical — no changes required in app.py.
 """
 
-import sqlite3
 import json
-import os
 import hashlib
 from datetime import datetime
 
+import streamlit as st
+from pymongo import MongoClient, DESCENDING
+from pymongo.errors import DuplicateKeyError
 
-# Absolute path for the database file
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "robo_advisor.db")
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        email TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        dob TEXT,
-        preferences_json TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # Assessments table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS assessments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_email TEXT NOT NULL,
-        answers_json TEXT NOT NULL,
-        result_json TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_email) REFERENCES users (email)
-    )
-    """)
-    
-    # Tickets table for Support inquiries
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_email TEXT NOT NULL,
-        subject TEXT NOT NULL,
-        message TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_email) REFERENCES users (email)
-    )
-    """)
-    
-    # Gracefully add the provider column to existing DB without nuking it
+# ── Connection ──────────────────────────────────────────────────────────────
+@st.cache_resource
+def _get_client():
+    """Return a cached MongoClient using the URI stored in st.secrets."""
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'email'")
-    except sqlite3.OperationalError:
-        pass  # Column already exists
-    
-    conn.commit()
-    conn.close()
+        uri = st.secrets["mongodb"]["uri"]
+        return MongoClient(uri, serverSelectionTimeoutMS=5000)
+    except Exception:
+        # Fallback for local testing if secrets aren't loaded
+        return MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=2000)
 
+def _db():
+    return _get_client()["lem_stratiq"]
+
+def _users():
+    return _db()["users"]
+
+def _assessments():
+    return _db()["assessments"]
+
+def _tickets():
+    return _db()["tickets"]
+
+def _watchlists():
+    return _db()["watchlists"]
+
+def _portfolio_configs():
+    return _db()["portfolio_configs"]
+
+def _notifications():
+    return _db()["notifications"]
+
+
+# ── Init (idempotent) ───────────────────────────────────────────────────────
+def init_db():
+    """Ensure indexes exist. Safe to call multiple times."""
+    try:
+        _users().create_index("email", unique=True)
+        _assessments().create_index([("user_email", 1), ("created_at", DESCENDING)])
+        _tickets().create_index("user_email")
+        _watchlists().create_index("user_email", unique=True)
+        _portfolio_configs().create_index("user_email", unique=True)
+        _notifications().create_index([("user_email", 1), ("created_at", DESCENDING)])
+    except Exception:
+        pass 
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-def create_user(email, name, password, dob, provider="email"):
+
+# ── Users ────────────────────────────────────────────────────────────────────
+def create_user(email: str, name: str, password: str, dob: str, provider: str = "email") -> bool:
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO users (email, name, password_hash, dob, provider) VALUES (?, ?, ?, ?, ?)",
-            (email, name, hash_password(password), dob, provider)
-        )
-        conn.commit()
-        conn.close()
+        _users().insert_one({
+            "email":         email,
+            "name":          name,
+            "password_hash": hash_password(password),
+            "dob":           dob,
+            "provider":      provider,
+            "preferences":   {},
+            "created_at":    datetime.utcnow(),
+        })
         return True
-    except sqlite3.IntegrityError:
+    except DuplicateKeyError:
         return False
 
-def create_user_oauth(email, name, provider):
+
+def create_user_oauth(email: str, name: str, provider: str) -> bool:
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO users (email, name, password_hash, dob, provider) VALUES (?, ?, ?, ?, ?)",
-            (email, name, "OAUTH_BYPASS", None, provider)  # Dummy hash because DB requires NOT NULL
-        )
-        conn.commit()
-        conn.close()
+        _users().insert_one({
+            "email":         email,
+            "name":          name,
+            "password_hash": "OAUTH_BYPASS",
+            "dob":           None,
+            "provider":      provider,
+            "preferences":   {},
+            "created_at":    datetime.utcnow(),
+        })
         return True
-    except sqlite3.IntegrityError:
+    except DuplicateKeyError:
         return False
 
-def update_user_preferences(email, preferences: dict):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE users SET preferences_json = ? WHERE email = ?",
-        (json.dumps(preferences), email)
+
+def get_user(email: str):
+    doc = _users().find_one({"email": email}, {"_id": 0})
+    if not doc:
+        return None
+    # Normalise preferences to JSON string so app.py code doesn't break
+    prefs = doc.get("preferences", {})
+    doc["preferences_json"] = json.dumps(prefs) if isinstance(prefs, dict) else prefs
+    return doc
+
+
+def update_user_preferences(email: str, preferences: dict):
+    _users().update_one(
+        {"email": email},
+        {"$set": {"preferences": preferences, "preferences_json": json.dumps(preferences)}}
     )
-    conn.commit()
-    conn.close()
-def update_password(email, new_password):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE users SET password_hash = ? WHERE email = ?",
-        (hash_password(new_password), email)
+
+
+def update_password(email: str, new_password: str) -> bool:
+    _users().update_one(
+        {"email": email},
+        {"$set": {"password_hash": hash_password(new_password)}}
     )
-    conn.commit()
-    conn.close()
     return True
 
-def get_user(email):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT email, name, password_hash, dob, provider, preferences_json FROM users WHERE email = ?", (email,))
-    user = cursor.fetchone()
-    conn.close()
-    if user:
-        return {
-            "email": user[0], 
-            "name": user[1], 
-            "password_hash": user[2], 
-            "dob": user[3],
-            "provider": user[4],
-            "preferences_json": user[5]
-        }
+
+# ── Watchlist Management ──────────────────────────────────────────────────────
+def get_watchlist(email: str) -> list:
+    doc = _watchlists().find_one({"user_email": email})
+    return doc.get("etfs", []) if doc else []
+
+def update_watchlist(email: str, etf_list: list):
+    _watchlists().update_one(
+        {"user_email": email},
+        {"$set": {"etfs": etf_list, "updated_at": datetime.utcnow()}},
+        upsert=True
+    )
+
+def toggle_watchlist_item(email: str, ticker: str):
+    current = get_watchlist(email)
+    if ticker in current:
+        current.remove(ticker)
+    else:
+        current.append(ticker)
+    update_watchlist(email, current)
+
+
+# ── Portfolio Configuration (Persistence for sliders) ─────────────────────────
+def save_portfolio_config(email: str, config: dict):
+    _portfolio_configs().update_one(
+        {"user_email": email},
+        {"$set": {"config": config, "updated_at": datetime.utcnow()}},
+        upsert=True
+    )
+
+def get_portfolio_config(email: str) -> dict:
+    doc = _portfolio_configs().find_one({"user_email": email})
+    return doc.get("config", {}) if doc else {}
+
+
+# ── Notifications Persistence ─────────────────────────────────────────────────
+def add_notification(email: str, title: str, message: str, level: str = "info"):
+    _notifications().insert_one({
+        "user_email": email,
+        "title":      title,
+        "message":    message,
+        "level":      level,
+        "is_read":    False,
+        "created_at": datetime.utcnow()
+    })
+
+def get_notifications(email: str, limit: int = 20) -> list:
+    cursor = _notifications().find(
+        {"user_email": email},
+        {"_id": 0}
+    ).sort("created_at", DESCENDING).limit(limit)
+    return list(cursor)
+
+
+# ── Assessments ───────────────────────────────────────────────────────────────
+def save_assessment(email: str, answers: dict, result: dict):
+    _assessments().insert_one({
+        "user_email": email,
+        "answers":    answers,
+        "result":     result,
+        "created_at": datetime.utcnow(),
+    })
+
+
+def get_latest_assessment(email: str):
+    doc = _assessments().find_one(
+        {"user_email": email},
+        sort=[("created_at", DESCENDING)]
+    )
+    if doc:
+        return {"answers": doc["answers"], "result": doc["result"]}
     return None
 
-def save_assessment(email, answers: dict, result: dict):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO assessments (user_email, answers_json, result_json) VALUES (?, ?, ?)",
-        (email, json.dumps(answers), json.dumps(result))
-    )
-    conn.commit()
-    conn.close()
 
-def save_ticket(email, subject, message):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO tickets (user_email, subject, message) VALUES (?, ?, ?)",
-        (email, subject, message)
-    )
-    conn.commit()
-    conn.close()
+# ── Support Tickets ───────────────────────────────────────────────────────────
+def save_ticket(email: str, subject: str, message: str):
+    _tickets().insert_one({
+        "user_email": email,
+        "subject":    subject,
+        "message":    message,
+        "status":     "pending",
+        "created_at": datetime.utcnow(),
+    })
 
-def get_latest_assessment(email):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT answers_json, result_json FROM assessments WHERE user_email = ? ORDER BY created_at DESC LIMIT 1",
-        (email,)
-    )
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return {
-            "answers": json.loads(row[0]),
-            "result": json.loads(row[1])
-        }
-    return None
 
-# Initialize on import
+# ── Init on import ────────────────────────────────────────────────────────────
 init_db()

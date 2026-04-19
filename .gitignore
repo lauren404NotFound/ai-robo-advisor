@@ -31,3 +31,4 @@ streamlit.log
 # IDEs
 .idea/
 .vscode/settings.json
+ai_robo_advisor/.streamlit/secrets.toml

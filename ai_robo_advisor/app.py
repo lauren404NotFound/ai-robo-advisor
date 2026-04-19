@@ -1737,22 +1737,22 @@ def render_auth_modal():
         .modal-overlay {
             position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(4,8,22,0.72);
-            backdrop-filter: blur(6px);
-            z-index: 999; pointer-events: none;
+            background: rgba(4,8,25,0.85);
+            z-index: 998; pointer-events: none;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {
             position: fixed !important;
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 92vw !important; max-width: 460px !important;
+            width: 92vw !important; max-width: 480px !important;
             max-height: 92vh !important; overflow-y: auto !important;
-            padding: 36px 32px 28px !important;
-            border-radius: 22px !important;
-            background: linear-gradient(160deg, #0d1630 0%, #121f3a 100%) !important;
-            border: 1px solid rgba(109,94,252,0.28) !important;
-            box-shadow: 0 0 0 1px rgba(109,94,252,0.12), 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(109,94,252,0.12) !important;
+            padding: 40px 36px 32px !important;
+            border-radius: 28px !important;
+            background: rgba(21, 28, 58, 0.98) !important;
+            backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(135,124,252,0.45) !important;
+            box-shadow: 0 0 0 1px rgba(109,94,252,0.1), 0 32px 80px rgba(0,0,0,0.9), 0 0 100px rgba(109,94,252,0.15) !important;
             z-index: 1000 !important; pointer-events: auto !important;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar,
@@ -1760,46 +1760,47 @@ def render_auth_modal():
             { width: 4px; }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar-thumb,
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar-thumb
-            { background: rgba(109,94,252,0.4); border-radius: 4px; }
+            { background: rgba(109,94,252,0.6); border-radius: 4px; }
 
         /* ── Form field groups ── */
-        .auth-form-group { margin-bottom: 16px; }
+        .auth-form-group { margin-bottom: 20px; }
         .auth-label {
-            display: block; font-size: 12px; font-weight: 700;
-            color: #8BA6D3; letter-spacing: .06em;
-            text-transform: uppercase; margin-bottom: 5px;
+            display: block; font-size: 13px; font-weight: 800;
+            color: #ffffff; letter-spacing: .06em;
+            text-transform: uppercase; margin-bottom: 8px;
         }
         .auth-required { color: #FF6B6B; margin-left: 2px; }
 
-        /* Tighten Streamlit input spacing inside modal */
+        /* Brighten Streamlit input spacing inside modal */
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput,
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput { margin-bottom: 0 !important; }
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput input,
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput input {
-            background: rgba(255,255,255,0.04) !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            border-radius: 10px !important;
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            border-radius: 12px !important;
             color: #ffffff !important;
-            font-size: 14px !important;
-            padding: 10px 14px !important;
-            transition: border-color .2s, box-shadow .2s !important;
+            font-size: 15px !important;
+            padding: 12px 16px !important;
+            transition: all .2s !important;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput input:focus,
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput input:focus {
-            border-color: #6D5EFC !important;
-            box-shadow: 0 0 0 3px rgba(109,94,252,0.18) !important;
+            border-color: #877cfc !important;
+            background: rgba(255,255,255,0.12) !important;
+            box-shadow: 0 0 0 4px rgba(109,94,252,0.25) !important;
         }
 
         /* Validation pills */
-        .auth-ok  { font-size:11px; color:#8EF6D1; margin: 3px 0 10px; display:flex; align-items:center; gap:4px; }
-        .auth-err { font-size:11px; color:#FF6B6B; margin: 3px 0 10px; display:flex; align-items:center; gap:4px; }
+        .auth-ok  { font-size:12px; color:#8EF6D1; margin: 4px 0 12px; display:flex; align-items:center; gap:6px; font-weight:600; }
+        .auth-err { font-size:12px; color:#FF6B6B; margin: 4px 0 12px; display:flex; align-items:center; gap:6px; font-weight:600; }
 
         /* Modal title */
         .modal-title {
-            font-size: 26px; font-weight: 900; color: #ffffff;
-            letter-spacing: -0.03em; margin-bottom: 6px;
+            font-size: 32px; font-weight: 900; color: #ffffff;
+            letter-spacing: -0.04em; margin-bottom: 8px;
         }
-        .modal-sub { font-size: 13px; color: #8BA6D3; }
+        .modal-sub { font-size: 15px; color: #a0b4d0; font-weight: 500; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -1854,13 +1855,13 @@ def render_auth_modal():
         st.markdown("""
         <style>
         .oauth-native-btn {
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            color: white !important;
-            border-radius: 12px !important;
-            height: 48px !important;
-            font-weight: 600 !important;
-            transition: all 0.2s ease !important;
+            background-color: rgba(255, 255, 255, 0.12) !important;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+            border-radius: 14px !important;
+            height: 52px !important;
+            font-weight: 800 !important;
+            transition: all 0.25s ease !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -1869,9 +1870,10 @@ def render_auth_modal():
         }
 
         .oauth-native-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1) !important;
-            border-color: rgba(109, 94, 252, 0.6) !important;
-            color: white !important;
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border-color: #877cfc !important;
+            box-shadow: 0 0 20px rgba(135,124,252,0.3) !important;
+            color: #ffffff !important;
         }
 
         .google-native::before {
@@ -3045,7 +3047,27 @@ def _render_portfolio():
         st.plotly_chart(fig_r, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── Row 2: Performance | Growth ──────────────────────────────
+        # ── Strategic Tuning Panel (Persistent) ───────────────────────────────
+        st.markdown(f'<div class="card" style="margin-top:20px;"><div class="panel-title">{get_svg("settings", 14, ACCENT)} &nbsp; Strategic AI Tuning</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:15px;">Manually override the neural manifold parameters to tune your risk exposure.</div>', unsafe_allow_html=True)
+        
+        # Load existing config from DB if available
+        saved_config = database.get_portfolio_config(email)
+        def_delta = saved_config.get("delta", iq.get("delta", 0.5))
+        def_gamma = saved_config.get("gamma", iq.get("gamma", 0.1))
+        
+        new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(def_delta), 0.1, help="Higher = more aggressive filtering of market noise.")
+        new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(def_gamma), 0.001, format="%.3f", help="Higher = faster reaction to recent volatility.")
+        
+        if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
+            new_config = {"delta": new_delta, "gamma": new_gamma}
+            database.save_portfolio_config(email, new_config)
+            database.add_notification(email, "Strategic Sync Successful", f"Your MINN parameters (δ={new_delta}, γ={new_gamma}) have been synchronized with the LEM StratIQ cloud.", "success")
+            st.success("Configuration Pushed to MongoDB Atlas!")
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Row 2: Performance | Intelligence Feed ────────────────────────────
     c1, c2 = st.columns([1.3, 1.0], gap="large")
     with c1:
         st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">🎲 Monte Carlo Simulation</div>We ran 2,000 different simulated futures for your portfolio based on historical data. This shows the range of possible outcomes over time — giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
@@ -3053,8 +3075,37 @@ def _render_portfolio():
         st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
-        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Compounding Projection <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📈 Compounding Growth</div>This line shows the expected average growth of your money over your investment horizon. It assumes consistent investment, showing how compounding interest — earning returns on your previous returns — accelerates wealth over decades.</span></div></div>', unsafe_allow_html=True)
-        st.plotly_chart(growth_line(port["growth_curve"], color), use_container_width=True)
+        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("zap", 14, ACCENT)} &nbsp; Intelligence Feed</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:20px;">Real-time feed of neural diagnostic events and profile changes.</div>', unsafe_allow_html=True)
+        
+        # Load from MongoDB
+        notifs = database.get_notifications(email, limit=4)
+        
+        if not notifs:
+            st.markdown(f"""
+            <div style="text-align:center;padding:40px 20px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1);">
+                <div style="font-size:32px;margin-bottom:10px;">📡</div>
+                <div style="font-size:12px;color:#8BA6D3;font-weight:700;">Radar Scan Active</div>
+                <div style="font-size:10px;color:{MUTED};">No recent events detected on this manifold.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            for n in notifs:
+                icon = "✅" if n['level'] == "success" else "ℹ️"
+                time_str = n['created_at'].strftime("%H:%M")
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span style="font-size:11px;font-weight:800;color:#fff;">{icon} {n['title']}</span>
+                        <span style="font-size:9px;color:{MUTED};">{time_str}</span>
+                    </div>
+                    <div style="font-size:10px;color:#8BA6D3;line-height:1.4;">{n['message']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+        if st.button("Archive Event Log", use_container_width=True):
+            st.info("Logs are archived in MongoDB Atlas.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -3563,6 +3614,24 @@ def page_market():
         tape_items += f'<div class="ticker-item"><span class="ticker-sym">{ticker}</span><span class="ticker-price">{price}</span><span class="{cls}">{arrow} {chg}</span></div>'
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-track">{tape_items}{tape_items}</div></div>', unsafe_allow_html=True)
 
+    # ── My Watchlist Bar (Load from MongoDB) ──────────────────────────────────
+    email = st.session_state.get("user_email")
+    if email:
+        watchlist = database.get_watchlist(email)
+        if watchlist:
+            st.markdown(f'<div class="mkt-section-title">{get_svg("star", 16)} My Favorites <span>· Quick access to pinned assets</span></div>', unsafe_allow_html=True)
+            w_cols = st.columns(min(len(watchlist), 6))
+            for i, ticker in enumerate(watchlist[:6]):
+                w_live = next((m for m in markets if m[0] == ticker), None)
+                if w_live:
+                    col_w = "#8EF6D1" if w_live[4] else "#FF6B6B"
+                    with w_cols[i]:
+                        st.markdown(f"""
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+                          <div><div style="font-size:10px;font-weight:800;color:#8BA6D3;">{ticker}</div><div style="font-size:14px;font-weight:900;color:#fff;">{w_live[2]}</div></div>
+                          <div style="text-align:right;"><div style="font-size:11px;font-weight:800;color:{col_w};">{"▲" if w_live[4] else "▼"} {w_live[3]}</div></div>
+                        </div>""", unsafe_allow_html=True)
+
     # ── Top Movers ────────────────────────────────────────────────────────────
     st.markdown(f'<div class="mkt-section-title">{get_svg("zap", 16)} Top Movers <span>· Today\'s leaders & laggards</span></div>', unsafe_allow_html=True)
     mc1, mc2 = st.columns(2, gap="large")
@@ -3625,6 +3694,13 @@ def page_market():
   </div>
 </div>""", unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"spark_{ticker}")
+            
+            # Persistent Favoriting
+            is_pinned = ticker in watchlist
+            btn_lbl = f"{'★' if is_pinned else '☆'} Pin to Favorites" if not is_pinned else "★ Pinned"
+            if st.button(btn_lbl, key=f"pin_btn_{ticker}", use_container_width=True):
+                database.toggle_watchlist_item(email, ticker)
+                st.rerun()
 
     # ── Interactive Price Chart ───────────────────────────────────────────────
     st.markdown(f'<div class="mkt-section-title">{get_svg("activity", 16)} Deep-Dive Chart <span>· 30-day price history with moving averages</span></div>', unsafe_allow_html=True)
