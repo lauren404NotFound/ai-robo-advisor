@@ -39,28 +39,11 @@ try:
     else:
         raise KeyError
 except Exception:
-    import toml
-    try:
-        sec = toml.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".streamlit", "secrets.toml"))
-        LINKEDIN_CLIENT_ID = sec["oauth"]["linkedin_client_id"]
-        LINKEDIN_CLIENT_SECRET = sec["oauth"]["linkedin_client_secret"]
-        REDIRECT_URI = sec["oauth"].get("redirect_uri", "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app")
-    except Exception:
-        LINKEDIN_CLIENT_ID = ""
-        LINKEDIN_CLIENT_SECRET = ""
-        REDIRECT_URI = "http://localhost:8501"
-        GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
-        LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET = "MISSING_ID", "MISSING_SECRET"
-        REDIRECT_URI = "http://localhost:8501"
+    LINKEDIN_CLIENT_ID = ""
+    LINKEDIN_CLIENT_SECRET = ""
+    REDIRECT_URI = "http://localhost:8501"
 
-oauth2 = OAuth2Component(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    "https://accounts.google.com/o/oauth2/auth",
-    "https://oauth2.googleapis.com/token",
-    "https://www.googleapis.com/oauth2/v1/userinfo",
-)
-
+# LinkedIn manual component (still needed)
 linkedin_oauth = OAuth2Component(
     LINKEDIN_CLIENT_ID,
     LINKEDIN_CLIENT_SECRET,
