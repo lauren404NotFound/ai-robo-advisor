@@ -2006,10 +2006,10 @@ def render_auth_modal():
         # Tabs
         t1, t2 = st.columns(2)
         with t1:
-            if st.button("✉️ Email", use_container_width=True, type="primary" if tab == "email" else "secondary", key="email_tab_btn"):
+            if st.button("Email", icon=":material/mail:", use_container_width=True, type="primary" if tab == "email" else "secondary", key="email_tab_btn"):
                 st.session_state.auth_tab = "email"; st.rerun()
         with t2:
-            if st.button("📱 Phone", use_container_width=True, type="primary" if tab == "phone" else "secondary", key="phone_tab_btn"):
+            if st.button("Phone", icon=":material/phone_iphone:", use_container_width=True, type="primary" if tab == "phone" else "secondary", key="phone_tab_btn"):
                 st.session_state.auth_tab = "phone"; st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -2018,7 +2018,7 @@ def render_auth_modal():
         # VERIFICATION
         if st.session_state.get("auth_verify_pending"):
             if st.session_state.get("real_email_sent"):
-                st.success(f"📧 A verification code was securely emailed to you!")
+                st.success(f"A verification code was securely emailed to you!", icon=":material/mail:")
             else:
                 st.info(f"**Demo note:** App Password not configured. Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
             code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input_final", max_chars=4)
