@@ -1530,9 +1530,9 @@ def render_nav():
         """
     else:
         auth_html = f"""
-          <a class="nav-act-btn login-btn"  href="?auth=login{tp}">Login</a>
-          <a class="nav-act-btn signup-btn" href="?auth=signup{tp}">Sign Up</a>
-          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}">Get Started <span style='margin-left:4px;font-size:11px;'>→</span></a>
+          <a class="nav-act-btn login-btn"  href="?auth=login{tp}" target="_self" rel="noopener noreferrer">Login</a>
+          <a class="nav-act-btn signup-btn" href="?auth=signup{tp}" target="_self" rel="noopener noreferrer">Sign Up</a>
+          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}" target="_self" rel="noopener noreferrer">Get Started <span style='margin-left:4px;font-size:11px;'>→</span></a>
         """
 
     st.markdown(f"""
@@ -1737,7 +1737,8 @@ def render_auth_modal():
         .modal-overlay {
             position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(4,8,25,0.85);
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
             z-index: 998; pointer-events: none;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
