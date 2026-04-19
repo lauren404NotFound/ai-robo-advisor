@@ -1976,15 +1976,15 @@ def render_auth_modal():
             _btn_col2, _ = st.columns(2)
             with _btn_col2:
                 if st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton"):
-                if not p_num: st.error("Enter phone number."); return
-                # Handle phone login here
-                full_phone = f"{p_code} {p_num}"
-                st.info(f"Verification sent to {full_phone}")
-                st.session_state.auth_verify_pending = True
-                st.session_state.mock_code = "1234"
-                st.session_state.pending_action = "login_phone"
-                st.session_state.pending_data = {"phone": full_phone}
-                st.rerun()
+                    if not p_num: st.error("Enter phone number."); return
+                    # Handle phone login here
+                    full_phone = f"{p_code} {p_num}"
+                    st.info(f"Verification sent to {full_phone}")
+                    st.session_state.auth_verify_pending = True
+                    st.session_state.mock_code = "1234"
+                    st.session_state.pending_action = "login_phone"
+                    st.session_state.pending_data = {"phone": full_phone}
+                    st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
         lbl_mode = "Don't have an account? Sign up" if mode == "login" else "Already have an account? Sign in"
