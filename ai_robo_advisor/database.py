@@ -105,11 +105,21 @@ def update_user_preferences(email, preferences: dict):
     )
     conn.commit()
     conn.close()
+def update_password(email, new_password):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE email = ?",
+        (hash_password(new_password), email)
+    )
+    conn.commit()
+    conn.close()
+    return True
 
 def get_user(email):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT email, name, password_hash, dob, provider FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT email, name, password_hash, dob, provider, preferences_json FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
     conn.close()
     if user:
@@ -118,7 +128,8 @@ def get_user(email):
             "name": user[1], 
             "password_hash": user[2], 
             "dob": user[3],
-            "provider": user[4]
+            "provider": user[4],
+            "preferences_json": user[5]
         }
     return None
 

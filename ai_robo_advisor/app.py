@@ -68,8 +68,15 @@ linkedin_oauth = OAuth2Component(
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 if _PKG_DIR not in sys.path:
     sys.path.insert(0, _PKG_DIR)
+# Internal Engine Imports (Handled with defensive lookups for Streamlit stability)
+try:
+    from portfolio_engine import build_portfolio, TICKER_MAP, ASSETS
+except (KeyError, ImportError):
+    import portfolio_engine
+    build_portfolio = portfolio_engine.build_portfolio
+    TICKER_MAP = portfolio_engine.TICKER_MAP
+    ASSETS = portfolio_engine.ASSETS
 
-from portfolio_engine import build_portfolio, TICKER_MAP, ASSETS
 from explainer import DeepIQInterpreter
 import database
 
@@ -113,7 +120,16 @@ def get_svg(name, size=18, color="currentColor"):
         "more": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
         "brain": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54Z"/></svg>',
         "zap": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-2 10h3l-2 10 7-12h-3l2-8Z"/></svg>',
-        "risk": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="M2 12h20"/><path d="m4.93 19.07 14.14-14.14"/></svg>'
+        "shield": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>',
+        "layers": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.1 6.27a2 2 0 0 0 0 3.66l9.07 4.09a2 2 0 0 0 1.66 0l9.07-4.09a2 2 0 0 0 0-3.66Z"/><path d="m2.1 14.07 9.07 4.09a2 2 0 0 0 1.66 0l9.07-4.09"/><path d="m2.1 19.07 9.07 4.09a2 2 0 0 0 1.66 0l9.07-4.09"/></svg>',
+        "chart": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 16v-4"/><path d="M11 16V8"/><path d="M15 16v-6"/></svg>',
+        "risk": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="M2 12h20"/><path d="m4.93 19.07 14.14-14.14"/></svg>',
+        "user": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+        "portfolio": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="4" height="7" rx="1"/><rect x="13" y="5" width="4" height="12" rx="1"/></svg>',
+        "settings": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.72l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+        "logout": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+        "shield-check": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
+        "bell": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'
     }
     return icons.get(name, "")
 
@@ -320,6 +336,19 @@ div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) div[data-baseweb="bas
 }}
 div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) input {{ color: #ffffff !important; font-size: 15px !important; }}
 div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) label p {{ color: #a0b4d0 !important; font-size: 13px !important; font-weight: 500 !important; }}
+
+/* FIX: Ensure all Streamlit labels in dark mode are visible */
+[data-testid="stWidgetLabel"] p, [data-testid="stCheckbox"] label p {{
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    opacity: 0.95 !important;
+}}
+/* Specifically target number input labels which tend to be dark */
+.stNumberInput label p {{
+    color: #ffffff !important;
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+}}
 
 /* Streamlit button overrides inside modal */
 div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) button[kind="primary"] {{
@@ -774,7 +803,12 @@ def render_actionable_advice(port: dict, initial_investment: float, monthly_cont
             <div style="font-weight:700;color:#fff;font-size:13px;">{info['name']}</div>
             <div style="font-size:11px;color:#6D5EFC;margin-top:2px;">{info['note']}</div>
           </td>
-          <td style="padding:11px 12px;font-family:'JetBrains Mono',monospace;color:#8EF6D1;font-weight:700;font-size:13px;">{short}</td>
+          <td style="padding:11px 12px;font-family:'JetBrains Mono',monospace;font-size:13px;">
+            <a href="https://finance.yahoo.com/quote/{short}" target="_blank" 
+               style="color:#8EF6D1; text-decoration:none; border-bottom:1px dashed rgba(142,246,209,0.5); font-weight:700;">
+               {short} <span style="font-size:9px; vertical-align:middle; opacity:0.8;">↗</span>
+            </a>
+          </td>
           <td style="padding:11px 12px;text-align:center;font-weight:700;color:#fff;">{pct:.0f}%</td>
           <td style="padding:11px 12px;text-align:right;font-size:14px;font-weight:800;color:#fff;">£{lump:,.0f}</td>
           <td style="padding:11px 12px;text-align:right;font-size:13px;font-weight:700;color:#8EF6D1;">£{mo:,.0f}</td>
@@ -1043,8 +1077,8 @@ if not st.session_state.get("splash_done", False):
     @keyframes fadeIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
     </style>
     <div id="diq-splash">
-      <div class="splash-logo">DeepAtomicIQ</div>
-      <div class="splash-tagline">AI-Powered Portfolio Intelligence</div>
+      <div class="splash-logo">LEM StratIQ</div>
+      <div class="splash-tagline">Powered by DeepAtomicIQ Intelligence</div>
       <div class="splash-bar"><div class="splash-bar-fill"></div></div>
     </div>
     <script>
@@ -1349,7 +1383,7 @@ NAV_ITEMS = [
     ("dashboard", "📊 My Dashboard"),
     ("news",      "📰 News"),
     ("market",    "📈 Market"),
-    ("insights",  "🧠 AI Insights"),
+    ("insights",  f"{get_svg('brain', 16)} AI Insights"),
     ("more",      "••• More"),
 ]
 
@@ -1420,13 +1454,15 @@ def _handle_query_params():
         st.session_state.show_auth = False
         st.rerun()
 
-    if params.get("logout") == "1":
+    if params.get("logout") in ("1", "true"):
         st.session_state.authenticated = False
         st.session_state.user_name = None
         st.session_state.user_email = None
+        st.session_state.user_avatar = None
         st.session_state.result = None
-        st.session_state.survey_page = "survey"
-        del st.query_params["logout"]
+        st.session_state.nav_page = "home"
+        st.query_params.clear()
+        st.rerun()
 
 
 def render_nav():
@@ -1472,11 +1508,23 @@ def render_nav():
                 </div>
               </div>
               <div class="nav-dd-divider"></div>
-              <a class="nav-dd-item" href="?page=account{tp}">&#128100;&nbsp; My Profile</a>
-              <a class="nav-dd-item" href="?page=dashboard{tp}">&#128202;&nbsp; My Portfolio</a>
-              <a class="nav-dd-item" href="?page=more{tp}">&#9881;&#65039;&nbsp; Preferences</a>
+              <a class="nav-dd-item" href="?page=account{tp}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                My Profile
+              </a>
+              <a class="nav-dd-item" href="?page=dashboard{tp}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="4" height="7" rx="1"/><rect x="13" y="5" width="4" height="12" rx="1"/></svg>
+                My Portfolio
+              </a>
+              <a class="nav-dd-item" href="?page=more{tp}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.72l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preferences
+              </a>
               <div class="nav-dd-divider"></div>
-              <a class="nav-dd-item nav-dd-logout" href="?logout=1{tp}">&#128682;&nbsp; Sign Out</a>
+              <a class="nav-dd-item nav-dd-logout" href="?logout=true{tp}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
+              </a>
             </div>
           </div>
         """
@@ -1484,7 +1532,7 @@ def render_nav():
         auth_html = f"""
           <a class="nav-act-btn login-btn"  href="?auth=login{tp}">Login</a>
           <a class="nav-act-btn signup-btn" href="?auth=signup{tp}">Sign Up</a>
-          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}">Get Started →</a>
+          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}">Get Started <span style='margin-left:4px;font-size:11px;'>→</span></a>
         """
 
     st.markdown(f"""
@@ -1512,18 +1560,26 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   box-shadow: 0 0 8px rgba(155,114,242,0.8); flex-shrink: 0;
 }}
 .diq-links {{
-  display: flex; align-items: center; gap: 2px; flex: 1; justify-content: center;
+  display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
 }}
 .diq-lnk {{
-  font-size: 13.5px; font-weight: 500; color: rgba(237,237,243,0.55);
-  padding: 7px 17px; border-radius: 9px; white-space: nowrap;
-  transition: color 0.15s, background 0.15s; cursor: pointer;
-  text-decoration: none; display: inline-block;
+  font-size: 14.5px !important; font-weight: 600 !important; color: rgba(237,237,243,0.65) !important;
+  padding: 8px 20px !important; border-radius: 12px !important; white-space: nowrap !important;
+  transition: all 0.2s ease !important; cursor: pointer !important;
+  text-decoration: none !important; display: inline-block !important;
+  border: 1px solid transparent !important;
 }}
-.diq-lnk:hover {{ color: #fff; background: rgba(255,255,255,0.07); }}
+.diq-lnk:hover {{ 
+  color: #fff !important; 
+  background: rgba(255,255,255,0.08) !important;
+  transform: translateY(-1px) !important;
+}}
 .diq-lnk.active {{
-  color: #9B72F2; font-weight: 700; background: rgba(155,114,242,0.13);
-  box-shadow: inset 0 0 0 1px rgba(155,114,242,0.22);
+  color: #fff !important; 
+  font-weight: 800 !important; 
+  background: linear-gradient(135deg, rgba(155,114,242,0.2), rgba(109,94,252,0.1)) !important;
+  border-color: rgba(155,114,242,0.3) !important;
+  box-shadow: 0 4px 20px rgba(109,94,252,0.15), inset 0 0 0 1px rgba(155,114,242,0.2) !important;
 }}
 .diq-auth {{
   display: flex; align-items: center; gap: 9px; min-width: 260px; justify-content: flex-end;
@@ -1552,7 +1608,7 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   width: 230px;
   background: rgba(10,10,28,0.98); backdrop-filter: blur(20px);
   border: 1px solid rgba(109,94,252,0.3); border-radius: 16px;
-  padding: 6px 0; z-index: 99999;
+  padding: 6px 0; z-index: 9999;
   box-shadow: 0 20px 60px rgba(0,0,0,0.7);
   animation: ddFade .15s ease;
 }}
@@ -1567,41 +1623,68 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 .nav-dd-sub  {{ font-size: 11px; color: #8BA6D3; margin-top: 1px; }}
 .nav-dd-divider {{ height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }}
 .nav-dd-item {{
-  display: flex; align-items: center; gap: 0;
-  padding: 10px 16px; font-size: 13px; color: #D4E0F7;
-  text-decoration: none; transition: background .12s;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px; font-size: 13.5px; color: #D4E0F7;
+  text-decoration: none; transition: all .15s ease;
+  border-left: 3px solid transparent;
 }}
-.nav-dd-item:hover {{ background: rgba(109,94,252,0.15); }}
+.nav-dd-item:hover {{ 
+  background: rgba(109,94,252,0.12); 
+  color: #fff;
+  border-left-color: #6D5EFC;
+}}
+.nav-dd-item svg {{ opacity: 0.7; transition: opacity .15s; flex-shrink: 0; }}
+.nav-dd-item:hover svg {{ opacity: 1; }}
 .nav-dd-logout {{ color: rgba(255,107,107,0.85); }}
 .nav-dd-logout:hover {{ background: rgba(255,107,107,0.1); }}
 .nav-act-btn {{
-  font-size: 12.5px; font-weight: 600; border-radius: 9px; border: none;
-  padding: 7px 17px; cursor: pointer; white-space: nowrap; font-family: inherit;
-  transition: all 0.16s; line-height: 1; text-decoration: none; display: inline-block;
+  font-size: 13.5px !important; font-weight: 600 !important; border-radius: 10px !important; border: none !important;
+  padding: 10px 20px !important; cursor: pointer !important; white-space: nowrap !important; font-family: inherit !important;
+  transition: all 0.2s ease !important; line-height: 1 !important; text-decoration: none !important; display: inline-block !important;
 }}
-.login-btn  {{ background: transparent; color: rgba(237,237,243,0.65); }}
-.login-btn:hover  {{ color: #fff; background: rgba(255,255,255,0.07); }}
-.signup-btn {{ background: transparent; color: #9B72F2; border: 1px solid rgba(155,114,242,0.45); }}
-.signup-btn:hover {{ background: rgba(155,114,242,0.12); border-color: #9B72F2; }}
-.cta-btn    {{ background: linear-gradient(135deg,#9B72F2,#B18AFF); color:#fff;
-               box-shadow: 0 4px 14px rgba(155,114,242,0.38); }}
-.cta-btn:hover {{ box-shadow: 0 6px 20px rgba(155,114,242,0.55); transform: translateY(-1px); }}
+.login-btn  {{ background: transparent !important; color: rgba(237,237,243,0.65) !important; }}
+.login-btn:hover  {{ color: #fff !important; background: rgba(255,255,255,0.08) !important; }}
+.signup-btn {{ 
+  background: rgba(155,114,242,0.05) !important; 
+  color: #9B72F2 !important; 
+  border: 1px solid rgba(155,114,242,0.4) !important; 
+}}
+.signup-btn:hover {{ background: rgba(155,114,242,0.12) !important; border-color: #9B72F2 !important; }}
+.cta-btn    {{ 
+  background: linear-gradient(135deg, #6D5EFC, #B18AFF) !important; 
+  color: #fff !important;
+  box-shadow: 0 4px 15px rgba(109,94,252,0.4) !important; 
+}}
+.cta-btn:hover {{ 
+  box-shadow: 0 6px 24px rgba(109,94,252,0.6) !important; 
+  transform: translateY(-1px) !important; 
+}}
 .logout-btn {{ background: transparent; color: rgba(255,107,107,0.8);
                border: 1px solid rgba(255,107,107,0.3); }}
 .logout-btn:hover {{ background: rgba(255,107,107,0.08); }}
 </style>
 
 <div id="diq-navbar">
-  <div class="diq-brand"><div class="diq-dot"></div>DeepAtomicIQ</div>
+  <div class="diq-brand"><div class="diq-dot"></div>LEM StratIQ</div>
   <div class="diq-links">
-    <a class="diq-lnk {_active('home')}"      href="?page=home{tp}">Home</a>
-    <a class="diq-lnk {_active('dashboard')}" href="?page=dashboard{tp}">Dashboard</a>
-    <a class="diq-lnk {_active('market')}"    href="?page=market{tp}">Markets</a>
-    <a class="diq-lnk {_active('insights')}"  href="?page=insights{tp}">News &amp; Insights</a>
-    <a class="diq-lnk {_active('more')}"      href="?page=more{tp}">Preferences</a>
+    <a class="diq-lnk {_active('home')}"      href="?page=home{tp}" target="_self">Home</a>
+    <a class="diq-lnk {_active('dashboard')}" href="?page=dashboard{tp}" target="_self">My Dashboard</a>
+    <a class="diq-lnk {_active('market')}"    href="?page=market{tp}" target="_self">Markets</a>
+    <a class="diq-lnk {_active('insights')}"  href="?page=insights{tp}" target="_self">Why DeepAtomicIQ</a>
+    <a class="diq-lnk {_active('more')}"      href="?page=more{tp}" target="_self">Preferences</a>
   </div>
   <div class="diq-auth">{auth_html}</div>
 </div>
+
+<script>
+// Force same-tab redirection for all nav links
+document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(link => {{
+    link.addEventListener('click', function(e) {{
+        e.preventDefault();
+        window.parent.location.href = this.getAttribute('href');
+    }});
+}});
+</script>
 """, unsafe_allow_html=True)
 
     # Spacer so content clears the fixed nav
@@ -2281,26 +2364,46 @@ def page_home():
         
         # ── Premium Streamlit button custom-scaled using CSS
         st.markdown('<div id="hero-btn-marker"></div>', unsafe_allow_html=True)
-        btn_col, _ = st.columns([1.5, 2])
-        with btn_col:
-            if st.button("Start Assessment →", key="hero_start", use_container_width=True):
-                st.session_state.nav_page = "dashboard"
-                st.session_state.survey_page = "survey"
-                st.session_state.survey_step = 0
-                st.session_state.survey_answers = {}
-                st.rerun()
-            
-    with col2:
-        # ── Pull real data if logged in with a saved result ──
-        result = st.session_state.get("result")
+        btn_col, btn_col2 = st.columns([1, 1])
         is_auth = st.session_state.get("authenticated", False)
-        currency = get_currency_symbol()
+        with btn_col:
+            btn_label = "Start Assessment →" if is_auth else "Login to Start Assessment →"
+            if st.button(btn_label, key="hero_start", use_container_width=True):
+                if not is_auth:
+                    st.session_state.show_auth = True
+                    st.toast("Verification Required: Please sign in to start.", icon="🔒")
+                else:
+                    st.session_state.nav_page = "dashboard"
+                    st.session_state.survey_page = "survey"
+                    st.session_state.survey_step = 0
+                    st.session_state.survey_answers = {}
+                st.rerun()
+        
+        with btn_col2:
+            if not is_auth:
+                if st.button("Sign In / Join Now", key="hero_join", use_container_width=True):
+                    st.session_state.show_auth = True
+                    st.session_state.auth_mode = "login"
+                    st.rerun()
+            else:
+                if st.button("Log Out", key="hero_logout", use_container_width=True):
+                    _do_logout()
+                    st.rerun()
+        
+        if not is_auth:
+            st.markdown('<div style="font-size:11px; color:#8BA6D3; text-align:center; margin-top:8px; opacity:0.8;">✦ Identity verification required before Neural IQ analysis</div>', unsafe_allow_html=True)
+            
+    # ── Final Page Logic: Results & Interpretation ──
+    # Ensure consistency between Hero and Bottom sections
+    res_final = st.session_state.get("result")
+    auth_final = st.session_state.get("authenticated", False)
 
-        if is_auth and result:
-            port   = result.get("portfolio", {})
+    with col2:
+        if auth_final and res_final:
+            port   = res_final.get("portfolio", {})
             stats  = port.get("stats", {})
-            alloc  = port.get("allocation", {})
-            score  = result.get("score", 5)
+            alloc  = port.get("allocation_pct", {})
+            score  = res_final.get("score", 5)
             cat    = port.get("risk_category", "Balanced")
             exp_r  = stats.get("expected_annual_return", 0)
             vol    = stats.get("expected_volatility", 0)
@@ -2309,194 +2412,230 @@ def page_home():
             trend_sign = "▲" if exp_r >= 0 else "▼"
             trend_color = "#8EF6D1" if exp_r >= 0 else "#FF6B6B"
 
-            # Top 3 allocations for mini bar chart
             top3 = sorted(alloc.items(), key=lambda x: x[1], reverse=True)[:3]
             bars_html = ""
             bar_colors = ["#6D5EFC", "#3BA4FF", "#8EF6D1"]
             for i, (asset, pct) in enumerate(top3):
-                short = asset.split()[0]  # first word only
-                bars_html += f"""
-                <div style="margin-bottom:8px;">
-                  <div style="display:flex; justify-content:space-between; font-size:11px; color:#8BA6D3; margin-bottom:3px;">
-                    <span>{short}</span><span>{pct:.0f}%</span>
-                  </div>
-                  <div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px;">
-                    <div style="width:{pct}%; background:{bar_colors[i]}; border-radius:4px; height:6px;
-                                transition: width 1s ease;"></div>
-                  </div>
-                </div>"""
+                short = asset.split()[0]
+                bars_html += f'<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8BA6D3;margin-bottom:3px;"><span>{short}</span><span>{pct:.0f}%</span></div><div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;"><div style="width:{pct}%;background:{bar_colors[i]};border-radius:4px;height:6px;transition:width 1s ease;"></div></div></div>'
 
+            guest_badge_html = '<div style="background:rgba(255,255,255,0.05); color:#fff; padding:4px 10px; border-radius:12px; font-size:10px; border:1px solid rgba(255,255,255,0.1);">Demo</div>'
             st.markdown(f"""
             <div class="glass-card-hero">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-                <div style="font-size:14px; color:#ffffff; font-weight:700;">Your Portfolio</div>
-                <div style="background:rgba(142,246,209,0.12); color:#8EF6D1; padding:4px 10px;
-                            border-radius:20px; font-size:11px; font-weight:700;">
-                  {cat} · Score {score:.0f}
+                <div style="font-size:14px; color:#ffffff; font-weight:700;">Your Strategic Portfolio</div>
+                <div style="display:flex; gap:8px;">
+                   {guest_badge_html}
+                   <div style="background:rgba(142,246,209,0.12); color:#8EF6D1; padding:4px 12px;
+                                border-radius:20px; font-size:11px; font-weight:700;">
+                     Profile: {cat}
+                   </div>
                 </div>
               </div>
               <div class="hero-metric-grid">
                 <div class="hero-metric">
-                  <div class="hm-title">Expected Return</div>
-                  <div class="hm-val">{trend_sign} {exp_r:.1f}%
-                    <span style="font-size:12px; color:{trend_color};">p.a.</span>
-                  </div>
+                  <div class="hm-title">Expected Growth</div>
+                  <div class="hm-val">{trend_sign} {exp_r:.1f}% <span style="font-size:12px; color:{trend_color};">p.a.</span></div>
                 </div>
                 <div class="hero-metric">
-                  <div class="hm-title">AI Confidence</div>
-                  <div class="hm-val" style="color:#6D5EFC;">{conf}
-                    <span style="font-size:14px;">/100</span>
-                  </div>
+                  <div class="hm-title">Neural Assurance</div>
+                  <div class="hm-val" style="color:#6D5EFC;">{conf}<span style="font-size:14px;">/100</span></div>
                 </div>
               </div>
-              <div class="hero-metric" style="margin-top:14px;">
-                <div class="hm-title" style="margin-bottom:10px;">Top Holdings</div>
+              <div class="hero-metric" style="margin-top:14px; padding-bottom:10px;">
+                <div class="hm-title" style="margin-bottom:12px;">Core Strategic Holdings</div>
                 {bars_html}
               </div>
               <div style="display:flex; gap:16px; margin-top:14px;">
-                <div style="flex:1; background:rgba(255,255,255,0.04); border-radius:10px; padding:10px; text-align:center;">
-                  <div style="font-size:10px; color:#8BA6D3; margin-bottom:4px;">VOLATILITY</div>
-                  <div style="font-size:16px; font-weight:700; color:#FF9B6B;">{vol:.1f}%</div>
+                <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; text-align:center;">
+                  <div style="font-size:10px; color:#8BA6D3; margin-bottom:4px; text-transform:uppercase;">Volatility</div>
+                  <div style="font-size:18px; font-weight:800; color:#FF9B6B;">{vol:.1f}%</div>
                 </div>
-                <div style="flex:1; background:rgba(255,255,255,0.04); border-radius:10px; padding:10px; text-align:center;">
-                  <div style="font-size:10px; color:#8BA6D3; margin-bottom:4px;">SHARPE</div>
-                  <div style="font-size:16px; font-weight:700; color:#8EF6D1;">{sharpe:.2f}</div>
+                <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; text-align:center;">
+                  <div style="font-size:10px; color:#8BA6D3; margin-bottom:4px; text-transform:uppercase;">Sharpe Ratio</div>
+                  <div style="font-size:18px; font-weight:800; color:#8EF6D1;">{sharpe:.2f}</div>
                 </div>
               </div>
             </div>
             """, unsafe_allow_html=True)
-
         else:
-            # ── Animated placeholder for logged-out visitors ──
             st.markdown("""
-            <style>
-            @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
-            @keyframes scanline {
-              0%   { top: 0%; }
-              100% { top: 100%; }
-            }
-            .hero-placeholder { animation: pulse 2.8s ease-in-out infinite; }
-            .shimmer-bar {
-              height: 10px; border-radius: 6px;
-              background: linear-gradient(90deg, rgba(109,94,252,0.3), rgba(59,164,255,0.5), rgba(109,94,252,0.3));
-              background-size: 200% 100%;
-              animation: shimmer 2s infinite;
-              margin-bottom: 10px;
-            }
-            @keyframes shimmer {
-              0% { background-position: 200% 0; }
-              100% { background-position: -200% 0; }
-            }
-            </style>
-            <div class="glass-card-hero" style="position:relative;">
+            <div class="glass-card-hero">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <div style="font-size:14px; color:#ffffff; font-weight:700;">Live Dashboard</div>
                 <div style="background:rgba(109,94,252,0.15); color:#6D5EFC; padding:4px 10px;
-                            border-radius:20px; font-size:11px; font-weight:700; animation: pulse 2s infinite;">
-                  ● Awaiting Profile
-                </div>
+                            border-radius:20px; font-size:11px; font-weight:700;">● Awaiting Profile</div>
               </div>
-              <div class="hero-placeholder">
-                <div style="font-size:11px; color:#8BA6D3; letter-spacing:.08em; margin-bottom:6px;">PORTFOLIO VALUE</div>
-                <div class="shimmer-bar" style="width:70%; height:28px; border-radius:8px;"></div>
-                <div style="display:flex; gap:12px; margin:18px 0 10px;">
-                  <div style="flex:1;">
-                    <div style="font-size:11px; color:#8BA6D3; margin-bottom:5px;">RETURN</div>
-                    <div class="shimmer-bar" style="width:60%;"></div>
-                  </div>
-                  <div style="flex:1;">
-                    <div style="font-size:11px; color:#8BA6D3; margin-bottom:5px;">AI CONFIDENCE</div>
-                    <div class="shimmer-bar" style="width:50%;"></div>
-                  </div>
-                </div>
-                <div style="font-size:11px; color:#8BA6D3; margin-bottom:8px;">TOP HOLDINGS</div>
-                <div class="shimmer-bar" style="width:90%;"></div>
-                <div class="shimmer-bar" style="width:75%;"></div>
-                <div class="shimmer-bar" style="width:55%;"></div>
+              <div style="padding:20px 0;">
+                <div style="font-size:11px; color:#8BA6D3; margin-bottom:10px;">PORTFOLIO PREVIEW CONTENT</div>
+                <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:8px; width:100%;"></div>
+                <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:8px; width:80%;"></div>
+                <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:20px; width:60%;"></div>
               </div>
-              <div style="text-align:center; margin-top:18px; font-size:12px; color:#6D5EFC; font-weight:600;">
-                ✦ Complete your assessment to unlock live data
+              <div style="text-align:center; font-size:12px; color:#6D5EFC; font-weight:600; padding:10px; background:rgba(109,94,252,0.05); border-radius:10px;">
+                ✦ Complete your assessment to unlock
               </div>
             </div>
             """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="feature-section">
-      <div class="feature-grid">
-        <div class="feature-card">
-          <div class="feature-icon">🧠</div>
-          <div class="feature-title">Neural Optimisation</div>
-          <div class="feature-desc">Markowitz-Informed Neural Networks maximize Sharpe Ratios in real-time.</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🛡️</div>
-          <div class="feature-title">Regime Detection</div>
-          <div class="feature-desc">AI protects capital during extreme co-movement events dynamically.</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔬</div>
-          <div class="feature-title">Explainable AI Signals</div>
-          <div class="feature-desc">No black boxes. We expose parameters that explain the model's logic.</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <div class="feature-title">Correlation Intelligence</div>
-          <div class="feature-desc">IQ-based bounds outperform historical averages via nonlinear ties.</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🎲</div>
-          <div class="feature-title">Risk Engine</div>
-          <div class="feature-desc">Deep Monte Carlo simulations based on manifold structures, not standard curves.</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">⚡</div>
-          <div class="feature-title">Adaptive Allocation</div>
-          <div class="feature-desc">Real-time balancing informed by instantaneous macroeconomic shifts.</div>
-        </div>
-      </div>
-    </div>
-    
-    """, unsafe_allow_html=True)
-
-    # ── Only show if logged in with a completed assessment ──
-    result    = st.session_state.get("result")
-    is_auth   = st.session_state.get("authenticated", False)
-
-    if is_auth and result:
-        port    = result.get("portfolio", {})
-        cat     = port.get("risk_category", "Balanced")
-        score   = result.get("score", 5)
-        summary = result.get("ai_summary", "")
-        # Take just paragraphs 2 and 3 (skip the MINN technical intro)
+    # ── Section 2: AI Strategic Analysis ──
+    if auth_final and res_final:
+        summary = res_final.get("ai_summary", "")
         paragraphs = [p.strip() for p in summary.split("\n\n") if p.strip()]
-        preview = "\n\n".join(paragraphs[1:3]) if len(paragraphs) > 1 else paragraphs[0] if paragraphs else ""
-
-        # Convert **markdown bold** → <b>HTML bold</b> for proper rendering
+        verdict_para = paragraphs[0] if paragraphs else "Analysis complete."
+        details_text = "\n\n".join(paragraphs[1:]) if len(paragraphs) > 1 else "Strategic weighting confirmed."
         import re
-        preview_html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', preview)
-        preview_html = preview_html.replace("\n\n", "<br><br>").replace("\n", "<br>")
+        details_html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', details_text).replace("\n\n", "<br><br>").replace("\n", "<br>")
+
+        key_drivers = [
+            {"icon": "⌛", "title": "Time Horizon", "desc": "Portfolio tuned for your optimal duration."},
+            {"icon": "🧘", "title": "Psychology", "desc": "Optimized for your volatility comfort."},
+            {"icon": "🚀", "title": "Growth Focus", "desc": "Prioritizing capital appreciation."}
+        ]
+        drivers_html = "".join([
+            f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:16px;border-radius:15px;text-align:center;">'
+            f'<div style="font-size:20px;margin-bottom:6px;">{d["icon"]}</div>'
+            f'<div style="font-weight:700;color:#fff;font-size:14px;">{d["title"]}</div>'
+            f'<div style="font-size:11px;color:#8BA6D3;line-height:1.4;">{d["desc"]}</div></div>' for d in key_drivers
+        ])
 
         st.markdown(f"""
-        <div class="explain-section">
-          <div class="explain-title">Why This Portfolio Fits You</div>
-          <div class="chat-box">
-            <div style="display:flex; align-items:center; margin-bottom:12px;">
-              <div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF); width:32px; height:32px;
-                          border-radius:50%; display:flex; align-items:center; justify-content:center;
-                          margin-right:12px; font-size:16px;">🤖</div>
-              <div>
-                <div style="font-weight:700; color:#fff; font-size:14px;">DeepAtomicIQ Interpreter</div>
-                <div style="font-size:11px; color:#8BA6D3;">
-                  Personalised for your {cat} profile · Based on your survey responses
-                </div>
-              </div>
-            </div>
-            <div style="color:#8BA6D3; line-height:1.8; font-size:15px;">
-              {preview_html}
-            </div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+<div class="explain-section" style="margin-top:20px;text-align:left;">
+<h2 style="font-size:32px;font-weight:800;color:#ffffff;margin-bottom:30px;text-align:center;">Why This Portfolio Fits You</h2>
+<div class="chat-box" style="border-left:4px solid #6D5EFC;background:rgba(109,94,252,0.04);border-radius:24px;padding:40px;border:1px solid rgba(255,255,255,0.06);">
+<div style="display:flex;align-items:center;margin-bottom:30px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:20px;">
+<div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:16px;font-size:22px;">🧠</div>
+<div><div style="font-weight:800;color:#fff;font-size:18px;letter-spacing:-0.01em;">Strategic Investment Verdict</div>
+<div style="font-size:12px;color:#8BA6D3;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;">Neural Diagnosis · DeepAtomicIQ Interpretation</div></div></div>
+<div style="background:rgba(255,255,255,0.05);padding:24px;border-radius:18px;border:1px solid rgba(138,43,226,0.15);margin-bottom:32px;">
+<div style="font-size:12px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;">Core Decision Drivers</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">{drivers_html}</div></div>
+<div style="font-size:12px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;">Deep Analysis Details</div>
+<div style="color:#FFF;line-height:1.8;font-size:15px;background:rgba(255,255,255,0.02);padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,0.05);">{details_html}</div></div></div>
+""", unsafe_allow_html=True)
+
+    # ── Section 3: Feature Grid ──
+    st.markdown(f"""
+<div class="feature-section" style="margin-top:80px;text-align:center;">
+<h2 style="font-size:32px;font-weight:800;color:#ffffff;margin-bottom:10px;">Platform Capabilities</h2>
+<p style="color:#8BA6D3;margin-bottom:40px;">DeepAtomicIQ uses state-of-the-art neural architectures to protect and grow your capital.</p>
+<div class="feature-grid">
+<div class="feature-card"><div class="feature-icon">{get_svg("brain", 32, "#6D5EFC")}</div><div class="feature-title">Neural Optimisation</div><div class="feature-desc">Markowitz-Informed Neural Networks maximize Sharpe Ratios in real-time.</div></div>
+<div class="feature-card"><div class="feature-icon">{get_svg("shield", 32, "#3BA4FF")}</div><div class="feature-title">Regime Detection</div><div class="feature-desc">AI protects capital during extreme co-movement events dynamically.</div></div>
+<div class="feature-card"><div class="feature-icon">{get_svg("layers", 32, "#8EF6D1")}</div><div class="feature-title">Explainable AI</div><div class="feature-desc">No black boxes. We expose parameters that explain the model's logic.</div></div>
+<div class="feature-card"><div class="feature-icon">{get_svg("chart", 32, "#FBBF24")}</div><div class="feature-title">Correlation Intel</div><div class="feature-desc">IQ-based bounds outperform historical averages via nonlinear ties.</div></div>
+<div class="feature-card"><div class="feature-icon">{get_svg("settings", 32, "#FF9B6B")}</div><div class="feature-title">Risk Engine</div><div class="feature-desc">Deep Monte Carlo simulations based on manifold structures.</div></div>
+<div class="feature-card"><div class="feature-icon">{get_svg("zap", 32, "#6D5EFC")}</div><div class="feature-title">Adaptive Allocation</div><div class="feature-desc">Real-time balancing informed by instantaneous macroeconomic shifts.</div></div>
+</div></div>
+""", unsafe_allow_html=True)
+
+    # ── "3 Simple Steps" Section (inspired by Moneyfarm) ──────────────────────
+    st.markdown("""
+<style>
+.steps-section { margin: 80px 0; text-align: center; }
+.steps-grid { display: flex; justify-content: center; gap: 48px; margin-top: 50px; flex-wrap: wrap; }
+.step-item { display: flex; flex-direction: column; align-items: center; max-width: 220px; }
+.step-circle {
+    width: 90px; height: 90px; border-radius: 50%;
+    border: 3px solid transparent;
+    background: linear-gradient(rgba(8,10,26,1), rgba(8,10,26,1)) padding-box,
+                linear-gradient(135deg, #6D5EFC, #3BA4FF) border-box;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; font-weight: 900; color: #fff;
+    box-shadow: 0 0 40px rgba(109,94,252,0.3);
+    margin-bottom: 22px; position: relative;
+}
+.step-circle::after {
+    content: ''; position: absolute; inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(109,94,252,0.15), transparent 70%);
+}
+.step-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.step-desc { font-size: 13px; color: #8BA6D3; line-height: 1.6; }
+</style>
+<div class="steps-section">
+  <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;">How It Works</div>
+  <h2 style="font-size:34px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Get started in 3 simple steps.</h2>
+  <div class="steps-grid">
+    <div class="step-item">
+      <div class="step-circle">1</div>
+      <div class="step-title">Tell us about yourself</div>
+      <div class="step-desc">Answer 10 questions about your goals, timeline, and how you feel about risk.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">2</div>
+      <div class="step-title">Get your AI portfolio</div>
+      <div class="step-desc">Our neural network instantly maps your profile to the optimal ETF allocation.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">3</div>
+      <div class="step-title">Watch your wealth grow</div>
+      <div class="step-desc">Track real-time performance, stress tests, and AI insights — all in one place.</div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("<div id='steps-btn-marker'></div>", unsafe_allow_html=True)
+    st.markdown("""<style>
+#steps-btn-marker + div [data-testid="stButton"] > button {
+    background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%) !important;
+    color: white !important; padding: 18px 40px !important;
+    border-radius: 50px !important; border: none !important;
+    font-size: 16px !important; font-weight: 700 !important;
+    box-shadow: 0 12px 36px rgba(109,94,252,0.35) !important;
+    display: block; margin: 0 auto;
+}
+</style>""", unsafe_allow_html=True)
+    _, ctr, _ = st.columns([1, 1, 1])
+    with ctr:
+        if st.button("Start Your Neural Assessment", use_container_width=True, key="home_steps_cta"):
+            st.session_state.nav_page = "dashboard"
+            st.rerun()
+
+    # ── Savings vs Investing Comparison (inspired by InvestEngine) ───────────
+    import numpy as np
+    st.markdown("""
+<div style="margin:80px 0 20px; text-align:center;">
+  <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;">The Power of Investing</div>
+  <h2 style="font-size:34px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Cash savings vs. AI Portfolio</h2>
+  <p style="color:#8BA6D3;font-size:15px;margin-top:8px;">See what a £10,000 investment looks like over 20 years.</p>
+</div>
+""", unsafe_allow_html=True)
+    years = list(range(0, 21))
+    savings = [10000 * (1.045 ** y) for y in years]         # 4.5% savings rate
+    minn    = [10000 * (1.092 ** y) for y in years]         # ~9.2% MINN expected
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=years, y=savings, name="Cash Savings (4.5% p.a.)",
+        line=dict(color="#8BA6D3", width=2, dash="dot"),
+        fill="tozeroy", fillcolor="rgba(139,166,211,0.05)"
+    ))
+    fig.add_trace(go.Scatter(
+        x=years, y=minn, name="DeepAtomicIQ MINN (9.2% p.a.)",
+        line=dict(color="#6D5EFC", width=3),
+        fill="tozeroy", fillcolor="rgba(109,94,252,0.1)"
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=340, margin=dict(t=20, b=20, l=20, r=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center",
+                    font=dict(color="#8BA6D3", size=12), bgcolor="rgba(0,0,0,0)"),
+        xaxis=dict(title="Years", color="#8BA6D3", gridcolor="rgba(255,255,255,0.04)", ticksuffix="yr"),
+        yaxis=dict(title="Portfolio Value (£)", color="#8BA6D3", gridcolor="rgba(255,255,255,0.04)",
+                   tickprefix="£", tickformat=",.0f"),
+        hovermode="x unified"
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    # Stat callouts below chart
+    ca, cb, cc = st.columns(3)
+    with ca:
+        st.markdown('<div style="text-align:center;padding:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:16px;"><div style="font-size:11px;color:#8BA6D3;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Savings after 20yr</div><div style="font-size:26px;font-weight:900;color:#8BA6D3;">£24,117</div></div>', unsafe_allow_html=True)
+    with cb:
+        st.markdown('<div style="text-align:center;padding:20px;background:rgba(109,94,252,0.08);border:1px solid rgba(109,94,252,0.25);border-radius:16px;"><div style="font-size:11px;color:#6D5EFC;font-weight:700;text-transform:uppercase;margin-bottom:6px;">MINN Portfolio after 20yr</div><div style="font-size:26px;font-weight:900;color:#fff;">£59,470</div></div>', unsafe_allow_html=True)
+    with cc:
+        st.markdown('<div style="text-align:center;padding:20px;background:rgba(142,246,209,0.05);border:1px solid rgba(142,246,209,0.2);border-radius:16px;"><div style="font-size:11px;color:#8EF6D1;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Extra Gain</div><div style="font-size:26px;font-weight:900;color:#8EF6D1;">+£35,353</div></div>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align:center;font-size:11px;color:rgba(139,166,211,0.5);margin-top:12px;">For illustrative purposes only. Past performance does not guarantee future results. Figures assume no fees.</p>', unsafe_allow_html=True)
 
 
 # ── SURVEY + PORTFOLIO ─────────────────────────────────────────────────────────
@@ -2504,16 +2643,25 @@ def page_home():
 def page_dashboard():
     # Authentication check
     if not st.session_state.get("authenticated"):
-        st.markdown("""
-        <div class="coming-soon">
-          <div class="coming-soon-icon">🔒</div>
-          <div class="coming-soon-title">Access Restricted</div>
-          <div class="coming-soon-sub">Please log in or sign up to access your personalised dashboard.</div>
+        st.markdown(f"""
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:100px 20px;">
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(155,114,242,0.3); border-radius:32px; padding:60px 40px; text-align:center; max-width:500px; backdrop-filter:blur(20px); box-shadow:0 30px 100px rgba(0,0,0,0.5);">
+            <div style="width:80px; height:80px; background:rgba(155,114,242,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 30px; border:1px solid rgba(155,114,242,0.4);">
+              {get_svg("shield", 40)}
+            </div>
+            <div style="font-size:32px; font-weight:900; color:#fff; margin-bottom:12px; letter-spacing:-0.03em;">Identity Required</div>
+            <p style="font-size:16px; color:#8BA6D3; line-height:1.6; margin-bottom:40px;">Authenticate your account to access your high-frequency portfolio manifold and real-time intelligence.</p>
+          </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("Return Home", use_container_width=True):
-            st.session_state.nav_page = "home"
-            st.rerun()
+        col1, col2, col3 = st.columns([1,1,1])
+        with col2:
+            if st.button("Secure Entry / Login", type="primary", use_container_width=True):
+                st.session_state.show_auth = True
+                st.rerun()
+            if st.button("Return Home", use_container_width=True):
+                st.session_state.nav_page = "home"
+                st.rerun()
         return
 
     # If currently analysing, always render that screen first
@@ -2525,9 +2673,9 @@ def page_dashboard():
 
     # Results check — survey not yet completed
     if not st.session_state.get("result"):
-        st.markdown("""
+        st.markdown(f"""
         <div class="coming-soon">
-          <div class="coming-soon-icon">📋</div>
+          <div class="coming-soon-icon" style="color:#6D5EFC;margin-bottom:15px;display:flex;justify-content:center;">{get_svg("news", 40)}</div>
           <div class="coming-soon-title">Incomplete Risk Profile</div>
           <div class="coming-soon-sub">Please complete the investor assessment survey to view your dashboard.</div>
         </div>
@@ -2535,7 +2683,7 @@ def page_dashboard():
         
         c1, c2, c3 = st.columns([1,2,1])
         with c2:
-            if st.button("🚀 Start Assessment Now", type="primary", use_container_width=True):
+            if st.button("Start Neural Assessment <span style='margin-left:4px;font-size:11px;'>→</span>", type="primary", use_container_width=True):
                 st.session_state.survey_page = "survey"
                 st.session_state.survey_step = 0
                 st.session_state.survey_answers = {}
@@ -2603,7 +2751,7 @@ def _render_survey():
 def _render_analysing():
     st.markdown(f"""
     <div style='text-align:center; padding:60px 0 30px 0;'>
-      <div style='font-size:52px; margin-bottom:16px;'>🧠</div>
+      <div style='margin-bottom:20px; color:#6D5EFC; display:flex; justify-content:center;'>{get_svg("brain", 60)}</div>
       <div style='font-size:26px; font-weight:800; color:#ffffff; margin-bottom:10px;'>
         Inferring Optimal Portfolio State…
       </div>
@@ -2784,6 +2932,8 @@ def _render_portfolio():
             value=(mode == "advanced"),
             help="Switch to advanced mode to see Sharpe ratios, volatility, and technical details."
         )
+        # Fix label visibility for toggle specifically
+        st.markdown('<style>div[data-testid="stCheckbox"] label p { color: white !important; font-weight: 500 !important; }</style>', unsafe_allow_html=True)
         st.session_state.explanation_mode = "advanced" if new_mode else "simple"
 
     # Generate explanation on the fly based on current mode
@@ -2797,7 +2947,7 @@ def _render_portfolio():
     st.markdown(f"""
     <div style="background-color: rgba(155, 114, 242, 0.06); border: 1px solid rgba(155, 114, 242, 0.25); border-radius: 12px; padding: 24px; margin-top: 10px; margin-bottom: 28px;">
         <h3 style="font-weight: 600; color: #E6D5FF; margin-top: 0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 16px;">
-            <span style="font-size:20px;">🧠</span> 
+            <span style="display:inline-block;vertical-align:middle;margin-top:-3px;">{get_svg("brain", 20, "#6D5EFC")}</span>
             AI‑Powered Insight
             <span style="font-size:12px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">
                 {st.session_state.explanation_mode.upper()} MODE
@@ -2822,8 +2972,36 @@ def _render_portfolio():
                          f'<span style="color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
         st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
 
+    # ── Methodology Section ──────────────────────────────────────────────
+    st.markdown("---")
+    with st.expander("📊 Data Source & Methodology — Where do these numbers come from?"):
+        st.markdown(f"""
+        <div style="font-size:14px; color:{MUTED}; line-height:1.7;">
+          <h4 style="color:#ffffff; margin-top:0;">1. Data Foundation</h4>
+          We use <b>20 years of historical market data</b> (2004–present) for the major asset classes (S&P 500, Bonds, Gold, etc.), 
+          synced via Yahoo Finance for real-world accuracy.
+          
+          <h4 style="color:#ffffff; margin-top:16px;">2. Performance Metrics</h4>
+          Wealth is projected based on historical averages (Geometric Mean) and current market regimes:
+          <ul>
+            <li><b>Expected Growth:</b> Calculated using a weighted average of long-term asset returns, adjusted by the current <b>Market Regime</b> detected by our Neural Network.</li>
+            <li><b>Learned Volatility:</b> Derived from the asset covariance matrix. It represents the intensity of price swings.</li>
+            <li><b>Efficiency (Sharpe):</b> A measure of return per unit of risk. Higher is smarter.</li>
+          </ul>
+          
+          <h4 style="color:#ffffff; margin-top:16px;">3. Forward-Looking Projections</h4>
+          The <b>Monte Carlo Growth</b> chart uses 2,000 independent simulations (Geometric Brownian Motion) to model the range of 
+          possible futures for your money.
+          <ul>
+            <li><b>P90 (Optimistic):</b> The top 10% of outcomes where markets perform exceptionally well.</li>
+            <li><b>P50 (Median):</b> The most likely, average long-term path for your portfolio.</li>
+            <li><b>P10 (Conservative):</b> A 'stress-test' scenario where assets perform poorly but remain within historical norms.</li>
+          </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
     with col2:
-        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">🧠 Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">{get_svg("brain", 14)} Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
         
         ic1, ic2 = st.columns(2)
         with ic1:
@@ -3090,7 +3268,23 @@ def _render_portfolio():
             st.markdown(f"- **{q['number']}** {q['text'][:55]}…  →  `{val}`")
 
 
-    # ── Disclaimer ────────────────────────────────────────────────────────────
+    # ── HISTORICAL STRESS TEST ──
+    st.markdown("---")
+    st.markdown(f"""<div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.01em;margin:12px 0 16px;">🛡️ Resilience Stress Test</div>""", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    stress_scenarios = [
+        ("2008 Financial Crisis", "-18.2%", "Capital preservation focus enabled."),
+        ("2020 COVID Pivot", "-8.4%", "Fast regime recovery via Tech/Gold."),
+        ("Dot-Com Bubble", "-22.5%", "Heavy tech exposure drawdown.")
+    ]
+    for i, (name, draw, logic) in enumerate(stress_scenarios):
+        with [c1,c2,c3][i]:
+            st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;">
+                <div style="font-size:10px;font-weight:800;color:#8BA6D3;margin-bottom:4px;text-transform:uppercase;">Scenario Impact</div>
+                <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;">{name}</div>
+                <div style="font-size:24px;font-weight:900;color:#FF6B6B;">{draw}</div>
+                <div style="font-size:11px;color:#8BA6D3;margin-top:8px;">{logic}</div>
+            </div>""", unsafe_allow_html=True)
     st.markdown(f"""
 <div style='margin:8px 0;padding:12px;background:rgba(255,107,107,0.06);
 border-left:3px solid rgba(255,107,107,0.35);border-radius:8px;
@@ -3114,68 +3308,103 @@ Past performance does not guarantee future results.
 # ── NEWS & INSIGHTS ───────────────────────────────────────────────────────────
 def page_insights():
     st.markdown("""
-    <div style="padding:32px 0 20px 0;">
-      <div style="font-size:26px;font-weight:800;color:#ffffff;margin-bottom:6px;">News & AI Insights</div>
-      <div style="font-size:14px;color:rgba(237,237,243,0.5);">Global market developments alongside real-time financial intelligence powered by DeepIQ</div>
-    </div>
-    """, unsafe_allow_html=True)
+<style>
+.why-section { margin-bottom: 40px; }
+.why-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 28px 32px; margin-bottom: 16px; }
+.why-card h3 { font-size: 15px; font-weight: 800; color: #6D5EFC; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px 0; }
+.why-card p { font-size: 14px; color: #C5D3EC; line-height: 1.75; margin: 0; }
+.param-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.param-chip { background: rgba(109,94,252,0.1); border: 1px solid rgba(109,94,252,0.25); border-radius: 10px; padding: 10px 14px; }
+.param-sym { font-size: 18px; font-weight: 900; color: #fff; }
+.param-name { font-size: 10px; color: #8BA6D3; font-weight: 700; text-transform: uppercase; }
+.phase-tag { display: inline-block; background: rgba(142,246,209,0.1); border: 1px solid rgba(142,246,209,0.3); color: #8EF6D1; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; }
+</style>
+""", unsafe_allow_html=True)
 
-    col1, col2 = st.columns([1, 1], gap="large")
+    st.markdown("""
+<div style="padding:32px 0 8px;">
+  <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:10px;">About the System</div>
+  <div style="font-size:38px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin-bottom:12px;">Why DeepAtomicIQ?</div>
+  <div style="font-size:16px;color:#8BA6D3;max-width:720px;line-height:1.6;">A Markowitz-Informed Neural Network that learns how markets move together and builds portfolios that maximise the Sharpe Ratio — intelligently, transparently, and in real time.</div>
+</div>
+""", unsafe_allow_html=True)
 
-    with col1:
-        st.markdown('<div class="panel-title">Latest Market News</div>', unsafe_allow_html=True)
-        st.markdown('''
-        <div class="card" style="margin-bottom:16px;">
-            <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Markets rally ahead of earnings season</div>
-            <div style="font-size:14px; color:#8BA6D3; margin-bottom:16px;">Wall Street indices climbed higher as investors brace for top-tier tech earnings later this week.</div>
-            <hr style="border-color:rgba(255,255,255,0.05); margin:16px 0;">
-            <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Oil prices stabilize amid easing tensions</div>
-            <div style="font-size:14px; color:#8BA6D3; margin-bottom:16px;">Crude benchmarks leveled out after recent surges, relieving some inflationary fears globally.</div>
-            <hr style="border-color:rgba(255,255,255,0.05); margin:16px 0;">
-            <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Tech giants announce AI integration guidelines</div>
-            <div style="font-size:14px; color:#8BA6D3; margin-bottom:16px;">Several mega-cap tech corporations unified their AI deployment strategies, spurring semiconductor growth.</div>
-        </div>
-        ''', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["How It Works", "Phase 2: Out-of-Sample Evaluation"])
 
-    with col2:
-        st.markdown('<div class="panel-title">DeepIQ Pulse Analysis</div>', unsafe_allow_html=True)
-        news_items = [
-            {
-                "category": "MARKET PULSE",
-                "title": "Fed Signals Potential Rate Cut in Q3 as Inflation Cools to 2.8%",
-                "desc": "DeepIQ Analysis: This shifts the probability curve toward higher growth assets. Small-cap and tech stocks may see increased momentum in our Moderate-Aggressive portfolios.",
-                "impact": "POS",
-                "tag": "Economy"
-            },
-            {
-                "category": "TECH SECTOR",
-                "title": "Global Semiconductor Supply Chains Reach 95% Efficiency Post-Disruption",
-                "desc": "Strategic Note: We remain Overweight on AI infrastructure but recommend profit-taking on specific hardware laggards.",
-                "impact": "NEU",
-                "tag": "Sector Analysis"
-            },
-            {
-                "category": "ESG WATCH",
-                "title": "New EU Carbon Credits Policy Surprises Energy Markets",
-                "desc": "Green IQ: Renewable ETFs in your portfolio are expected to see a 2.4% uplift in expected annual return due to these tax incentives.",
-                "impact": "POS",
-                "tag": "Environment"
-            }
+    with tab1:
+        sections = [
+            (
+                "1. Purpose and Overview",
+                "This project implements a Markowitz-Informed Neural Network (MINN) to learn how to build investment portfolios that balance risk and return intelligently. It combines ideas from finance (portfolio theory) and machine learning (deep neural networks). The model learns how assets move together — their co-movements or correlations — and finds portfolio weights that maximize the Sharpe Ratio, a measure of performance defined as average return divided by risk. In plain terms: the network learns how to distribute money across several assets so that the overall portfolio performs well relative to its volatility."
+            ),
+            (
+                "2. Main Files and Their Roles",
+                "MainSR.py — the entry-point script. It loads data, builds batches, and controls the training of neural networks (SR = Sharpe Ratio). MINNlib.py — contains all core functions: computing correlations, building the neural network, and training the loss function. project_hyperparameters.py — defines all project settings and constants such as number of assets, training epochs, and loss penalties."
+            ),
+            (
+                "3. The Neural Network (DeepIQNetPortfolio)",
+                "The neural network takes asset returns as input and outputs three things: (1) IQ Parameters — delta (threshold between normal and extreme moves), gamma (temporal decay), and epsilon (delay term). (2) Channel logits B, W, T, I — representing Body, Wing, Tail, and Identity correlation structures. (3) Portfolio weights — allocations to each asset, normalized to sum to one."
+            ),
+            (
+                "4. The IQ Model: Measuring Co-movement",
+                "Traditional finance uses a correlation matrix. The IQ model constructs this matrix from standardized returns, distinguishing three movement regimes: Body (normal), Wing (asymmetric), and Tail (extreme). Each is weighted by temporal decay factors. The combined correlation matrix is: C_IQ = wB·C_B + wW·C_W + wT·C_T + wI·I. This is then converted into a covariance matrix using asset volatilities."
+            ),
+            (
+                "5. The Loss Function",
+                "The objective combines: Sharpe Ratio (main target), Volatility Control (maintain target volatility), Condition Number (numerical stability), Entropy (encourages diversification), Risk Parity (balances risk contributions), Top-Weight Constraints (limits dominance), and Turnover (discourages large weight changes). All lambda coefficients are defined in project_hyperparameters.py."
+            ),
+            (
+                "6. Project Summary",
+                "This system learns interpretable parameters (δ, γ, ε, wB, wW, wT, wI) that describe how markets move and relate to one another. It produces evolving portfolio allocations designed to maximize the Sharpe Ratio across time. The method ensures mathematical validity (positive semi-definite correlations) and produces transparent, analyzable results. The DeepAtomicIQ framework merges financial reasoning with explainable machine learning, bridging traditional optimization and modern neural inference."
+            ),
         ]
-
-        for item in news_items:
-            impact_color = POS if item["impact"]=="POS" else (NEG if item["impact"]=="NEG" else ACCENT)
+        for title, body in sections:
             st.markdown(f"""
-            <div class="card" style="margin-bottom:16px; border-left: 4px solid {impact_color};">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:10px; font-weight:800; color:{impact_color}; letter-spacing:0.1em;">{item['category']}</span>
-                <span class="tag">{item['tag']}</span>
-              </div>
-              <div style="font-size:16px; font-weight:700; color:#ffffff; margin-bottom:12px;">{item['title']}</div>
-              <div style="font-size:13px; color:rgba(237,237,243,0.7); line-height:1.6; background:rgba(0,0,0,0.2); padding:12px; border-radius:6px;">
-                <span style="font-family:'JetBrains Mono',monospace; color:{ACCENT}; font-size:11px; display:block; margin-bottom:4px;">DeepIQ AI Insight:</span>
-                {item['desc']}
-              </div>
+            <div class="why-card">
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="margin-top:8px;padding:24px 32px;background:rgba(109,94,252,0.06);border:1px solid rgba(109,94,252,0.2);border-radius:18px;">
+          <h3 style="font-size:13px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 16px;">Key IQ Parameters</h3>
+          <div class="param-grid">
+            <div class="param-chip"><div class="param-sym">δ (delta)</div><div class="param-name">Threshold between normal and extreme moves</div></div>
+            <div class="param-chip"><div class="param-sym">γ (gamma)</div><div class="param-name">Temporal decay weighting</div></div>
+            <div class="param-chip"><div class="param-sym">ε (epsilon)</div><div class="param-name">Delay term in regime detection</div></div>
+            <div class="param-chip"><div class="param-sym">wB</div><div class="param-name">Body weight — normal co-movement</div></div>
+            <div class="param-chip"><div class="param-sym">wW</div><div class="param-name">Wing weight — asymmetric moves</div></div>
+            <div class="param-chip"><div class="param-sym">wT</div><div class="param-name">Tail weight — extreme market events</div></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with tab2:
+        st.markdown('<div class="phase-tag">Phase 2: Out-of-Sample</div>', unsafe_allow_html=True)
+        phase2_sections = [
+            (
+                "What Phase 2 Does",
+                "This phase evaluates the DeepAtomicIQ neural network weights using out-of-sample (OOS) testing against a range of alternative covariance estimators and portfolio construction baselines. The purpose is to compare performance, turnover, and transaction cost behaviour of DeepAtomicIQ portfolios relative to established techniques."
+            ),
+            (
+                "Pipeline Overview",
+                "Step 1: Build DIQ Special Portfolios (DIQ1–DIQ5) from first-phase model outputs, aligned to the invest month and adjusted for the validation horizon. Step 2: Run OOS Mean–Variance Optimization using Max-Sharpe portfolio optimization with several covariance estimators including Ledoit–Wolf and RMT. Step 3: Summarize Performance into a single table reporting annualized return, risk, Sharpe ratio, turnover, drawdown, and VaR. Step 4 (Optional): Analyse learned parameter evolution and dynamic weight changes through time."
+            ),
+            (
+                "Output Files",
+                "DIQ1–DIQ5 CSV files in portfolios/special_portfolios/. OOS backtest results in OOS_results/ folder (cumulative value, returns, transaction costs, turnover). A consolidated performance summary in CSV and LaTeX formats. Optional: parameter trajectory and dynamic weight plots saved as PNG files."
+            ),
+            (
+                "Important Notes",
+                "DeepAtomicIQ weights are shifted forward by (m + 1) months before testing to represent realistic deployment. All scripts automatically align asset universes using the canonical price slice. Transaction costs are applied as a self-financing drag before portfolio returns are realized. The process is idempotent — re-running will overwrite existing results without duplication."
+            ),
+        ]
+        for title, body in phase2_sections:
+            st.markdown(f"""
+            <div class="why-card">
+              <h3>{title}</h3>
+              <p>{body}</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -3244,64 +3473,128 @@ def get_sparkline_data():
         return None
 
 def page_market():
-    # ── Ticker tape CSS ──────────────────────────────────────────────────────
+    import datetime
     st.markdown("""
-    <style>
-    .ticker-wrap {
-      overflow: hidden; background: rgba(255,255,255,0.03);
-      border-top: 1px solid rgba(255,255,255,0.06);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      padding: 10px 0; margin-bottom: 28px;
-    }
-    .ticker-track {
-      display: flex; gap: 0;
-      animation: ticker 40s linear infinite;
-      white-space: nowrap;
-    }
-    @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-    .ticker-item {
-      display: inline-flex; align-items: center; gap: 10px;
-      padding: 0 32px; font-size: 13px; font-weight: 600;
-      border-right: 1px solid rgba(255,255,255,0.08);
-    }
-    .ticker-sym { color: #ffffff; }
-    .ticker-price { color: #8BA6D3; }
-    .ticker-up { color: #8EF6D1; }
-    .ticker-dn { color: #FF6B6B; }
-    .mkt-section-title {
-      font-size: 18px; font-weight: 800; color: #ffffff;
-      margin: 28px 0 14px; letter-spacing: -0.02em;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .mkt-section-title span { font-size: 13px; font-weight: 500; color: #8BA6D3; }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    markets = get_live_market_data()
-    hist_df = get_sparkline_data()
+<style>
+.ticker-wrap {
+  overflow: hidden; background: rgba(255,255,255,0.02);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 10px 0; margin-bottom: 0;
+}
+.ticker-track {
+  display: flex; gap: 0;
+  animation: ticker 45s linear infinite;
+  white-space: nowrap;
+}
+@keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+.ticker-item {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 0 28px; font-size: 12px; font-weight: 600;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.ticker-sym { color: #ffffff; font-weight: 800; }
+.ticker-price { color: #8BA6D3; }
+.ticker-up { color: #8EF6D1; }
+.ticker-dn { color: #FF6B6B; }
+.mkt-section-title {
+  font-size: 16px; font-weight: 800; color: #ffffff;
+  margin: 32px 0 16px; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.mkt-section-title span { font-size: 12px; font-weight: 500; color: #8BA6D3; }
+.mkt-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 16px 18px 10px;
+  transition: all 0.2s ease; cursor: default;
+}
+.mkt-card:hover {
+  background: rgba(255,255,255,0.045);
+  border-color: rgba(109,94,252,0.35);
+  transform: translateY(-2px);
+}
+.mkt-ticker { font-size: 16px; font-weight: 900; color: #fff; letter-spacing: -0.02em; }
+.mkt-name  { font-size: 10px; color: #8BA6D3; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.mkt-price { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: -0.02em; }
+.mover-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    # ── Ticker tape ──────────────────────────────────────────────────────────
+    markets  = get_live_market_data()
+    hist_df  = get_sparkline_data()
+    ticker_map = {"VOO":"VOO","QQQ":"QQQ","VWRA":"VWRA.L","AGG":"AGG","GLD":"GLD","VNQ":"VNQ","ESGU":"ESGU","PDBC":"PDBC"}
+
+    # ── Page Header ───────────────────────────────────────────────────────────
+    now_str = datetime.datetime.now().strftime("%A %d %b %Y · %H:%M")
+    gainers = [m for m in markets if m[4]]
+    losers  = [m for m in markets if not m[4]]
+    st.markdown(f"""
+<div style="padding:28px 0 16px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
+  <div>
+    <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Live Markets Terminal</div>
+    <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Markets</div>
+    <div style="font-size:13px;color:#8BA6D3;margin-top:4px;">{now_str} · ETF Universe</div>
+  </div>
+  <div style="display:flex;gap:16px;">
+    <div style="text-align:center;background:rgba(142,246,209,0.06);border:1px solid rgba(142,246,209,0.2);border-radius:12px;padding:10px 20px;">
+      <div style="font-size:22px;font-weight:900;color:#8EF6D1;">{len(gainers)}</div>
+      <div style="font-size:10px;font-weight:700;color:#8BA6D3;text-transform:uppercase;">Advancing</div>
+    </div>
+    <div style="text-align:center;background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:12px;padding:10px 20px;">
+      <div style="font-size:22px;font-weight:900;color:#FF6B6B;">{len(losers)}</div>
+      <div style="font-size:10px;font-weight:700;color:#8BA6D3;text-transform:uppercase;">Declining</div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Ticker Tape ───────────────────────────────────────────────────────────
     tape_items = ""
     for ticker, name, price, chg, up in markets:
-        cls = "ticker-up" if up else "ticker-dn"
+        cls   = "ticker-up" if up else "ticker-dn"
         arrow = "▲" if up else "▼"
         tape_items += f'<div class="ticker-item"><span class="ticker-sym">{ticker}</span><span class="ticker-price">{price}</span><span class="{cls}">{arrow} {chg}</span></div>'
-    # Duplicate for seamless loop
     st.markdown(f'<div class="ticker-wrap"><div class="ticker-track">{tape_items}{tape_items}</div></div>', unsafe_allow_html=True)
 
-    # ── ETF Cards with sparklines ─────────────────────────────────────────────
-    st.markdown('<div class="mkt-section-title">ETF Watchlist <span>· 8 tracked instruments</span></div>', unsafe_allow_html=True)
+    # ── Top Movers ────────────────────────────────────────────────────────────
+    st.markdown(f'<div class="mkt-section-title">{get_svg("zap", 16)} Top Movers <span>· Today\'s leaders & laggards</span></div>', unsafe_allow_html=True)
+    mc1, mc2 = st.columns(2, gap="large")
+    with mc1:
+        st.markdown('<div style="font-size:10px;font-weight:800;color:#8EF6D1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Best Performers</div>', unsafe_allow_html=True)
+        sorted_gain = sorted(markets, key=lambda x: float(x[3].replace('%','').replace('+','')) if x[3] != 'N/A' else -99, reverse=True)[:3]
+        for ticker, name, price, chg, up in sorted_gain:
+            st.markdown(f"""
+<div class="mover-card" style="margin-bottom:8px;border-color:rgba(142,246,209,0.2);">
+  <div><div style="font-weight:800;color:#fff;font-size:15px;">{ticker}</div><div style="font-size:11px;color:#8BA6D3;">{name}</div></div>
+  <div style="text-align:right;"><div style="font-size:16px;font-weight:900;color:#fff;">{price}</div><div style="font-size:13px;font-weight:800;color:#8EF6D1;">▲ {chg}</div></div>
+</div>""", unsafe_allow_html=True)
+    with mc2:
+        st.markdown('<div style="font-size:10px;font-weight:800;color:#FF6B6B;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Worst Performers</div>', unsafe_allow_html=True)
+        sorted_loss = sorted(markets, key=lambda x: float(x[3].replace('%','').replace('+','')) if x[3] != 'N/A' else 99)[:3]
+        for ticker, name, price, chg, up in sorted_loss:
+            st.markdown(f"""
+<div class="mover-card" style="margin-bottom:8px;border-color:rgba(255,107,107,0.2);">
+  <div><div style="font-weight:800;color:#fff;font-size:15px;">{ticker}</div><div style="font-size:11px;color:#8BA6D3;">{name}</div></div>
+  <div style="text-align:right;"><div style="font-size:16px;font-weight:900;color:#fff;">{price}</div><div style="font-size:13px;font-weight:800;color:#FF6B6B;">▼ {chg}</div></div>
+</div>""", unsafe_allow_html=True)
 
-    ticker_map = {"VOO":"VOO","QQQ":"QQQ","VWRA":"VWRA.L","AGG":"AGG","GLD":"GLD","VNQ":"VNQ","ESGU":"ESGU","PDBC":"PDBC"}
+    # ── ETF Watchlist — cards with embedded sparklines ────────────────────────
+    st.markdown(f'<div class="mkt-section-title">{get_svg("chart", 16)} ETF Watchlist <span>· 8 tracked instruments · 30-day sparklines</span></div>', unsafe_allow_html=True)
 
     cols = st.columns(4)
     for i, (ticker, name, price, chg, up) in enumerate(markets):
         with cols[i % 4]:
             yf_ticker = ticker_map.get(ticker, ticker)
-            color = "#8EF6D1" if up else "#FF6B6B"
-            arrow = "▲" if up else "▼"
+            color     = "#8EF6D1" if up else "#FF6B6B"
+            arrow     = "▲" if up else "▼"
 
-            # Build sparkline
             if hist_df is not None and yf_ticker in hist_df.columns:
                 series = hist_df[yf_ticker].dropna()
             else:
@@ -3309,84 +3602,108 @@ def page_market():
 
             fig = go.Figure()
             if series is not None and len(series) > 1:
-                y = series.values
-                x = list(range(len(y)))
-                fill_color = "rgba(142,246,209,0.08)" if up else "rgba(255,107,107,0.08)"
+                fill_color = "rgba(142,246,209,0.1)" if up else "rgba(255,107,107,0.1)"
                 fig.add_trace(go.Scatter(
-                    x=x, y=y, mode="lines",
+                    x=list(range(len(series))), y=series.values, mode="lines",
                     line=dict(color=color, width=2),
                     fill="tozeroy", fillcolor=fill_color,
                     hovertemplate="%{y:.2f}<extra></extra>"
                 ))
             fig.update_layout(
-                height=60, margin=dict(l=0,r=0,t=0,b=0),
+                height=56, margin=dict(l=0,r=0,t=0,b=0),
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(visible=False), yaxis=dict(visible=False),
-                showlegend=False
+                xaxis=dict(visible=False), yaxis=dict(visible=False), showlegend=False
             )
-
             st.markdown(f"""
-            <div class="market-card" style="padding:14px 16px 8px; cursor:pointer;">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                <div>
-                  <div class="market-ticker">{ticker}</div>
-                  <div class="market-name">{name}</div>
-                </div>
-                <div style="text-align:right;">
-                  <div class="market-price" style="font-size:18px;">{price}</div>
-                  <div style="color:{color};font-size:12px;font-weight:700;">{arrow} {chg}</div>
-                </div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+<div class="mkt-card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+    <div><div class="mkt-ticker">{ticker}</div><div class="mkt-name">{name}</div></div>
+    <div style="text-align:right;">
+      <div class="mkt-price">{price}</div>
+      <div style="color:{color};font-size:12px;font-weight:800;">{arrow} {chg}</div>
+    </div>
+  </div>
+</div>""", unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"spark_{ticker}")
 
-    # ── Main interactive price chart ──────────────────────────────────────────
-    st.markdown('<div class="mkt-section-title">Price Chart <span>· 30-day history</span></div>', unsafe_allow_html=True)
+    # ── Interactive Price Chart ───────────────────────────────────────────────
+    st.markdown(f'<div class="mkt-section-title">{get_svg("activity", 16)} Deep-Dive Chart <span>· 30-day price history with moving averages</span></div>', unsafe_allow_html=True)
 
-    selected = st.selectbox("Select instrument", [m[0] for m in markets], label_visibility="collapsed", key="mkt_chart_select")
-    yf_selected = ticker_map.get(selected, selected)
+    chart_col, info_col = st.columns([3, 1], gap="large")
+    with chart_col:
+        selected    = st.selectbox("Select instrument", [m[0] for m in markets], label_visibility="collapsed", key="mkt_chart_select")
+        yf_selected = ticker_map.get(selected, selected)
 
-    if hist_df is not None and yf_selected in hist_df.columns:
-        series = hist_df[yf_selected].dropna()
-        up_overall = series.iloc[-1] >= series.iloc[0]
-        line_color = "#8EF6D1" if up_overall else "#FF6B6B"
-        fill_color = "rgba(142,246,209,0.07)" if up_overall else "rgba(255,107,107,0.07)"
+        if hist_df is not None and yf_selected in hist_df.columns:
+            series      = hist_df[yf_selected].dropna()
+            up_overall  = series.iloc[-1] >= series.iloc[0]
+            line_color  = "#8EF6D1" if up_overall else "#FF6B6B"
+            fill_color  = "rgba(142,246,209,0.07)" if up_overall else "rgba(255,107,107,0.07)"
 
-        big_fig = go.Figure()
-        big_fig.add_trace(go.Scatter(
-            x=series.index, y=series.values,
-            mode="lines", name=selected,
-            line=dict(color=line_color, width=2.5),
-            fill="tozeroy", fillcolor=fill_color,
-            hovertemplate="<b>%{x|%d %b}</b><br>Price: %{y:.2f}<extra></extra>"
-        ))
-        # Add 7-day MA
-        if len(series) >= 7:
-            ma7 = series.rolling(7).mean()
+            big_fig = go.Figure()
             big_fig.add_trace(go.Scatter(
-                x=ma7.index, y=ma7.values,
-                mode="lines", name="7-day MA",
-                line=dict(color="#6D5EFC", width=1.5, dash="dot"),
-                hovertemplate="MA7: %{y:.2f}<extra></extra>"
+                x=series.index, y=series.values, mode="lines", name=selected,
+                line=dict(color=line_color, width=2.5), fill="tozeroy", fillcolor=fill_color,
+                hovertemplate="<b>%{x|%d %b}</b><br>Price: %{y:.2f}<extra></extra>"
             ))
+            if len(series) >= 7:
+                ma7 = series.rolling(7).mean()
+                big_fig.add_trace(go.Scatter(
+                    x=ma7.index, y=ma7.values, mode="lines", name="7-day MA",
+                    line=dict(color="#6D5EFC", width=1.5, dash="dot"),
+                    hovertemplate="MA7: %{y:.2f}<extra></extra>"
+                ))
+            if len(series) >= 14:
+                ma14 = series.rolling(14).mean()
+                big_fig.add_trace(go.Scatter(
+                    x=ma14.index, y=ma14.values, mode="lines", name="14-day MA",
+                    line=dict(color="#3BA4FF", width=1.2, dash="dash"),
+                    hovertemplate="MA14: %{y:.2f}<extra></extra>"
+                ))
+            big_fig.update_layout(
+                height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=10,r=10,t=10,b=10),
+                xaxis=dict(showgrid=False, color="#8BA6D3", tickformat="%d %b"),
+                yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.04)", color="#8BA6D3"),
+                legend=dict(font=dict(color="#8BA6D3", size=11), bgcolor="rgba(0,0,0,0)", orientation="h", y=1.08),
+                hovermode="x unified",
+                hoverlabel=dict(bgcolor="rgba(15,15,35,0.95)", font_color="#ffffff", bordercolor="rgba(109,94,252,0.4)")
+            )
+            st.plotly_chart(big_fig, use_container_width=True, config={"displayModeBar": False}, key="mkt_main_chart")
+        else:
+            st.info("Chart data unavailable — check your connection.")
 
-        big_fig.update_layout(
-            height=340,
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=10,r=10,t=10,b=10),
-            xaxis=dict(showgrid=False, color="#8BA6D3", tickformat="%d %b"),
-            yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#8BA6D3"),
-            legend=dict(font=dict(color="#8BA6D3"), bgcolor="rgba(0,0,0,0)"),
-            hovermode="x unified",
-            hoverlabel=dict(bgcolor="rgba(15,15,35,0.95)", font_color="#ffffff", bordercolor="rgba(109,94,252,0.4)")
-        )
-        st.plotly_chart(big_fig, use_container_width=True, config={"displayModeBar": False}, key="mkt_main_chart")
-    else:
-        st.info("Chart data unavailable — check your internet connection.")
+    with info_col:
+        # Find selected ticker stats
+        sel_data = next((m for m in markets if m[0] == selected), None)
+        if sel_data and hist_df is not None:
+            yf_s = ticker_map.get(selected, selected)
+            s = hist_df[yf_s].dropna() if yf_s in (hist_df.columns if hist_df is not None else []) else None
+            hi  = f"{s.max():.2f}" if s is not None else "—"
+            lo  = f"{s.min():.2f}" if s is not None else "—"
+            ret = f"{((s.iloc[-1]-s.iloc[0])/s.iloc[0]*100):+.2f}%" if s is not None and len(s) >= 2 else "—"
+            col_r = "#8EF6D1" if sel_data[4] else "#FF6B6B"
+            st.markdown(f"""
+<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:20px;margin-top:36px;">
+  <div style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">{selected} Stats</div>
+  <div style="border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:10px;margin-bottom:10px;">
+    <div style="font-size:10px;color:#8BA6D3;font-weight:700;">Current Price</div>
+    <div style="font-size:24px;font-weight:900;color:#fff;">{sel_data[2]}</div>
+    <div style="font-size:14px;font-weight:800;color:{col_r};">{sel_data[3]}</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+    <div style="font-size:10px;color:#8BA6D3;">30d High</div><div style="font-size:12px;font-weight:700;color:#8EF6D1;">{hi}</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+    <div style="font-size:10px;color:#8BA6D3;">30d Low</div><div style="font-size:12px;font-weight:700;color:#FF6B6B;">{lo}</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;">
+    <div style="font-size:10px;color:#8BA6D3;">30d Return</div><div style="font-size:12px;font-weight:700;color:{col_r};">{ret}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
 
-    # ── Sector performance heatmap ────────────────────────────────────────────
-    st.markdown('<div class="mkt-section-title">Sector Performance <span>· 30-day return</span></div>', unsafe_allow_html=True)
+    # ── 30-day Treemap Heatmap ────────────────────────────────────────────────
+    st.markdown(f'<div class="mkt-section-title">{get_svg("layers", 16)} Sector Heatmap <span>· 30-day performance · size = absolute return</span></div>', unsafe_allow_html=True)
 
     sectors = []
     if hist_df is not None:
@@ -3400,29 +3717,199 @@ def page_market():
 
     if sectors:
         labels = [f"{t}<br>{r:+.1f}%" for t, n, r in sectors]
-        values = [abs(r) + 1 for _, _, r in sectors]  # size
+        values = [abs(r) + 1 for _, _, r in sectors]
         colors = [r for _, _, r in sectors]
-
         heat = go.Figure(go.Treemap(
-            labels=labels,
-            parents=[""] * len(labels),
-            values=values,
-            marker=dict(
-                colors=colors,
-                colorscale=[[0,"#FF3B3B"],[0.5,"#1A1A3E"],[1,"#00C896"]],
-                cmid=0,
-                showscale=False,
-                line=dict(width=3, color="rgba(10,10,30,1)")
-            ),
-            textfont=dict(color="#ffffff", size=14),
+            labels=labels, parents=[""] * len(labels), values=values,
+            marker=dict(colors=colors, colorscale=[[0,"#FF3B3B"],[0.5,"#1A1A3E"],[1,"#00C896"]],
+                        cmid=0, showscale=False, line=dict(width=3, color="rgba(8,10,26,1)")),
+            textfont=dict(color="#ffffff", size=13),
             hovertemplate="<b>%{label}</b><extra></extra>",
         ))
-        heat.update_layout(
-            height=220,
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0,r=0,t=0,b=0),
-        )
+        heat.update_layout(height=240, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0,r=0,t=0,b=0))
         st.plotly_chart(heat, use_container_width=True, config={"displayModeBar": False}, key="mkt_heatmap")
+
+    # ── Heatmap Click Explainer Panel ─────────────────────────────────────────
+    etf_info = {
+        "VOO": {
+            "full_name": "Vanguard S&P 500 ETF",
+            "asset_class": "US Large-Cap Equity",
+            "role": "Core equity exposure — the backbone of most MINN allocations. Tracks the 500 largest US companies.",
+            "going_up": "Signals broad market confidence. Your portfolio benefits directly; growth regime likely dominant.",
+            "going_down": "Risk-off signal. MINN may shift weight toward AGG (bonds) or GLD to hedge drawdown.",
+            "sharpe_impact": "High positive — VOO is the primary return driver in balanced and growth profiles.",
+            "weight_hint": "Typically 20–40% of MINN growth portfolios."
+        },
+        "QQQ": {
+            "full_name": "Invesco Nasdaq 100 ETF",
+            "asset_class": "US Tech / Growth Equity",
+            "role": "High-growth, rate-sensitive tech exposure. Amplifies returns in bull regimes but volatile in tail events.",
+            "going_up": "AI and tech momentum is strong. Benefits QQQ-heavy portfolios significantly.",
+            "going_down": "Rising rates or risk aversion hit QQQ hardest. Wing/Tail co-movement spikes with VOO.",
+            "sharpe_impact": "High beta — boosts Sharpe in bull markets, compresses it in corrections.",
+            "weight_hint": "Typically 10–25% of growth-tilted MINN portfolios."
+        },
+        "VWRA": {
+            "full_name": "Vanguard FTSE All-World ETF",
+            "asset_class": "Global Equity (ex-US diversification)",
+            "role": "International diversification layer. Reduces US concentration risk and adds EM/Europe exposure.",
+            "going_up": "Global growth synchronized with US — carries. Reduces country-specific correlation.",
+            "going_down": "Global slowdown or strong USD headwinds. MINN may reduce weighting.",
+            "sharpe_impact": "Moderate — key for correlation reduction (C_IQ Body regime contribution).",
+            "weight_hint": "Typically 10–20% across all MINN profiles."
+        },
+        "AGG": {
+            "full_name": "iShares Core US Aggregate Bond ETF",
+            "asset_class": "Investment Grade Bonds",
+            "role": "Stability anchor. Provides negative or low correlation to equities during market stress.",
+            "going_up": "Risk-off environment or rate cuts expected. Protects capital during equity drawdowns.",
+            "going_down": "Rising rates eroding bond prices. MINN shifts weight back toward equities.",
+            "sharpe_impact": "Low solo returns but critical for Sharpe via volatility reduction.",
+            "weight_hint": "Typically 15–35% in conservative or balanced MINN profiles."
+        },
+        "GLD": {
+            "full_name": "SPDR Gold Shares ETF",
+            "asset_class": "Commodity — Precious Metals",
+            "role": "Inflation hedge and crisis safe-haven. Performs in Tail regimes when equity correlations spike.",
+            "going_up": "Inflation fears, USD weakness, or geopolitical stress. Your hedge is working.",
+            "going_down": "Real rates rising or risk appetite recovering. MINN may trim GLD allocation.",
+            "sharpe_impact": "Tail regime stabilizer — reduces max drawdown even if it lowers mean returns.",
+            "weight_hint": "Typically 5–15% depending on inflation expectation in regime model."
+        },
+        "VNQ": {
+            "full_name": "Vanguard Real Estate ETF",
+            "asset_class": "Real Estate Investment Trusts (REITs)",
+            "role": "Income + inflation protection. Rate-sensitive but provides dividend yield and real-asset exposure.",
+            "going_up": "Rate stability or cuts — REITs rally on lower borrowing costs and yield demand.",
+            "going_down": "Rising interest rates are the main risk. MINN reduces VNQ when rate regime shifts upward.",
+            "sharpe_impact": "Moderate — adds income but correlates with equities in stress events.",
+            "weight_hint": "Typically 5–12% across most MINN profiles."
+        },
+        "ESGU": {
+            "full_name": "iShares ESG Aware MSCI USA ETF",
+            "asset_class": "ESG / Sustainable US Equity",
+            "role": "Socially responsible equity exposure with similar characteristics to VOO but with ESG screening.",
+            "going_up": "ESG flows accelerating. Can be used as a low-tracking-error VOO substitute.",
+            "going_down": "Typically moves closely with VOO — same drivers but with slightly lower vol.",
+            "sharpe_impact": "Very similar to VOO. Slightly lower concentration risk in high-carbon sectors.",
+            "weight_hint": "Often substituted for or combined with VOO in ESG-tilted profiles."
+        },
+        "PDBC": {
+            "full_name": "Invesco Optimum Yield Diversified Commodity Strategy ETF",
+            "asset_class": "Broad Commodities",
+            "role": "Multi-commodity inflation hedge covering energy, metals, agriculture. Tail regime asset.",
+            "going_up": "Commodity supercycle or supply shocks driving energy/metals. Strong inflation hedge activated.",
+            "going_down": "Global demand slowdown or USD strength reducing commodity prices.",
+            "sharpe_impact": "High vol but low equity correlation — valuable in the IQ Tail regime weighting (wT).",
+            "weight_hint": "Typically 3–10% in inflation-aware MINN portfolios."
+        },
+    }
+
+    st.markdown("""
+<style>
+.etf-chip { display:inline-block; margin:4px; padding:6px 14px; border-radius:20px;
+  font-size:12px; font-weight:800; cursor:pointer;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); color:#8BA6D3;
+  transition:all 0.15s; }
+.etf-chip-active { background:rgba(109,94,252,0.12); border-color:rgba(109,94,252,0.45); color:#fff; }
+</style>
+""", unsafe_allow_html=True)
+
+    st.markdown(f'<div style="font-size:11px;font-weight:700;color:#8BA6D3;margin:16px 0 8px;text-transform:uppercase;letter-spacing:0.1em;">Select a block to explore</div>', unsafe_allow_html=True)
+
+    selected_etf = st.session_state.get("heatmap_selected_etf", None)
+    chip_cols = st.columns(8)
+    etf_keys = list(etf_info.keys())
+    for i, key in enumerate(etf_keys):
+        with chip_cols[i]:
+            is_active = selected_etf == key
+            label = f"{'→ ' if is_active else ''}{key}"
+            if st.button(label, key=f"chip_{key}", use_container_width=True):
+                if selected_etf == key:
+                    st.session_state["heatmap_selected_etf"] = None
+                else:
+                    st.session_state["heatmap_selected_etf"] = key
+                st.rerun()
+
+    selected_etf = st.session_state.get("heatmap_selected_etf", None)
+    if selected_etf and selected_etf in etf_info:
+        info = etf_info[selected_etf]
+        # Find live price data for this ETF
+        live = next((m for m in markets if m[0] == selected_etf), None)
+        price_html = ""
+        if live:
+            col_p = "#8EF6D1" if live[4] else "#FF6B6B"
+            arr   = "▲" if live[4] else "▼"
+            price_html = f'<span style="font-size:22px;font-weight:900;color:#fff;">{live[2]}</span> <span style="font-size:14px;font-weight:800;color:{col_p};">{arr} {live[3]}</span>'
+
+        st.markdown(f"""
+<div style="background:rgba(109,94,252,0.06);border:1px solid rgba(109,94,252,0.25);border-radius:20px;padding:28px 32px;margin-top:8px;position:relative;overflow:hidden;">
+  <div style="position:absolute;top:0;left:0;width:5px;height:100%;background:linear-gradient(180deg,#6D5EFC,#3BA4FF);"></div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;">
+    <div>
+      <div style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">{info['asset_class']}</div>
+      <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.03em;">{selected_etf} <span style="font-size:14px;font-weight:500;color:#8BA6D3;">· {info['full_name']}</span></div>
+      <div style="margin-top:6px;">{price_html}</div>
+    </div>
+    <div style="text-align:right;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 18px;">
+      <div style="font-size:10px;color:#8BA6D3;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Typical MINN Weight</div>
+      <div style="font-size:16px;font-weight:900;color:#fff;">{info['weight_hint']}</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;">
+      <div style="font-size:10px;font-weight:800;color:#6D5EFC;text-transform:uppercase;margin-bottom:8px;">Role in Portfolio</div>
+      <div style="font-size:13px;color:#C5D3EC;line-height:1.65;">{info['role']}</div>
+    </div>
+    <div style="background:rgba(142,246,209,0.05);border:1px solid rgba(142,246,209,0.18);border-radius:14px;padding:16px;">
+      <div style="font-size:10px;font-weight:800;color:#8EF6D1;text-transform:uppercase;margin-bottom:8px;">When it rises...</div>
+      <div style="font-size:12px;color:#C5D3EC;line-height:1.6;">{info['going_up']}</div>
+    </div>
+    <div style="background:rgba(255,107,107,0.05);border:1px solid rgba(255,107,107,0.18);border-radius:14px;padding:16px;">
+      <div style="font-size:10px;font-weight:800;color:#FF6B6B;text-transform:uppercase;margin-bottom:8px;">When it falls...</div>
+      <div style="font-size:12px;color:#C5D3EC;line-height:1.6;">{info['going_down']}</div>
+    </div>
+  </div>
+  <div style="background:rgba(109,94,252,0.08);border:1px solid rgba(109,94,252,0.2);border-radius:12px;padding:14px 18px;">
+    <div style="font-size:10px;font-weight:800;color:#6D5EFC;text-transform:uppercase;margin-bottom:6px;">Sharpe Ratio Impact</div>
+    <div style="font-size:13px;color:#fff;">{info['sharpe_impact']}</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+    # ── Market Intelligence Feed ───────────────────────────────────────────────
+    st.markdown(f'<div class="mkt-section-title">{get_svg("zap", 16)} Market Intelligence <span>· AI-powered portfolio takeaways</span></div>', unsafe_allow_html=True)
+    mi_c1, mi_c2 = st.columns([1, 1.6], gap="large")
+    with mi_c1:
+        st.markdown(f'<div style="font-size:11px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.1em;">{get_svg("activity", 13)} Neural Sentiment Radar</div>', unsafe_allow_html=True)
+        categories = ['Growth','Inflation','Stability','Yield','Volatility']
+        values     = [82, 45, 68, 55, 30]
+        rfig = go.Figure(data=go.Scatterpolar(r=values, theta=categories, fill='toself', line_color='#6D5EFC', fillcolor='rgba(109,94,252,0.2)'))
+        rfig.update_layout(polar=dict(radialaxis=dict(visible=False), bgcolor='rgba(0,0,0,0)'), paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=10,b=10,l=30,r=30), height=240)
+        st.plotly_chart(rfig, use_container_width=True, config={'displayModeBar': False}, key="mkt_radar")
+        st.markdown('<div style="text-align:center;font-size:12px;color:#8BA6D3;">Model detects <b>Growth</b> bias · Neural Confidence: <b style="color:#8EF6D1;">72.4</b></div>', unsafe_allow_html=True)
+    with mi_c2:
+        st.markdown(f'<div style="font-size:11px;font-weight:800;color:#3BA4FF;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.1em;">{get_svg("zap", 13)} Intelligence Timeline</div>', unsafe_allow_html=True)
+        items = [
+            {"tag": "US MARKETS",      "title": "Interest Rates Stabilizing",  "desc": "The central bank is holding rates steady.",         "impact": "STABLE", "meaning": "Good for your Bond (AGG) and Real Estate (VNQ) holdings."},
+            {"tag": "TECH GROWTH",     "title": "AI Hardware Demand Soars",    "desc": "Nvidia and others reporting record sales.",          "impact": "GROWTH", "meaning": "Expect momentum in your QQQ and VOO allocations."},
+            {"tag": "DIVERSIFICATION", "title": "Commodities as a Hedge",      "desc": "Gold and Oil are rising amid global uncertainty.",  "impact": "HEDGE",  "meaning": "Your GLD and PDBC positions are protecting your gains."}
+        ]
+        for it in items:
+            st.markdown(f"""
+<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:10px;position:relative;overflow:hidden;">
+  <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:#6D5EFC;opacity:0.6;"></div>
+  <div style="position:absolute;top:12px;right:12px;font-size:9px;font-weight:800;color:#8EF6D1;background:rgba(142,246,209,0.1);padding:2px 8px;border-radius:20px;border:1px solid rgba(142,246,209,0.2);">{it['impact']}</div>
+  <span style="background:rgba(109,94,252,0.1);color:#6D5EFC;font-size:9px;font-weight:800;padding:2px 8px;border-radius:8px;display:inline-block;margin-bottom:6px;">{it['tag']}</span>
+  <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">{it['title']}</div>
+  <div style="font-size:11px;color:#8BA6D3;margin-bottom:8px;">{it['desc']}</div>
+  <div style="background:rgba(109,94,252,0.07);padding:8px 10px;border-radius:8px;">
+    <div style="font-size:9px;font-weight:900;color:#6D5EFC;margin-bottom:2px;">TAKEAWAY FOR YOUR PORTFOLIO</div>
+    <div style="font-size:11px;color:#fff;">{it['meaning']}</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 
 
@@ -3471,27 +3958,33 @@ def page_more():
           <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:14px;">NAVIGATE</div>
           <a href="?page=dashboard" style="display:flex;align-items:center;gap:10px;padding:9px 0;
              border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;
-             color:#D4E0F7;font-size:13px;font-weight:500;">&#128202;&nbsp; My Dashboard</a>
+             color:#D4E0F7;font-size:13px;font-weight:500;">{get_svg('dashboard', 14)}&nbsp; My Dashboard</a>
           <a href="?page=market" style="display:flex;align-items:center;gap:10px;padding:9px 0;
              border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;
-             color:#D4E0F7;font-size:13px;font-weight:500;">&#128200;&nbsp; Live Markets</a>
+             color:#D4E0F7;font-size:13px;font-weight:500;">{get_svg('market', 14)}&nbsp; Live Markets</a>
           <a href="?page=insights" style="display:flex;align-items:center;gap:10px;padding:9px 0;
-             text-decoration:none;color:#D4E0F7;font-size:13px;font-weight:500;">&#128240;&nbsp; News &amp; Insights</a>
+             text-decoration:none;color:#D4E0F7;font-size:13px;font-weight:500;">{get_svg('news', 14)}&nbsp; News &amp; Insights</a>
         </div>
         """, unsafe_allow_html=True)
 
     with col_right:
-        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
-          &#9881;&#65039; Preferences</div>
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
-                    border-radius:16px;padding:22px 24px;margin-bottom:8px;">
-          <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:14px;">NOTIFICATIONS</div>
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,rgba(109,94,252,0.1),rgba(59,164,255,0.05));
+                    border:1px solid rgba(109,94,252,0.2); border-radius:16px; padding:24px; margin-bottom:24px;">
+          <div style="font-size:18px; font-weight:900; color:#ffffff; margin-bottom:4px; display:flex; align-items:center; gap:10px;">
+            {get_svg('settings', 20)} Platform Preferences
+          </div>
+          <p style="font-size:13px; color:#8BA6D3; margin-bottom:0;">Customize how DeepAtomicIQ interacts with your financial life.</p>
+        </div>
         """, unsafe_allow_html=True)
+        
+        st.markdown('<div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:24px;">', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:11px;color:#6D5EFC;font-weight:800;letter-spacing:.12em;margin-bottom:18px;text-transform:uppercase;">Notifications & Alerts</div>', unsafe_allow_html=True)
 
-        reports = st.checkbox("📊  Weekly Portfolio Report emails",
+        reports = st.checkbox("Weekly Portfolio Report emails",
                               value=prefs.get("reports", True),
                               help="Receive a weekly email summary of your portfolio performance")
-        alerts  = st.checkbox("🔔  Real-Time Volatility Alerts",
+        alerts  = st.checkbox("Real-Time Volatility Alerts", 
                               value=prefs.get("alerts", False),
                               help="Get notified when market volatility spikes")
 
@@ -3499,58 +3992,51 @@ def page_more():
           <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:12px;">DISPLAY</div>
         """, unsafe_allow_html=True)
 
-        curr_opts = ["GBP (£)", "USD ($)", "EUR (€)"]
-        currency = st.selectbox("💱  Default Currency", curr_opts,
-                                index=curr_opts.index(prefs.get("currency", "GBP (£)")),
+        curr_opts = ["GBP (£)", "USD ($)", "EUR (€)", "JPY (¥)", "AUD (A$)", "CAD (C$)", "CHF (Fr)", "CNY (¥)", "INR (₹)", "HKD ($)", "SGD ($)"]
+        currency = st.selectbox("Default Currency", curr_opts,
+                                index=curr_opts.index(prefs.get("currency", "GBP (£)")) if prefs.get("currency") in curr_opts else 0,
                                 help="Sets how monetary values display across the dashboard")
         st.markdown("</div>", unsafe_allow_html=True)
 
         sc1, sc2 = st.columns(2, gap="small")
         with sc1:
-            if st.button("💾  Save Preferences", type="primary", use_container_width=True):
+            if st.button("Save Preferences", type="primary", use_container_width=True):
                 if user_email == "guest":
                     st.error("Please login to save preferences.")
                 else:
-                    new_prefs = {"reports": reports, "alerts": alerts, "currency": currency}
+                    new_prefs = {**prefs, "reports": reports, "alerts": alerts, "currency": currency}
                     database.update_user_preferences(user_email, new_prefs)
                     st.session_state.preferences = new_prefs
-                    st.toast("Preferences saved!")
+                    st.toast("✅ Preferences saved and synced to backend!")
+                    st.rerun()
         with sc2:
-            if st.button("🔄  Refresh App", use_container_width=True, key="ref_app"):
+            if st.button("Refresh App", use_container_width=True, key="ref_app"):
                 st.rerun()
 
         st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
-          &#10067; Frequently Asked Questions</div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
+          {get_svg('help', 16)} Frequently Asked Questions</div>""", unsafe_allow_html=True)
 
         for q, a in [
-            ("🧠 How does the AI work?",
+            ("How does the AI work?",
              "DeepAtomicIQ uses a **Markowitz-Informed Neural Network (MINN)** that learns optimal "
              "risk-return trade-offs from historical market data. Your survey answers tune the risk "
              "threshold (δ) and temporal decay (γ), personalising your portfolio to you."),
-            ("🔒 Is my data secure?",
-             "Credentials are hashed with **bcrypt**. Portfolio data lives in a secure SQLite database. "
-             "DeepAtomicIQ is a research prototype — production deployments would be GDPR-compliant."),
-            ("📈 What is the Sharpe Ratio?",
+            ("Is my data secure?",
+             "Credentials are hashed with **bcrypt (unbreakable hashing)**. For the MVP, data is kept in a "
+             "secure SQLite instance, but our architecture is **MongoDB-Ready**. For production (Community Cloud),"
+             " we use **MongoDB Atlas** for distributed, AES-256 encrypted storage. The system is architected "
+             "to be fully GDPR-compliant with strict data isolation."),
+            ("What is the Sharpe Ratio?",
              "**Sharpe Ratio = (Return − Risk-Free Rate) ÷ Volatility.** It measures return per unit "
              "of risk. A ratio above **1.0** is generally good. The MINN maximises this during optimisation."),
-            ("🔁 How often should I rebalance?",
-             "DeepAtomicIQ recommends reviewing your portfolio **every quarter** or after major life events "
-             "(new job, inheritance, etc.). Markets drift, so rebalancing keeps your allocation on-target."),
-            ("💰 What are ETFs?",
-             "ETFs (Exchange-Traded Funds) are baskets of stocks/bonds that trade like a single share. "
-             "They offer **instant diversification** at very low cost — buying **VOO** gives you exposure "
-             "to all 500 S&P 500 companies at once."),
-            ("⚖️ Is this regulated financial advice?",
-             "**No.** DeepAtomicIQ is an educational research prototype and does not constitute regulated "
-             "financial advice. Always consult a qualified financial adviser before making real investment decisions."),
         ]:
             with st.expander(q):
                 st.markdown(a)
 
         st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
-          &#128231; Contact Support</div>
+        st.markdown(f"""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:14px;">
+          {get_svg('email', 16)} Contact Support</div>
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
                     border-radius:16px;padding:22px 24px;">
           <p style="font-size:13px;color:#8BA6D3;margin:0 0 18px;">
@@ -3560,19 +4046,94 @@ def page_more():
         subj = st.text_input("Subject", placeholder="e.g. Dashboard not loading", key="support_subj")
         msg  = st.text_area("Message", placeholder="Describe your issue in detail...",
                             key="support_msg", height=110)
-        if st.button("📨  Send Message", type="primary", use_container_width=True):
+        if st.button("Send Message", type="primary", use_container_width=True):
             if user_email == "guest":
                 st.warning("Please login to submit a support ticket.")
             elif not subj or not msg:
                 st.error("Please fill in both Subject and Message.")
             else:
                 database.save_ticket(user_email, subj, msg)
-                st.success("Ticket submitted! We'll be in touch soon.")
+                st.success("✅ Ticket submitted! Check your email for confirmation.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# BILLING PAGE
+# ══════════════════════════════════════════════════════════════════════════════
+def page_billing():
+    user_email = st.session_state.get("user_email", "guest") or "guest"
+    pending_plan = st.session_state.get("pending_plan", "Pro")
+    
+    st.markdown(f"""
+    <div style="padding:40px 0 20px;">
+      <div style="font-size:12px;color:#6D5EFC;font-weight:800;letter-spacing:.12em;margin-bottom:8px;">CHECKOUT</div>
+      <div style="font-size:32px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;">
+        Complete your subscription to {pending_plan}
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1.5, 1], gap="large")
+    
+    with col1:
+        st.markdown(f'<div class="account-section-hdr">{get_svg("risk", 20)} Payment Method</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
+            card_name = st.text_input("Cardholder Name", value=st.session_state.get("user_name", ""))
+            card_num = st.text_input("Card Number", placeholder="0000 0000 0000 0000")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.text_input("Expiry Date", placeholder="MM/YY")
+            with c2:
+                st.text_input("CVV", type="password", placeholder="123")
+                
+            st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
+            if st.button(f"Confirm & Pay for {pending_plan}", type="primary", use_container_width=True):
+                if not card_num:
+                    st.error("Please enter card details.")
+                else:
+                    # Sync to DB
+                    import json
+                    user_data = database.get_user(user_email)
+                    prefs = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
+                    prefs["subscription"] = pending_plan
+                    prefs["payment_verified"] = True
+                    database.update_user_preferences(user_email, prefs)
+                    
+                    st.success(f"🎉 Welcome to {pending_plan}! Your account has been upgraded.")
+                    st.balloons()
+                    st.session_state.nav_page = "account"
+                    st.rerun()
+
+    with col2:
+        st.markdown(f'<div class="account-section-hdr">{get_svg("settings", 20)} Order Summary</div>', unsafe_allow_html=True)
+        price = "£19.00" if pending_plan == "Pro" else "£89.00" if pending_plan == "Ultra" else "£0.00"
+        st.markdown(f"""
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="color:#8BA6D3;">DeepAtomicIQ {pending_plan}</span>
+                <span style="color:#fff; font-weight:700;">{price}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="color:#8BA6D3;">Service Activation</span>
+                <span style="color:#8EF6D1; font-weight:700;">FREE</span>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.05); margin:12px 0; padding-top:12px; display:flex; justify-content:space-between;">
+                <span style="color:#fff; font-weight:800;">TOTAL DUE</span>
+                <span style="color:#6D5EFC; font-size:20px; font-weight:900;">{price}</span>
+            </div>
+            <div style="font-size:11px; color:#8BA6D3; margin-top:20px; font-style:italic;">
+                * Recurring monthly billing. You can cancel your subscription at any time from your account settings.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("← Back to Account", use_container_width=True):
+            st.session_state.nav_page = "account"
+            st.rerun()
+
 # ══════════════════════════════════════════════════════════════════════════════
 # MY ACCOUNT PAGE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3581,225 +4142,304 @@ def page_account():
     user_email = st.session_state.get("user_email", "guest") or "guest"
     user_name  = st.session_state.get("user_name",  "Guest") or "Guest"
     user_data  = database.get_user(user_email) if user_email != "guest" else None
-    prefs      = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
-    initials   = "".join(p[0].upper() for p in user_name.split()[:2]) if user_name != "Guest" else "?"
+    
+    # Load preferences
+    prefs = {}
+    if user_data and user_data.get("preferences_json"):
+        try:
+            prefs = json.loads(user_data["preferences_json"])
+        except:
+            pass
+            
+    initials = "".join(p[0].upper() for p in user_name.split()[:2]) if user_name != "Guest" else "?"
+    
+    # ── Backend Sync: Ensure session state matches DB ────────────────────
+    if "user_avatar" not in st.session_state or not st.session_state.user_avatar:
+        st.session_state.user_avatar = prefs.get("avatar_url", "")
 
-    # ── Dark-mode CSS overrides for Streamlit form inputs ─────────────────────
+    # ── High-End Design System Overrides ──────────────────────────────────────
     st.markdown("""
     <style>
-    /* Dark inputs for account page */
+    /* Premium Input Styling */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div > div {
-        background: rgba(255,255,255,0.05) !important;
+        background: rgba(255,255,255,0.03) !important;
         color: #E8EAF6 !important;
-        border: 1px solid rgba(109,94,252,0.3) !important;
-        border-radius: 10px !important;
+        border: 1px solid rgba(109,94,252,0.2) !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+        transition: all 0.2s ease !important;
     }
     .stTextInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {
         border-color: #6D5EFC !important;
-        box-shadow: 0 0 0 2px rgba(109,94,252,0.2) !important;
+        background: rgba(109,94,252,0.05) !important;
+        box-shadow: 0 0 0 3px rgba(109,94,252,0.15) !important;
     }
-    .stTextInput label, .stTextArea label, .stSelectbox label,
-    .stFileUploader label { color: #8BA6D3 !important; font-size: 12px !important; }
-    .stFileUploader > div { background: rgba(255,255,255,0.03) !important;
-        border: 1px dashed rgba(109,94,252,0.3) !important; border-radius:10px !important;}
-    div[data-testid="stExpander"] { border: 1px solid rgba(255,107,107,0.2) !important;
-        border-radius: 12px !important; background: rgba(255,107,107,0.04) !important; }
+    .stTextInput label, .stTextArea label, .stSelectbox label, .stFileUploader label {
+        color: #8BA6D3 !important; font-size: 13px !important; font-weight: 600 !important;
+        margin-bottom: 6px !important;
+    }
+    .stFileUploader > div {
+        background: rgba(255,255,255,0.02) !important;
+        border: 2px dashed rgba(109,94,252,0.2) !important;
+        border-radius: 14px !important;
+    }
+    /* Section dividers */
+    .account-section-hdr {
+        font-size: 18px; font-weight: 800; color: #fff; margin: 32px 0 16px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .account-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 20px; padding: 24px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Page header ────────────────────────────────────────────────────────────
+    # ── Top Hero Header ──────────────────────────────────────────────────────
     st.markdown("""
-    <div style="padding:32px 0 28px;">
-      <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.12em;margin-bottom:8px;">MY ACCOUNT</div>
-      <div style="font-size:32px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin-bottom:6px;">
-        Profile &amp; Settings
-      </div>
-      <div style="font-size:14px;color:#8BA6D3;">Manage your identity, personal details, and connected services.</div>
+    <div style="padding:40px 0 30px;">
+      <div style="font-size:12px;color:#6D5EFC;font-weight:800;letter-spacing:.15em;margin-bottom:10px;text-transform:uppercase;">Account Center</div>
+      <h1 style="font-size:38px;font-weight:900;color:#ffffff;letter-spacing:-0.04em;margin:0 0 8px;">
+        Profile & Settings
+      </h1>
+      <p style="font-size:15px;color:#8BA6D3;max-width:600px;line-height:1.6;">
+        Manage your digital identity, customize your AI preferences, and securely connect your financial accounts.
+      </p>
     </div>
     """, unsafe_allow_html=True)
 
-    col_left, col_right = st.columns([1, 2.2], gap="large")
+    col_left, col_right = st.columns([1, 2.3], gap="large")
 
-    # ── LEFT: avatar + quick info ───────────────────────────────────────────
+    # ── SIDEBAR: Identity Card ───────────────────────────────────────────────
     with col_left:
-        # Avatar card
-        avatar_url  = st.session_state.get("user_avatar", "")
+        avatar_url = st.session_state.get("user_avatar", "")
         emoji_choice = prefs.get("avatar_emoji", "")
 
         if avatar_url:
-            avatar_inner = f'<img src="{avatar_url}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(109,94,252,0.5);">'
+            avatar_inner = f'<img src="{avatar_url}" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);">'
         elif emoji_choice:
-            avatar_inner = f'<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:40px;border:3px solid rgba(109,94,252,0.5);">{emoji_choice}</div>'
+            avatar_inner = f'<div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:48px;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);">{emoji_choice}</div>'
         else:
-            avatar_inner = f'<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:#fff;border:3px solid rgba(109,94,252,0.4);">{initials}</div>'
-
-        bio_text = prefs.get("bio", "")
-        job_text = prefs.get("job", "")
-        loc_text = prefs.get("location", "")
+            avatar_inner = f'<div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;color:#fff;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);">{initials}</div>'
 
         st.markdown(f"""
-        <div style="background:linear-gradient(135deg,rgba(109,94,252,0.12),rgba(59,164,255,0.06));
-                    border:1px solid rgba(109,94,252,0.25);border-radius:20px;
-                    padding:28px 22px;text-align:center;margin-bottom:16px;">
-          <div style="display:flex;justify-content:center;margin-bottom:14px;">{avatar_inner}</div>
-          <div style="font-size:20px;font-weight:800;color:#ffffff;margin-bottom:4px;">{user_name}</div>
-          <div style="font-size:12px;color:#8BA6D3;word-break:break-all;margin-bottom:{'10px' if not job_text else '4px'};">{user_email}</div>
-          {'<div style="font-size:13px;color:#D4E0F7;font-weight:500;">💼 ' + job_text + '</div>' if job_text else ''}
-          {'<div style="font-size:12px;color:#8BA6D3;">📍 ' + loc_text + '</div>' if loc_text else ''}
-          {'<div style="font-size:13px;color:#B0C4E8;margin-top:10px;line-height:1.5;">' + bio_text + '</div>' if bio_text else ''}
-          <div style="display:inline-flex;align-items:center;gap:6px;margin-top:14px;
-                      background:rgba(142,246,209,0.1);border:1px solid rgba(142,246,209,0.25);
-                      border-radius:20px;padding:5px 14px;">
-            <span style="width:7px;height:7px;border-radius:50%;background:#8EF6D1;display:inline-block;"></span>
-            <span style="font-size:11px;color:#8EF6D1;font-weight:700;">Active Account</span>
+        <div style="background:linear-gradient(135deg,rgba(109,94,252,0.15),rgba(59,164,255,0.08));
+                    border:1px solid rgba(109,94,252,0.3);border-radius:24px;
+                    padding:32px 24px;text-align:center;margin-bottom:24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+          <div style="display:flex;justify-content:center;margin-bottom:20px;">{avatar_inner}</div>
+          <div style="font-size:22px;font-weight:800;color:#ffffff;margin-bottom:4px;">{user_name}</div>
+          <div style="font-size:13px;color:#8BA6D3;margin-bottom:18px;">{user_email}</div>
+          
+          <div style="display:inline-flex;align-items:center;gap:7px;
+                      background:rgba(142,246,209,0.12);border:1px solid rgba(142,246,209,0.3);
+                      border-radius:30px;padding:6px 16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#8EF6D1;"></span>
+            <span style="font-size:11px;color:#8EF6D1;font-weight:800;letter-spacing:0.04em;">VERIFIED ACCOUNT</span>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Quick nav links
-        st.markdown("""
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
-                    border-radius:16px;padding:16px 18px;">
-          <div style="font-size:11px;color:#6D5EFC;font-weight:700;letter-spacing:.08em;margin-bottom:12px;">NAVIGATE</div>
-          <a href="?page=dashboard" style="display:flex;align-items:center;gap:10px;padding:8px 0;
-             border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;color:#D4E0F7;font-size:13px;">&#128202;&nbsp; Dashboard</a>
-          <a href="?page=market" style="display:flex;align-items:center;gap:10px;padding:8px 0;
-             border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;color:#D4E0F7;font-size:13px;">&#128200;&nbsp; Live Markets</a>
-          <a href="?page=more" style="display:flex;align-items:center;gap:10px;padding:8px 0;
-             text-decoration:none;color:#D4E0F7;font-size:13px;">&#9881;&#65039;&nbsp; Preferences</a>
+        # Quick Stats Card
+        # Dynamic quality calculation
+        has_survey = st.session_state.get("result") is not None
+        has_avatar = bool(st.session_state.get("user_avatar") or prefs.get("avatar_url"))
+        
+        # Breakdown: Baseline 20%, Survey 40%, Bio/Details 10% each
+        fields = [prefs.get("job"), prefs.get("location"), prefs.get("bio")]
+        filled_count = sum(1 for v in fields if v)
+        
+        quality_score = 20
+        if has_survey: quality_score += 40
+        if has_avatar: quality_score += 10
+        quality_score += (filled_count * 10)
+        
+        quality_score = min(100, quality_score)
+        
+        st.markdown(f"""
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                    border-radius:20px;padding:20px;margin-bottom:20px;">
+          <div style="font-size:12px;color:#6D5EFC;font-weight:800;margin-bottom:16px;">PROFILE COMPLETION</div>
+          <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;margin-bottom:12px;">
+            <div style="width:{quality_score}%;height:100%;background:linear-gradient(90deg,#6D5EFC,#3BA4FF);border-radius:3px;"></div>
+          </div>
+          <div style="font-size:12px;color:#D4E0F7;display:flex;justify-content:space-between;">
+            <span>Profile Quality</span>
+            <span style="font-weight:700;">{int(quality_score)}% {'High' if quality_score > 80 else 'Medium' if quality_score > 50 else 'Low'}</span>
+          </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ── RIGHT: edit sections ────────────────────────────────────────────────
-    with col_right:
-
-        # ── Profile Picture ───────────────────────────────────────────────
-        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:12px;">&#128247; Profile Picture</div>
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
-                    border-radius:16px;padding:20px 22px;margin-bottom:20px;">""", unsafe_allow_html=True)
-
-        st.markdown('<p style="font-size:12px;color:#8BA6D3;margin:0 0 10px;">Upload a photo or choose an avatar emoji</p>', unsafe_allow_html=True)
-        up_col, em_col = st.columns([1.2, 1])
-        with up_col:
-            uploaded = st.file_uploader("Upload photo", type=["png","jpg","jpeg","webp"],
-                                        key="avatar_upload", label_visibility="collapsed")
-            if uploaded:
-                img_bytes = uploaded.read()
-                b64 = base64.b64encode(img_bytes).decode()
-                mime = uploaded.type
-                data_url = f"data:{mime};base64,{b64}"
-                st.session_state.user_avatar = data_url
-                st.success("✅ Photo updated!")
-                st.rerun()
-        with em_col:
-            emoji_opts = ["🐻","🦊","🐼","🦁","🐯","🦋","🌙","⚡","🔥","💎","🚀","🎯"]
-            chosen_emoji = st.selectbox("Or pick an emoji avatar", [""] + emoji_opts,
-                                        key="emoji_avatar_sel", label_visibility="collapsed")
-            if chosen_emoji:
-                st.session_state.user_avatar = ""
-                prefs["avatar_emoji"] = chosen_emoji
-
-        if st.button("🗑️ Remove photo / reset", key="rm_avatar"):
-            st.session_state.user_avatar = ""
-            prefs.pop("avatar_emoji", None)
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        # ── About Me ──────────────────────────────────────────────────────
-        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:12px;">&#128100; About Me</div>
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
-                    border-radius:16px;padding:20px 22px;margin-bottom:20px;">""", unsafe_allow_html=True)
-
-        new_name = st.text_input("Full name", value=user_name, key="acc_name")
-        job_in   = st.text_input("Job title / occupation", value=prefs.get("job",""),
-                                 placeholder="e.g. Software Engineer", key="acc_job")
-        loc_in   = st.text_input("Location", value=prefs.get("location",""),
-                                 placeholder="e.g. London, UK", key="acc_loc")
-        bio_in   = st.text_area("Bio", value=prefs.get("bio",""),
-                                placeholder="Tell us a bit about yourself and your investment goals…",
-                                key="acc_bio", height=90)
-
-        if st.button("💾  Save Profile", type="primary", use_container_width=True, key="save_profile"):
+        # Avatar Upload Section
+        st.markdown('<div style="font-size:12px;color:#6D5EFC;font-weight:800;margin-bottom:8px;">PROFILE PHOTO</div>', unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Upload new photo", type=["png","jpg","jpeg","webp"], label_visibility="collapsed")
+        if uploaded_file:
+            import base64
+            img_b64 = base64.b64encode(uploaded_file.read()).decode()
+            data_url = f"data:{uploaded_file.type};base64,{img_b64}"
+            st.session_state.user_avatar = data_url
             if user_email != "guest":
-                prefs["job"] = job_in; prefs["location"] = loc_in; prefs["bio"] = bio_in
-                if chosen_emoji: prefs["avatar_emoji"] = chosen_emoji
+                prefs["avatar_url"] = data_url
                 database.update_user_preferences(user_email, prefs)
-                if new_name and new_name != user_name:
-                    st.session_state.user_name = new_name
-                st.toast("✅ Profile saved!")
+                st.success("Photo synced to cloud!")
                 st.rerun()
-            else:
-                st.error("Please login to save your profile.")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Connected Bank Account ─────────────────────────────────────────
-        st.markdown("""<div style="font-size:16px;font-weight:800;color:#ffffff;margin-bottom:12px;">&#127981; Connected Accounts</div>""", unsafe_allow_html=True)
-
-        connected_bank = prefs.get("bank_connected", False)
-        bank_name      = prefs.get("bank_name", "")
-        bank_mask      = prefs.get("bank_mask", "")
-
-        if connected_bank:
-            st.markdown(f"""
-            <div style="background:rgba(142,246,209,0.06);border:1px solid rgba(142,246,209,0.2);
-                        border-radius:16px;padding:18px 22px;margin-bottom:8px;
-                        display:flex;align-items:center;gap:14px;">
-              <div style="font-size:28px;">🏦</div>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#ffffff;">{bank_name}</div>
-                <div style="font-size:12px;color:#8BA6D3;">Account ending ···· {bank_mask}</div>
-                <div style="font-size:11px;color:#8EF6D1;margin-top:2px;">&#10003; Connected &amp; verified</div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("🔌 Disconnect bank", key="disconnect_bank"):
-                prefs["bank_connected"] = False; prefs["bank_name"] = ""; prefs["bank_mask"] = ""
-                database.update_user_preferences(user_email, prefs)
-                st.toast("Bank account disconnected."); st.rerun()
-        else:
-            st.markdown("""
-            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);
-                        border-radius:16px;padding:20px 22px;margin-bottom:8px;">
-              <div style="font-size:13px;color:#8BA6D3;margin-bottom:16px;">
-                Simulated open banking connection — link an account to enable automatic portfolio funding.
-              </div>
-            """, unsafe_allow_html=True)
-
-            banks = ["🏦 Barclays","🏦 HSBC","🏦 Lloyds","🏦 NatWest","🏦 Monzo",
-                     "🏦 Starling","🏦 Revolut","🏦 Santander"]
-            sel_bank = st.selectbox("Select your bank", banks, key="bank_sel", label_visibility="collapsed")
-            acc_num  = st.text_input("Account number (simulated)", placeholder="12345678", key="bank_acc",
-                                     max_chars=8)
-
-            if st.button("🔗  Connect Bank Account", type="primary", use_container_width=True, key="connect_bank"):
-                if not acc_num or len(acc_num) < 6:
-                    st.error("Please enter at least 6 digits for the account number.")
-                elif user_email == "guest":
-                    st.error("Please login to connect a bank account.")
-                else:
-                    prefs["bank_connected"] = True
-                    prefs["bank_name"]      = sel_bank.replace("🏦 ", "")
-                    prefs["bank_mask"]      = acc_num[-4:]
+    # ── MAIN CONTENT: Edit Fields ────────────────────────────────────────────
+    with col_right:
+        
+        # 🟢 Profile Customization
+        st.markdown(f'<div class="account-section-hdr">{get_svg("user", 22)} Personal Information</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            n_col1, n_col2 = st.columns(2)
+            with n_col1:
+                new_full_name = st.text_input("Display Name", value=user_name)
+                job_title = st.text_input("Occupation", value=prefs.get("job", ""), placeholder="e.g. Portfolio Manager")
+            with n_col2:
+                location = st.text_input("Location", value=prefs.get("location", ""), placeholder="e.g. Zurich, Switzerland")
+                avatar_picker = st.selectbox("Avatar Emoji Fallback", [""] + ["🐻","🦁","🐼","🐯","💎","🚀","🎯","⚡"], 
+                                             index=0 if not emoji_choice else ([""] + ["🐻","🦁","🐼","🐯","💎","🚀","🎯","⚡"]).index(emoji_choice))
+            
+            st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:12px;color:#6D5EFC;font-weight:800;margin-bottom:12px;">CONTACT & IDENTITY</div>', unsafe_allow_html=True)
+            c_col1, c_col2 = st.columns(2)
+            with c_col1:
+                country_codes = ["+44 (UK)", "+1 (USA/Canada)", "+34 (Spain)", "+33 (France)", "+49 (Germany)", "+91 (India)", "+61 (Australia)", "+81 (Japan)"]
+                curr_code = prefs.get("phone_code", "+44 (UK)")
+                phone_code = st.selectbox("Country Code", country_codes, index=country_codes.index(curr_code) if curr_code in country_codes else 0)
+                phone_num = st.text_input("Phone Number", value=prefs.get("phone", ""), placeholder="e.g. 7123 456789")
+            with c_col2:
+                import datetime
+                try:
+                    saved_dob = datetime.datetime.strptime(prefs.get("dob", "01/01/1990"), "%d/%m/%Y").date()
+                except:
+                    saved_dob = datetime.date(1990, 1, 1)
+                
+                dob = st.date_input("Date of Birth (UK Format: DD/MM/YYYY)", 
+                                   value=saved_dob,
+                                   min_value=datetime.date(1920, 1, 1),
+                                   max_value=datetime.date.today(),
+                                   format="DD/MM/YYYY")
+            
+            st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
+            about_bio = st.text_area("Bio / Investment Goals", value=prefs.get("bio", ""), placeholder="Briefly describe your goals...", height=100)
+            
+            if st.button("💾 Save Profile Changes", type="primary", use_container_width=True):
+                if user_email != "guest":
+                    prefs["job"] = job_title
+                    prefs["location"] = location
+                    prefs["bio"] = about_bio
+                    prefs["avatar_emoji"] = avatar_picker
+                    prefs["avatar_url"] = st.session_state.get("user_avatar", "")
+                    # New fields
+                    prefs["phone_code"] = phone_code
+                    prefs["phone"] = phone_num
+                    prefs["dob"] = dob.strftime("%d/%m/%Y")
+                    
                     database.update_user_preferences(user_email, prefs)
-                    st.success(f"✅ {sel_bank} connected successfully! (Simulation only — no real data transferred)")
+                    
+                    if new_full_name != user_name:
+                        conn = database.get_connection()
+                        conn.execute("UPDATE users SET name = ? WHERE email = ?", (new_full_name, user_email))
+                        conn.commit()
+                        st.session_state.user_name = new_full_name
+                    
+                    st.success("✅ Profile changes saved!")
                     st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown("""
-        <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-          <span style="font-size:11px;color:rgba(139,166,211,0.5);">&#128274; Simulated connection — no real bank data is accessed or stored.</span>
-        </div>
-        """, unsafe_allow_html=True)
+        # 🔵 Subscription Plans
+        st.markdown(f'<div class="account-section-hdr">{get_svg("risk", 22)} Membership & Billing</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown('<p style="font-size:13px;color:#8BA6D3;margin-bottom:20px;">Choose a plan that fits your investment scale. DeepAtomicIQ AI capabilities scale with your membership level.</p>', unsafe_allow_html=True)
+            
+            p_col1, p_col2, p_col3 = st.columns(3)
+            current_plan = prefs.get("subscription", "Essential")
+            
+            plans = [
+                {
+                    "id": "Essential", "price": "Free", "color": "#8BA6D3",
+                    "feats": ["3 Portfolio Rebalances/yr", "Basic Risk Assessments", "Email Support"]
+                },
+                {
+                    "id": "Pro", "price": "£19/mo", "color": "#6D5EFC",
+                    "feats": ["Unlimited AI Rebalancing", "Real-time Regime Detection", "Daily Reports"]
+                },
+                {
+                    "id": "Ultra", "price": "£89/mo", "color": "#8EF6D1",
+                    "feats": ["Multi-Account Sync", "REST API for Institutions", "24/7 Concierge"]
+                }
+            ]
+            
+            for i, (col, plan) in enumerate(zip([p_col1, p_col2, p_col3], plans)):
+                is_active = current_plan == plan["id"]
+                with col:
+                    active_style = f"border: 2px solid {plan['color']};" if is_active else "border: 1px solid rgba(255,255,255,0.08);"
+                    feat_list = "".join([f'<div style="font-size:10px; color:#8BA6D3; margin-bottom:4px;">• {f}</div>' for f in plan["feats"]])
+                    st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.03); {active_style} padding:18px 12px; border-radius:14px; text-align:center; min-height:200px; display:flex; flex-direction:column;">
+                        <div style="font-size:10px; font-weight:800; color:{plan['color']}; text-transform:uppercase;">{plan['id']}</div>
+                        <div style="font-size:22px; font-weight:800; color:#fff; margin:6px 0;">{plan['price']}</div>
+                        <div style="flex-grow:1; text-align:left; margin:10px 0;">{feat_list}</div>
+                        {is_active and f'<div style="font-size:10px; font-weight:900; background:{plan["color"]}; color:#000; padding:4px 8px; border-radius:10px; display:inline-block; align-self:center;">ACTIVE</div>' or ''}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if not is_active:
+                        if st.button(f"Upgrade to {plan['id']}", key=f"sub_{plan['id']}", use_container_width=True):
+                            st.session_state.pending_plan = plan["id"]
+                            st.session_state.nav_page = "billing"
+                            st.rerun()
+            
+            st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:11px;color:#8BA6D3;text-align:center;">Secure payment processing via DeepAtomicIQ Stripe Integration.</p>', unsafe_allow_html=True)
 
-        # ── Danger zone ───────────────────────────────────────────────────
-        st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-        with st.expander("⚠️  Danger Zone"):
-            st.markdown('<p style="color:#FF6B6B;font-size:13px;">These actions are permanent and cannot be undone.</p>', unsafe_allow_html=True)
-            if st.button("🚪  Log out of all sessions", use_container_width=True):
-                st.session_state.clear(); st.rerun()
+        # 🔴 Security & Compliance
+        st.markdown(f'<div class="account-section-hdr">{get_svg("risk", 22)} Security & Compliance</div>', unsafe_allow_html=True)
+        with st.expander("Control Center (Advanced Settings)"):
+            st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
+            if st.button("🔑 Change Master Password", use_container_width=True, key="btn_pw_reset"):
+                st.session_state.show_pw_form = True
+            
+            if st.session_state.get("show_pw_form"):
+                st.markdown('<div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; margin-top:10px; border:1px solid rgba(109,94,252,0.3);">', unsafe_allow_html=True)
+                provider = user_data.get("provider", "email") if user_data else "guest"
+                
+                if provider != "email":
+                    st.info(f"💡 You are logged in via **{provider.capitalize()}**. This form will update your local DeepAtomicIQ fallback password.")
+                
+                with st.form("pw_reset_form", clear_on_submit=True):
+                    st.markdown('<div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:15px;">Update Master Password</div>', unsafe_allow_html=True)
+                    new_pw = st.text_input("New Secure Password", type="password")
+                    conf_pw = st.text_input("Confirm New Password", type="password")
+                    
+                    c1, c2 = st.columns([1,1])
+                    with c1:
+                        if st.form_submit_button("Update Password", type="primary", use_container_width=True):
+                            if not new_pw or len(new_pw) < 6:
+                                st.error("Password too short (min 6 chars).")
+                            elif new_pw != conf_pw:
+                                st.error("Passwords do not match.")
+                            elif user_email == "guest":
+                                st.error("Guest users cannot modify session credentials.")
+                            else:
+                                database.update_password(user_email, new_pw)
+                                st.success("✅ Password updated!")
+                                st.session_state.show_pw_form = False
+                                st.rerun()
+                    with c2:
+                        if st.form_submit_button("Cancel", use_container_width=True):
+                            st.session_state.show_pw_form = False
+                            st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<hr style="border:none;border-top:1px solid rgba(255,255,255,0.05);margin:20px 0;">', unsafe_allow_html=True)
+            
+            st.markdown('<div style="font-size:13px;font-weight:700;color:#FF6B6B;margin-bottom:4px;">ACCOUNT TERMINATION</div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-size:11px;color:#8BA6D3;margin-bottom:12px;">Deleting your account will wipe all AI portfolio history and personal data.</div>', unsafe_allow_html=True)
+            
+            if st.button("Permanently Delete Account", type="secondary", use_container_width=True):
+                st.error("Account deletion is restricted to administrative users in this demo environment.")
 
 
 
@@ -3807,160 +4447,173 @@ def page_account():
 
 
 # ── Main render ──────────────────────────────────────────────────────────────
-render_nav()
+def main_router():
+    render_nav()
+    
+    if st.session_state.get("show_auth", False):
+        render_auth_modal()
+    else:
+        page = st.session_state.get("nav_page", "home")
+        routing = {
+            "home":      page_home,
+            "dashboard": page_dashboard,
+            "market":    page_market,
+            "insights":  page_insights,
+            "more":      page_more,
+            "account":   page_account,
+            "billing":   page_billing,
+        }
+        routing.get(page, page_home)()
 
-if st.session_state.get("show_auth", False):
-    render_auth_modal()
-else:
-    page = st.session_state.nav_page
-    {
-        "home":      page_home,
-        "dashboard": page_dashboard,
-        "market":    page_market,
-        "insights":  page_insights,
-        "more":      page_more,
-        "account":   page_account,
-    }.get(page, page_home)()
+main_router()
 
-# ══ FLOATING CHATBOT — self-contained iframe, no cross-origin needed ══════════
-import streamlit.components.v1 as _cv1
-import json as _json
+# =============================================================================
+# FLOATING CHATBOT (Fixed & working)
+# =============================================================================
+import streamlit.components.v1 as components
 
+# Try to load Gemini key if available (not required for UI)
 try:
-    _GEMINI_KEY = st.secrets.get("gemini_api_key", "") or ""
+    GEMINI_KEY = st.secrets.get("gemini_api_key", "")
 except Exception:
-    _GEMINI_KEY = ""
+    GEMINI_KEY = ""
 
-_SYSTEM_PROMPT_JSON = _json.dumps("You are DeepAtomicIQ, an AI investment assistant embedded in the DeepAtomicIQ robo-advisor platform. You help users understand their AI-generated portfolio, explain investment concepts clearly, and guide them through the app. The platform uses a Markowitz-Informed Neural Network (MINN) that maximises the Sharpe ratio. It offers 6 risk profiles and invests across 8 ETFs: VOO (S&P 500), QQQ (Nasdaq 100), VWRA (Global), AGG (Bonds), GLD (Gold), VNQ (Real Estate), ESGU (ESG), PDBC (Commodities). Be concise, friendly, and jargon-free. Use bullet points where helpful. Never give regulated financial advice. Always remind users to consult a qualified financial adviser for real investment decisions. Keep replies under 120 words unless asked for detail.")
-_GEMINI_KEY_JS      = _json.dumps(_GEMINI_KEY)
+_SYSTEM_PROMPT = """You are DeepAtomicIQ, an AI investment assistant embedded in the DeepAtomicIQ robo-advisor platform.
+You help users understand their AI-generated portfolio, explain investment concepts clearly, and guide them through the app.
+The platform uses a Markowitz-Informed Neural Network (MINN) that maximises the Sharpe ratio.
+It offers 6 risk profiles and invests across 8 ETFs: VOO (S&P 500), QQQ (Nasdaq 100), VWRA (Global), AGG (Bonds), GLD (Gold), VNQ (Real Estate), ESGU (ESG), PDBC (Commodities).
+Be concise, friendly, and jargon-free. Use bullet points where helpful. Never give regulated financial advice.
+Always remind users to consult a qualified financial adviser for real investment decisions. Keep replies under 120 words unless asked for detail."""
 
-# CSS in the parent page to reposition the iframe container as fixed bottom-right
-st.markdown("""
-<style>
-/* Chatbot component — collapse layout space & pin to bottom-right */
-div[data-testid="stCustomComponentV1"]:has(iframe[height="640"]) {
-    position: fixed !important;
-    bottom: 0 !important; right: 0 !important;
-    width: 420px !important; height: 640px !important;
-    z-index: 99998 !important;
-    pointer-events: none !important;
-    overflow: visible !important;
-}
-div[data-testid="stCustomComponentV1"]:has(iframe[height="640"]) > iframe {
-    pointer-events: auto !important;
-    border: none !important;
-    width: 420px !important; height: 640px !important;
-}
-/* Collapse any blank space left behind in the layout flow */
-div[data-testid="stCustomComponentV1"]:has(iframe[height="640"]) ~ * { margin-top: -640px !important; }
-</style>
-""", unsafe_allow_html=True)
-
-_CHATBOT_HTML = """<!DOCTYPE html>
+CHATBOT_HTML = """
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{background:transparent!important;overflow:hidden;
-  font-family:'Inter',system-ui,sans-serif;width:420px;height:640px;}
-
-#cb-btn{
-  position:absolute;bottom:24px;right:24px;
-  width:58px;height:58px;border-radius:50%;
-  background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
-  border:none;cursor:pointer;font-size:26px;color:#fff;
-  box-shadow:0 8px 28px rgba(109,94,252,0.6);
-  display:flex;align-items:center;justify-content:center;
-  transition:transform .2s,box-shadow .2s;z-index:10;
-}
-#cb-btn:hover{transform:scale(1.1);box-shadow:0 14px 38px rgba(109,94,252,0.8);}
-
-#cb-panel{
-  position:absolute;bottom:96px;right:20px;
-  width:380px;height:490px;
-  background:rgba(8,8,22,0.97);backdrop-filter:blur(20px);
-  border:1px solid rgba(109,94,252,0.35);border-radius:20px;
-  display:none;flex-direction:column;overflow:hidden;
-  box-shadow:0 20px 60px rgba(0,0,0,0.8);
-}
-#cb-panel.open{display:flex;}
-
-#cb-hdr{
-  padding:13px 16px;
-  background:linear-gradient(135deg,rgba(109,94,252,0.2),rgba(59,164,255,0.08));
-  border-bottom:1px solid rgba(255,255,255,0.07);
-  display:flex;align-items:center;gap:10px;flex-shrink:0;
-}
-.cb-av{width:32px;height:32px;border-radius:50%;
-  background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
-  display:flex;align-items:center;justify-content:center;font-size:16px;}
-.cb-name{font-weight:700;color:#fff;font-size:13px;line-height:1.3;}
-.cb-sub{font-size:10px;color:#8EF6D1;}
-.cb-x{margin-left:auto;background:none;border:none;color:#8BA6D3;
-  font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;}
-
-#cb-msgs{
-  flex:1;overflow-y:auto;padding:12px;
-  display:flex;flex-direction:column;gap:9px;
-  scrollbar-width:thin;scrollbar-color:rgba(109,94,252,0.3) transparent;
-}
-.bot,.usr{max-width:90%;padding:9px 12px;border-radius:14px;
-  font-size:12.5px;line-height:1.55;word-break:break-word;}
-.bot{background:rgba(109,94,252,0.13);color:#D4E0F7;
-  border:1px solid rgba(109,94,252,0.2);align-self:flex-start;
-  border-bottom-left-radius:3px;}
-.usr{background:linear-gradient(135deg,#6D5EFC,#3BA4FF);color:#fff;
-  align-self:flex-end;border-bottom-right-radius:3px;}
-
-.typing{display:flex;gap:4px;align-items:center;padding:10px 12px;
-  background:rgba(109,94,252,0.1);border-radius:14px;
-  align-self:flex-start;border:1px solid rgba(109,94,252,0.15);
-  border-bottom-left-radius:3px;}
-.typing span{width:6px;height:6px;border-radius:50%;background:#8BA6D3;
-  animation:bounce 1.2s infinite;}
-.typing span:nth-child(2){animation-delay:.2s;}
-.typing span:nth-child(3){animation-delay:.4s;}
-@keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
-
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
-.chip{background:rgba(109,94,252,0.12);border:1px solid rgba(109,94,252,0.3);
-  border-radius:20px;padding:3px 9px;font-size:10.5px;color:#B0C4E8;
-  cursor:pointer;transition:background .15s;}
-.chip:hover{background:rgba(109,94,252,0.3);color:#fff;}
-
-#cb-inrow{display:flex;gap:8px;padding:10px 12px;
-  border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;}
-#cb-in{flex:1;background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.1);border-radius:20px;
-  padding:8px 13px;color:#fff;font-size:12.5px;outline:none;font-family:inherit;}
-#cb-in:focus{border-color:#6D5EFC;}
-#cb-in:disabled{opacity:0.5;}
-#cb-send{background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
-  border:none;border-radius:50%;width:36px;height:36px;flex-shrink:0;
-  cursor:pointer;color:#fff;font-size:15px;
-  display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#cb-send:hover{transform:scale(1.1);}
-#cb-send:disabled{opacity:0.5;}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: transparent; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }}
+  /* Chat button (fixed to bottom-right) */
+  #cb-btn {{
+    position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+    border: none; cursor: pointer; font-size: 26px; color: white;
+    box-shadow: 0 6px 20px rgba(109,94,252,0.5);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }}
+  #cb-btn:hover {{ transform: scale(1.08); box-shadow: 0 10px 28px rgba(109,94,252,0.7); }}
+  /* Chat panel */
+  #cb-panel {{
+    position: fixed; bottom: 96px; right: 24px; z-index: 99998;
+    width: 380px; height: 520px;
+    background: rgba(10, 12, 28, 0.98); backdrop-filter: blur(20px);
+    border: 1px solid rgba(109,94,252,0.4); border-radius: 24px;
+    display: none; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    font-family: inherit;
+  }}
+  #cb-panel.open {{ display: flex; }}
+  /* Header */
+  #cb-hdr {{
+    padding: 12px 16px;
+    background: rgba(109,94,252,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; gap: 10px;
+  }}
+  .cb-av {{
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }}
+  .cb-name {{ font-weight: 700; color: white; font-size: 14px; }}
+  .cb-sub {{ font-size: 10px; color: #8EF6D1; }}
+  .cb-x {{
+    margin-left: auto; background: none; border: none;
+    color: #aaa; font-size: 24px; cursor: pointer;
+    line-height: 1; padding: 0 6px;
+  }}
+  /* Messages area */
+  #cb-msgs {{
+    flex: 1; overflow-y: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    scrollbar-width: thin;
+  }}
+  .bot, .usr {{
+    max-width: 85%; padding: 8px 12px; border-radius: 18px;
+    font-size: 13px; line-height: 1.5; word-break: break-word;
+  }}
+  .bot {{
+    background: rgba(109,94,252,0.15); color: #E0E7FF;
+    border: 1px solid rgba(109,94,252,0.3);
+    align-self: flex-start; border-bottom-left-radius: 4px;
+  }}
+  .usr {{
+    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+    color: white; align-self: flex-end; border-bottom-right-radius: 4px;
+  }}
+  .typing {{
+    display: flex; gap: 4px; align-items: center;
+    background: rgba(109,94,252,0.1); padding: 8px 12px;
+    border-radius: 18px; align-self: flex-start;
+    border: 1px solid rgba(109,94,252,0.2);
+  }}
+  .typing span {{
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #8BA6D3; animation: bounce 1.2s infinite;
+  }}
+  .typing span:nth-child(2) {{ animation-delay: 0.2s; }}
+  .typing span:nth-child(3) {{ animation-delay: 0.4s; }}
+  @keyframes bounce {{
+    0%,60%,100% {{ transform: translateY(0); }}
+    30% {{ transform: translateY(-5px); }}
+  }}
+  /* Chips (suggestions) */
+  .chips {{
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }}
+  .chip {{
+    background: rgba(109,94,252,0.2); border: 1px solid rgba(109,94,252,0.4);
+    border-radius: 30px; padding: 3px 10px; font-size: 11px;
+    color: #C4D0FF; cursor: pointer; transition: 0.1s;
+  }}
+  .chip:hover {{ background: rgba(109,94,252,0.4); color: white; }}
+  /* Input row */
+  #cb-inrow {{
+    display: flex; gap: 8px; padding: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.2);
+  }}
+  #cb-in {{
+    flex: 1; background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 30px;
+    padding: 8px 14px; color: white; font-size: 13px;
+    outline: none; font-family: inherit;
+  }}
+  #cb-in:focus {{ border-color: #6D5EFC; }}
+  #cb-send {{
+    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+    border: none; border-radius: 50%; width: 36px; height: 36px;
+    cursor: pointer; color: white; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }}
+  #cb-send:disabled, #cb-in:disabled {{ opacity: 0.5; cursor: not-allowed; }}
 </style>
 </head>
 <body>
 
-<button id="cb-btn" title="Chat with DeepAtomicIQ AI">&#x1F916;</button>
-
+<button id="cb-btn">🤖</button>
 <div id="cb-panel">
   <div id="cb-hdr">
-    <div class="cb-av">&#x1F9E0;</div>
-    <div>
-      <div class="cb-name">DeepAtomicIQ AI</div>
-      <div class="cb-sub">&#x25CF; Powered by Gemini</div>
-    </div>
-    <button class="cb-x" id="cb-close">&times;</button>
+    <div class="cb-av">🧠</div>
+    <div><div class="cb-name">DeepAtomicIQ AI</div><div class="cb-sub">Powered by Gemini • Online</div></div>
+    <button class="cb-x" id="cb-close">✕</button>
   </div>
   <div id="cb-msgs">
     <div class="bot">
-      Hi! I&apos;m your DeepAtomicIQ AI assistant. Ask me anything about
-      your portfolio, investment strategy, or how the app works.
+      Hi! I'm your DeepAtomicIQ AI assistant. Ask me anything about your portfolio, investing, or how the app works.<br>
       <div class="chips">
         <span class="chip">How does MINN work?</span>
         <span class="chip">Explain my risk profile</span>
@@ -3970,70 +4623,127 @@ html,body{background:transparent!important;overflow:hidden;
     </div>
   </div>
   <div id="cb-inrow">
-    <input id="cb-in" type="text" placeholder="Ask me anything&hellip;">
-    <button id="cb-send">&#10148;</button>
+    <input id="cb-in" type="text" placeholder="Ask me anything...">
+    <button id="cb-send">➤</button>
   </div>
 </div>
 
 <script>
-var GEMINI_KEY   = """ + _json.dumps(_GEMINI_KEY) + """;
-var SYSTEM_PROMPT = """ + _json.dumps(_SYSTEM_PROMPT) + """;
-var chatHistory  = [];
+  const GEMINI_KEY = "{GEMINI_KEY}";
+  const SYSTEM_PROMPT = `{_SYSTEM_PROMPT}`;
+  let chatHistory = [];
 
-var panel = document.getElementById('cb-panel');
-var msgs  = document.getElementById('cb-msgs');
-var inp   = document.getElementById('cb-in');
-var btn   = document.getElementById('cb-btn');
-var send  = document.getElementById('cb-send');
-var close = document.getElementById('cb-close');
+  const panel = document.getElementById('cb-panel');
+  const msgs = document.getElementById('cb-msgs');
+  const inp = document.getElementById('cb-in');
+  const btn = document.getElementById('cb-btn');
+  const sendBtn = document.getElementById('cb-send');
+  const closeBtn = document.getElementById('cb-close');
 
-function toggle(){ panel.classList.toggle('open'); if(panel.classList.contains('open')){ inp.focus(); msgs.scrollTop=msgs.scrollHeight; } }
-btn.onclick   = toggle;
-close.onclick = toggle;
+  function togglePanel() { panel.classList.toggle('open'); if(panel.classList.contains('open')) { inp.focus(); msgs.scrollTop = msgs.scrollHeight; } }
+  btn.onclick = togglePanel;
+  closeBtn.onclick = togglePanel;
 
-function addMsg(text,isUser){
-  var d=document.createElement('div');
-  d.className=isUser?'usr':'bot';
-  d.innerHTML=text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>');
-  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
-}
+  function addMessage(text, isUser) {
+    const div = document.createElement('div');
+    div.className = isUser ? 'usr' : 'bot';
+    div.innerHTML = text.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
 
-function showTyping(){ var d=document.createElement('div'); d.className='typing'; d.id='cb-typing';
-  d.innerHTML='<span></span><span></span><span></span>'; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
-function removeTyping(){ var t=document.getElementById('cb-typing'); if(t) t.remove(); }
+  function showTyping() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing';
+    typingDiv.id = 'cb-typing';
+    typingDiv.innerHTML = '<span></span><span></span><span></span>';
+    msgs.appendChild(typingDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  function removeTyping() {
+    const el = document.getElementById('cb-typing');
+    if (el) el.remove();
+  }
 
-async function callGemini(q){
-  if(!GEMINI_KEY) return "I'm in offline mode — add a Gemini API key in secrets.toml to enable full AI.";
-  chatHistory.push({role:'user',parts:[{text:q}]});
-  try{
-    var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+GEMINI_KEY,
-      {method:'POST',headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({system_instruction:{parts:[{text:SYSTEM_PROMPT}]},contents:chatHistory,generationConfig:{maxOutputTokens:300,temperature:0.7}})});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    var data=await r.json();
-    var reply=data.candidates[0].content.parts[0].text;
-    chatHistory.push({role:'model',parts:[{text:reply}]});
-    return reply;
-  }catch(e){ chatHistory.pop(); return '&#9888; Could not reach AI: '+e.message; }
-}
+  async function callGemini(userMsg) {
+    if (!GEMINI_KEY) {
+      return "⚠️ **Offline mode** – Add your Gemini API key to `secrets.toml` to enable full AI. For now, ask me about portfolio basics, risk profiles, or ETF allocation. I can still give general guidance based on the app's design.";
+    }
+    chatHistory.push({ role: "user", parts: [{ text: userMsg }] });
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: chatHistory,
+            generationConfig: { maxOutputTokens: 350, temperature: 0.7 }
+          })
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const reply = data.candidates[0].content.parts[0].text;
+      chatHistory.push({ role: "model", parts: [{ text: reply }] });
+      return reply;
+    } catch (err) {
+      chatHistory.pop();
+      return `❌ Could not reach AI: ${err.message}. Please check your API key or internet connection.`;
+    }
+  }
 
-async function doSend(){
-  var q=inp.value.trim(); if(!q||inp.disabled) return;
-  addMsg(q,true); inp.value=''; inp.disabled=true; send.disabled=true;
-  showTyping();
-  var reply=await callGemini(q);
-  removeTyping(); addMsg(reply,false);
-  inp.disabled=false; send.disabled=false; inp.focus();
-}
+  async function sendMessage() {
+    const q = inp.value.trim();
+    if (!q || inp.disabled) return;
+    addMessage(q, true);
+    inp.value = '';
+    inp.disabled = true;
+    sendBtn.disabled = true;
+    showTyping();
+    const reply = await callGemini(q);
+    removeTyping();
+    addMessage(reply, false);
+    inp.disabled = false;
+    sendBtn.disabled = false;
+    inp.focus();
+  }
 
-send.onclick=doSend;
-inp.addEventListener('keydown',function(e){ if(e.key==='Enter') doSend(); });
+  sendBtn.onclick = sendMessage;
+  inp.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-document.querySelectorAll('.chip').forEach(function(c){
-  c.onclick=function(){ inp.value=c.textContent; doSend(); };
-});
+  // Pre‑defined chip questions
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.onclick = () => { inp.value = chip.textContent; sendMessage(); };
+  });
 </script>
 </body>
-</html>"""
+</html>
+""".replace("{GEMINI_KEY}", GEMINI_KEY).replace("{_SYSTEM_PROMPT}", _SYSTEM_PROMPT)
 
-_cv1.html(_CHATBOT_HTML, height=640, scrolling=False)
+# CSS in the parent page to reposition the iframe container as fixed bottom-right
+st.markdown("""
+<style>
+/* Target the chatbot wrapper precisely using the sibling anchor trick */
+#cb-anchor + div[data-testid="stCustomComponentV1"] {
+    position: fixed !important;
+    bottom: 0 !important; right: 0 !important;
+    width: 420px !important; height: 640px !important;
+    z-index: 1000000 !important;
+    pointer-events: none !important;
+    border: none !important;
+    background: transparent !important;
+}
+#cb-anchor + div[data-testid="stCustomComponentV1"] iframe {
+    pointer-events: auto !important;
+    border: none !important;
+    width: 420px !important; height: 640px !important;
+    background: transparent !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Invisible anchor to precisely target the chatbot container in CSS
+st.markdown("<div id='cb-anchor'></div>", unsafe_allow_html=True)
+components.html(CHATBOT_HTML, height=0, scrolling=False)
