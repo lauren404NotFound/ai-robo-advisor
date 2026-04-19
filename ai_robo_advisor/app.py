@@ -1869,7 +1869,7 @@ def render_auth_modal():
         s1, s2 = st.columns(2)
         with s1:
             if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
-                st.login("google")
+                st.login()
         with s2:
             st.markdown(f"""
                 <a href="{linkedin_url}" target="_top" class="social-btn" style="height: 38px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none;">
