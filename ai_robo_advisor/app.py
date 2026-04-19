@@ -1984,7 +1984,7 @@ def render_auth_modal():
 
         st.markdown("<br>", unsafe_allow_html=True)
         lbl_mode = "Don't have an account? Sign up" if mode == "login" else "Already have an account? Sign in"
-        if st.button(lbl_mode, key="mode_toggle_f"):
+        if st.button(lbl_mode, key="mode_toggle_f", use_container_width=True):
             st.session_state.auth_mode = "signup" if mode == "login" else "login"; st.rerun()
 
         if st.button("Return Home", type="primary", use_container_width=True, key="close_f_final"):
