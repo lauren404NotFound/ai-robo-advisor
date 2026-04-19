@@ -1734,92 +1734,83 @@ def render_auth_modal():
     with st.container():
         st.markdown("""
         <style>
-        .modal-overlay {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(10, 15, 30, 0.45); /* LIGHTER OVERLAY */
-            z-index: 998; pointer-events: none;
+        /* ── Split Layout ── */
+        .auth-split-container {
+            display: flex; flex-direction: row;
+            width: 100%; min-height: 480px;
         }
+        .auth-hero-side {
+            flex: 1.1; padding: 48px 40px;
+            background: linear-gradient(135deg,rgba(109,94,252,0.15) 0%,rgba(13,22,48,0.4) 100%);
+            border-right: 1px solid rgba(109,94,252,0.15);
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .auth-form-side { flex: 1.2; padding: 48px 40px; background: rgba(21, 28, 58, 0.4); }
+
+        .auth-brain-box { 
+            width: 48px; height: 48px; margin-bottom: 24px;
+            background: rgba(109,94,252,0.1); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(109,94,252,0.3);
+            box-shadow: 0 0 20px rgba(109,94,252,0.1);
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(109,94,252,0.1); border-color: rgba(109,94,252,0.3); }
+            50% { box-shadow: 0 0 35px rgba(109,94,252,0.3); border-color: rgba(109,94,252,0.6); }
+        }
+
+        .hero-welcome-title {
+            font-size: 38px; font-weight: 900; color: #ffffff;
+            line-height: 1.1; letter-spacing: -0.05em; margin-bottom: 12px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .hero-welcome-sub {
+            font-size: 15px; color: #E6D5FF; font-weight: 500;
+            line-height: 1.5; opacity: 0.85; max-width: 220px;
+        }
+
+        /* ── Adjust Modal for Split ── */
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {
             position: fixed !important;
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 85vw !important; max-width: 420px !important;
-            max-height: 85vh !important; overflow-y: auto !important;
-            padding: 36px 32px 28px !important;
-            border-radius: 28px !important;
-            background: rgba(21, 28, 58, 0.98) !important;
-            backdrop-filter: blur(20px) !important;
-            border: 1px solid rgba(135,124,252,0.7) !important; /* Brighter Border */
-            box-shadow: 0 0 40px rgba(135,124,252,0.2), 0 32px 80px rgba(0,0,0,0.85) !important; /* NEON GLOW */
-            z-index: 1000 !important; pointer-events: auto !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar,
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar
-            { width: 4px; }
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar-thumb,
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker)::-webkit-scrollbar-thumb
-            { background: rgba(109,94,252,0.6); border-radius: 4px; }
-
-        /* ── Form field groups ── */
-        .auth-form-group { margin-bottom: 20px; }
-        .auth-label {
-            display: block; font-size: 13px; font-weight: 800;
-            color: #E6D5FF; /* Luminous Lilac - much better for dark navy */
-            letter-spacing: .08em;
-            text-shadow: 0 0 10px rgba(155, 114, 242, 0.4);
-            text-transform: uppercase; margin-bottom: 8px;
-        }
-        .auth-required { color: #FF8F8F; margin-left: 2px; }
-
-        /* Brighten Streamlit input spacing inside modal */
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput,
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput { margin-bottom: 0 !important; }
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput input,
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput input {
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.15) !important;
-            border-radius: 12px !important;
-            color: #ffffff !important;
-            font-size: 15px !important;
-            padding: 12px 16px !important;
-            transition: all .2s !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput input:focus,
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker) .stTextInput input:focus {
-            border-color: #877cfc !important;
-            background: rgba(255,255,255,0.12) !important;
-            box-shadow: 0 0 0 4px rgba(109,94,252,0.25) !important;
+            width: 90vw !important; max-width: 820px !important; /* WIDER FOR SPLIT */
+            padding: 0 !important; /* REMOVE PADDING FROM WRAPPER */
+            border-radius: 32px !important;
+            background: rgba(13, 18, 42, 0.98) !important;
+            backdrop-filter: blur(40px) !important;
+            border: 1px solid rgba(135,124,252,0.45) !important;
+            box-shadow: 0 0 60px rgba(109,94,252,0.15), 0 32px 100px rgba(0,0,0,0.9) !important;
+            z-index: 1000 !important; overflow: hidden !important;
         }
 
-        /* Validation pills */
-        .auth-ok  { font-size:12px; color:#8EF6D1; margin: 4px 0 12px; display:flex; align-items:center; gap:6px; font-weight:600; }
-        .auth-err { font-size:12px; color:#FF6B6B; margin: 4px 0 12px; display:flex; align-items:center; gap:6px; font-weight:600; }
-
-        /* Modal title */
-        .modal-title {
-            font-size: 36px; font-weight: 900; color: #ffffff;
-            letter-spacing: -0.04em; margin-bottom: 8px;
-            text-shadow: 0 2px 15px rgba(0,0,0,0.6);
+        @media (max-width: 768px) {
+            .auth-split-container { flex-direction: column; }
+            .auth-hero-side { padding: 32px; min-height: auto; border-right: none; border-bottom: 1px solid rgba(109,94,252,0.1); }
+            .auth-form-side { padding: 32px; }
+            .hero-welcome-title { font-size: 28px; }
         }
-        .modal-sub { font-size: 16px; color: #ffffff; font-weight: 600; opacity: 1; }
         </style>
         """, unsafe_allow_html=True)
 
+        hero_title = "Welcome<br>Back" if mode == "login" else "Join the<br>Intelligence"
+        hero_sub = "Strategic insights await. Log in to your neural dashboard." if mode == "login" else "Welcome! We can't wait to have you join the future of wealth."
 
-        import re, random
-        # 🟢 VERIFICATION TRAP SCENE
-        if st.session_state.get("auth_verify_pending"):
-            title = "Verification Step"
-            sub = "We've sent a 4-digit security code to confirm it's you."
-            
         st.markdown(f"""
         <div id="auth-modal-marker"></div>
-        <div style="text-align:center; margin-bottom:28px;">
-          <div class="modal-title">{title}</div>
-          <div class="modal-sub">{sub}</div>
-        </div>
+        <div class="auth-split-container">
+          <div class="auth-hero-side">
+            <div class="auth-brain-box">{get_svg("brain", 24, "#6D5EFC")}</div>
+            <div class="hero-welcome-title">{hero_title}</div>
+            <div class="hero-welcome-sub">{hero_sub}</div>
+          </div>
+          <div class="auth-form-side">
+            <div style="margin-bottom:24px;">
+              <div style="font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.02em;">{title}</div>
+              <div style="font-size:13px; color:#E6D5FF; opacity:0.8;">{sub}</div>
+            </div>
         """, unsafe_allow_html=True)
         
         if st.session_state.get("auth_verify_pending"):
