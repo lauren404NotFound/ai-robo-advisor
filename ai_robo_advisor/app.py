@@ -1745,10 +1745,10 @@ def render_auth_modal():
             position: fixed !important;
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 92vw !important; max-width: 480px !important;
-            max-height: 92vh !important; overflow-y: auto !important;
-            padding: 44px 40px 36px !important;
-            border-radius: 32px !important;
+            width: 85vw !important; max-width: 420px !important;
+            max-height: 85vh !important; overflow-y: auto !important;
+            padding: 36px 32px 28px !important;
+            border-radius: 28px !important;
             background: rgba(21, 28, 58, 0.98) !important;
             backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(135,124,252,0.7) !important; /* Brighter Border */
