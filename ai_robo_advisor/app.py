@@ -788,6 +788,18 @@ def _do_logout():
     for k in ["authenticated", "user_email", "user_name", "user_provider",
               "user_avatar", "session_token"]:
         st.session_state.pop(k, None)
+        
+    st.session_state.result = None
+    st.session_state.nav_page = "home"
+
+    if hasattr(st, "user") and hasattr(st.user, "is_logged_in") and getattr(st.user, "is_logged_in"):
+        try:
+            st.logout()
+            return
+        except Exception:
+            pass
+
+    st.rerun()
 
 # ────────────────────────────────────────────────────────────────────────────────
 def render_actionable_advice(port: dict, initial_investment: float, monthly_contribution: float) -> str:
@@ -1472,14 +1484,8 @@ def _handle_query_params():
         st.rerun()
 
     if params.get("logout") in ("1", "true"):
-        st.session_state.authenticated = False
-        st.session_state.user_name = None
-        st.session_state.user_email = None
-        st.session_state.user_avatar = None
-        st.session_state.result = None
-        st.session_state.nav_page = "home"
         st.query_params.clear()
-        st.rerun()
+        _do_logout()
 
 
 def _handle_auth_bridge():
