@@ -1845,7 +1845,7 @@ def render_auth_modal():
 
     with h_col:
         # LEFT SIDE HERO
-        welcome_txt = "Welcome<br>Back" if mode == "login" else "Join the<br>Family"
+        welcome_txt = "Welcome<br>Back" if mode == "login" else "Be part of<br> the LEM Group"
         st.markdown(f"""
             <div class="auth-hero-col">
                 <div style="margin-bottom: 24px;">{get_svg("brain", 40, ACCENT)}</div>
@@ -1937,31 +1937,31 @@ def render_auth_modal():
             _btn_col, _ = st.columns(2)
             with _btn_col:
                 if st.button("Sign In Now" if mode == "login" else "Create Account", type="primary", use_container_width=True, key="auth_submit_f"):
-                if not email_in or not pw_in: st.error("All fields mandatory."); return
-                
-                # Regex Validation
-                email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-                if not re.match(email_regex, email_in):
-                    st.error("Please enter a valid email address.")
-                    return
+                    if not email_in or not pw_in: st.error("All fields mandatory."); return
 
-                if mode == "signup":
-                    if not name_in: st.error("Name mandatory."); return
-                    if database.get_user(email_in): st.error("Email exists."); return
-                    st.session_state.auth_verify_pending = True
-                    st.session_state.mock_code = str(random.randint(1000, 9999))
-                    st.session_state.pending_action = "signup_email"
-                    st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d")}
-                    st.rerun()
-                else:
-                    user = database.get_user(email_in)
-                    if user and user["password_hash"] == database.hash_password(pw_in):
+                    # Regex Validation
+                    email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+                    if not re.match(email_regex, email_in):
+                        st.error("Please enter a valid email address.")
+                        return
+
+                    if mode == "signup":
+                        if not name_in: st.error("Name mandatory."); return
+                        if database.get_user(email_in): st.error("Email exists."); return
                         st.session_state.auth_verify_pending = True
                         st.session_state.mock_code = str(random.randint(1000, 9999))
-                        st.session_state.pending_action = "login_email"
-                        st.session_state.pending_data = {"email": email_in, "name": user["name"]}
+                        st.session_state.pending_action = "signup_email"
+                        st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d")}
                         st.rerun()
-                    else: st.error("Invalid credentials.")
+                    else:
+                        user = database.get_user(email_in)
+                        if user and user["password_hash"] == database.hash_password(pw_in):
+                            st.session_state.auth_verify_pending = True
+                            st.session_state.mock_code = str(random.randint(1000, 9999))
+                            st.session_state.pending_action = "login_email"
+                            st.session_state.pending_data = {"email": email_in, "name": user["name"]}
+                            st.rerun()
+                        else: st.error("Invalid credentials.")
         else:
             # PHONE PICKER RESTORED
             country_codes = ["+44 (UK)", "+1 (USA/Canada)", "+34 (Spain)", "+33 (France)", "+49 (Germany)", "+91 (India)", "+61 (Australia)", "+81 (Japan)"]
