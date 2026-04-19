@@ -1819,8 +1819,8 @@ def render_auth_modal():
         linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri="http://localhost:8501", scope=["openid", "profile", "email"]))
 
         o1, o2 = st.columns(2)
-        with o1: st.markdown(f'<a href="{google_url}" target="_self" class="social-btn">Google</a>', unsafe_allow_html=True)
-        with o2: st.markdown(f'<a href="{linkedin_url}" target="_self" class="social-btn">LinkedIn</a>', unsafe_allow_html=True)
+        with o1: st.markdown(f'<a href="{google_url}" target="_self" class="social-btn"><div class="social-icon google-icon"></div>Google</a>', unsafe_allow_html=True)
+        with o2: st.markdown(f'<a href="{linkedin_url}" target="_self" class="social-btn"><div class="social-icon linkedin-icon"></div>LinkedIn</a>', unsafe_allow_html=True)
 
         st.markdown('<div class="modal-divider"><div class="modal-divider-line"></div><div class="modal-divider-text">OR EMAIL</div><div class="modal-divider-line"></div></div>', unsafe_allow_html=True)
 
