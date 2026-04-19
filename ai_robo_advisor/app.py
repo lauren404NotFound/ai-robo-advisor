@@ -1844,8 +1844,7 @@ def render_auth_modal():
 
         .hero-welcome-title {{
             font-size: 64px; font-weight: 900; 
-            background: linear-gradient(90deg, #877cfc 0%, #3ba4ff 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            color: #877cfc;
             line-height: 1.1; margin-bottom: 20px; letter-spacing: -0.04em;
         }}
         .hero-welcome-sub {{ font-size: 16px; color: {MUTED}; line-height: 1.6; }}
