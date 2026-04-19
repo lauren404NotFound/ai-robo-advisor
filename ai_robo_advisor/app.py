@@ -1737,8 +1737,8 @@ def render_auth_modal():
         .modal-overlay {
             position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(2px);
             z-index: 998; pointer-events: none;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
