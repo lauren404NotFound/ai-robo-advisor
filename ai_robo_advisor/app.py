@@ -1830,18 +1830,24 @@ def render_auth_modal():
         
         # --- OAUTH (Safe Link Generation) ---
         import asyncio
+        # Auto-fix trailing slash (Pickiness at Google/LinkedIn)
+        R_URI = REDIRECT_URI if REDIRECT_URI.endswith("/") else REDIRECT_URI + "/"
+
         google_url, linkedin_url = "#", "#"
         g_err, l_err = None, None
         try:
-            google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "email", "profile"]))
+            google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=R_URI, scope=["openid", "email", "profile"]))
         except Exception as e: g_err = str(e)
 
         try:
-            linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "profile", "email"]))
+            linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=R_URI, scope=["openid", "profile", "email"]))
         except Exception as e: l_err = str(e)
 
-        if g_err: st.error(f"Google Error: {g_err}")
-        if l_err: st.error(f"LinkedIn Error: {l_err}")
+        # DIAGNOSTIC TOOL
+        with st.expander("🛠️ Connection Check"):
+            st.write(f"**Target URL:** `{R_URI}`")
+            if g_err: st.error(f"Google: {g_err}")
+            if l_err: st.error(f"LinkedIn: {l_err}")
 
         # Single HTML block for both buttons
         st.markdown(f"""
