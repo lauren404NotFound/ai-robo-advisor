@@ -1868,7 +1868,7 @@ def render_auth_modal():
                 st.login("google")
         with s2:
             st.markdown(f"""
-                <a href="{linkedin_url}" target="_self" class="social-btn" style="height: 38px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none;">
+                <a href="{linkedin_url}" target="_top" class="social-btn" style="height: 38px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none;">
                     <span style="font-size: 14px; color: white !important;">LinkedIn</span>
                 </a>
             """, unsafe_allow_html=True)
@@ -1974,7 +1974,7 @@ def render_auth_modal():
         if st.button(lbl_mode, key="mode_toggle_f"):
             st.session_state.auth_mode = "signup" if mode == "login" else "login"; st.rerun()
 
-        if st.button("RETURN HOME", type="primary", use_container_width=True, key="close_f_final"):
+        if st.button("Return Home", type="primary", use_container_width=True, key="close_f_final"):
             st.session_state.show_auth = False; st.rerun()
 
 
