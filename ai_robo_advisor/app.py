@@ -1737,8 +1737,7 @@ def render_auth_modal():
         .modal-overlay {
             position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(2px);
+            background: rgba(10, 15, 30, 0.45); /* LIGHTER OVERLAY */
             z-index: 998; pointer-events: none;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker),
@@ -1748,12 +1747,12 @@ def render_auth_modal():
             transform: translate(-50%, -50%) !important;
             width: 92vw !important; max-width: 480px !important;
             max-height: 92vh !important; overflow-y: auto !important;
-            padding: 40px 36px 32px !important;
-            border-radius: 28px !important;
+            padding: 44px 40px 36px !important;
+            border-radius: 32px !important;
             background: rgba(21, 28, 58, 0.98) !important;
             backdrop-filter: blur(20px) !important;
-            border: 1px solid rgba(135,124,252,0.45) !important;
-            box-shadow: 0 0 0 1px rgba(109,94,252,0.1), 0 32px 80px rgba(0,0,0,0.9), 0 0 100px rgba(109,94,252,0.15) !important;
+            border: 1px solid rgba(135,124,252,0.7) !important; /* Brighter Border */
+            box-shadow: 0 0 40px rgba(135,124,252,0.2), 0 32px 80px rgba(0,0,0,0.85) !important; /* NEON GLOW */
             z-index: 1000 !important; pointer-events: auto !important;
         }
         div[data-testid="stVerticalBlock"]:has(> div > div > div > #auth-modal-marker)::-webkit-scrollbar,
@@ -1767,10 +1766,12 @@ def render_auth_modal():
         .auth-form-group { margin-bottom: 20px; }
         .auth-label {
             display: block; font-size: 13px; font-weight: 800;
-            color: #ffffff; letter-spacing: .06em;
+            color: #E6D5FF; /* Luminous Lilac - much better for dark navy */
+            letter-spacing: .08em;
+            text-shadow: 0 0 10px rgba(155, 114, 242, 0.4);
             text-transform: uppercase; margin-bottom: 8px;
         }
-        .auth-required { color: #FF6B6B; margin-left: 2px; }
+        .auth-required { color: #FF8F8F; margin-left: 2px; }
 
         /* Brighten Streamlit input spacing inside modal */
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) .stTextInput,
@@ -1798,10 +1799,11 @@ def render_auth_modal():
 
         /* Modal title */
         .modal-title {
-            font-size: 32px; font-weight: 900; color: #ffffff;
+            font-size: 36px; font-weight: 900; color: #ffffff;
             letter-spacing: -0.04em; margin-bottom: 8px;
+            text-shadow: 0 2px 15px rgba(0,0,0,0.6);
         }
-        .modal-sub { font-size: 15px; color: #a0b4d0; font-weight: 500; }
+        .modal-sub { font-size: 16px; color: #ffffff; font-weight: 600; opacity: 1; }
         </style>
         """, unsafe_allow_html=True)
 
