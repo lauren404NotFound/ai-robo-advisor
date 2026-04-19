@@ -1648,6 +1648,10 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   box-shadow: 0 20px 60px rgba(0,0,0,0.7);
   animation: ddFade .15s ease;
 }}
+/* Invisible bridge to fix the hover 'dead zone' gap */
+.nav-dropdown::before {{
+  content: ''; position: absolute; top: -15px; left: 0; width: 100%; height: 15px;
+}}
 @keyframes ddFade {{ from{{opacity:0;transform:translateY(-6px)}} to{{opacity:1;transform:translateY(0)}} }}
 .nav-profile-wrap:hover .nav-dropdown {{ display: block; }}
 .nav-dd-header {{
