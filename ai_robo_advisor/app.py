@@ -1907,6 +1907,13 @@ def render_auth_modal():
 
             if st.button("Sign In Now" if mode == "login" else "Create Account", type="primary", use_container_width=True, key="auth_submit_f"):
                 if not email_in or not pw_in: st.error("All fields mandatory."); return
+                
+                # Regex Validation
+                email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+                if not re.match(email_regex, email_in):
+                    st.error("Please enter a valid email address.")
+                    return
+
                 if mode == "signup":
                     if not name_in: st.error("Name mandatory."); return
                     if database.get_user(email_in): st.error("Email exists."); return
