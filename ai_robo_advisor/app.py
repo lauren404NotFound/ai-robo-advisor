@@ -1934,7 +1934,9 @@ def render_auth_modal():
             pw_in = st.text_input("PASSWORD", type="password", key="auth_pw_field_f")
             st.checkbox("Keep me logged in", value=True, key="rem_f")
 
-            if st.button("Sign In Now" if mode == "login" else "Create Account", type="primary", use_container_width=True, key="auth_submit_f"):
+            _btn_col, _ = st.columns(2)
+            with _btn_col:
+                if st.button("Sign In Now" if mode == "login" else "Create Account", type="primary", use_container_width=True, key="auth_submit_f"):
                 if not email_in or not pw_in: st.error("All fields mandatory."); return
                 
                 # Regex Validation
@@ -1971,7 +1973,9 @@ def render_auth_modal():
             
             st.text_input("PASSWORD", type="password", key="phone_pw_f_final")
             
-            if st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton"):
+            _btn_col2, _ = st.columns(2)
+            with _btn_col2:
+                if st.button("Proceed", type="primary", use_container_width=True, key="phone_gobutton"):
                 if not p_num: st.error("Enter phone number."); return
                 # Handle phone login here
                 full_phone = f"{p_code} {p_num}"
@@ -1984,11 +1988,13 @@ def render_auth_modal():
 
         st.markdown("<br>", unsafe_allow_html=True)
         lbl_mode = "Don't have an account? Sign up" if mode == "login" else "Already have an account? Sign in"
-        if st.button(lbl_mode, key="mode_toggle_f", use_container_width=True):
-            st.session_state.auth_mode = "signup" if mode == "login" else "login"; st.rerun()
-
-        if st.button("Return Home", type="primary", use_container_width=True, key="close_f_final"):
-            st.session_state.show_auth = False; st.rerun()
+        _m1, _m2 = st.columns(2)
+        with _m1:
+            if st.button(lbl_mode, key="mode_toggle_f", use_container_width=True):
+                st.session_state.auth_mode = "signup" if mode == "login" else "login"; st.rerun()
+        with _m2:
+            if st.button("Return Home", type="primary", use_container_width=True, key="close_f_final"):
+                st.session_state.show_auth = False; st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
