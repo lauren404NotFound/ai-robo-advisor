@@ -295,9 +295,29 @@ div[data-testid="stTextInput"] input:focus {{
   width: 100%; padding: 12px 16px; border-radius: 12px; margin-bottom: 10px;
   font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
   border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.06); color: #ffffff;
+  background: rgba(255,255,255,0.06); color: #ffffff !important;
+  text-decoration: none !important;
 }}
-.social-btn:hover {{ background: rgba(255,255,255,0.12); border-color: rgba(109,94,252,0.5); transform: translateY(-1px); }}
+.social-btn:hover {{ background: rgba(255,255,255,0.12); border-color: rgba(109,94,252,0.5); transform: translateY(-1px); color: #ffffff !important; }}
+
+/* Force the Streamlit Google button to match the LinkedIn button */
+button[key="google_oauth_btn"] {{
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    height: 43px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    transition: all 0.2s !important;
+}}
+button[key="google_oauth_btn"]:hover {{
+    background: rgba(255,255,255,0.12) !important;
+    border-color: rgba(109,94,252,0.5) !important;
+    transform: translateY(-1px) !important;
+}}
 .auth-tab-row {{
   display: flex; gap: 6px; margin-bottom: 24px;
   background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px;
@@ -1848,12 +1868,13 @@ def render_auth_modal():
         # Social Buttons
         s1, s2 = st.columns(2)
         with s1:
-            if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
+            # We wrap this in a container to ensure CSS specificity
+            st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn")
+            if st.session_state.get("google_oauth_btn"):
                 st.login("google")
         with s2:
             st.markdown(f"""
-                <a href="{linkedin_url}" target="_self" class="social-btn" style="height: 38px !important; margin-top: 0 !important;">
-                    <div class="social-icon linkedin-icon"></div>
+                <a href="{linkedin_url}" target="_self" class="social-btn" style="height: 38px !important; margin: 0 !important; box-sizing: border-box;">
                     <span style="font-size: 14px;">LinkedIn</span>
                 </a>
             """, unsafe_allow_html=True)
