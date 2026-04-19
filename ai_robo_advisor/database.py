@@ -67,32 +67,42 @@ def hash_password(password: str) -> str:
 
 
 # ── Users ────────────────────────────────────────────────────────────────────
-def create_user(email: str, name: str, password: str, dob: str, provider: str = "email") -> bool:
+def create_user(email: str, name: str, password: str, dob: str, provider: str = "email", phone_number: str = None) -> bool:
     try:
+        now = datetime.utcnow()
         _users().insert_one({
             "email":         email,
             "name":          name,
             "password_hash": hash_password(password),
             "dob":           dob,
             "provider":      provider,
+            "phone_number":  phone_number,
+            "oauth_id":      None,
+            "is_verified":   True, # We only run this function after successful OTP/social verification
             "preferences":   {},
-            "created_at":    datetime.utcnow(),
+            "created_at":    now,
+            "last_login":    now,
         })
         return True
     except DuplicateKeyError:
         return False
 
 
-def create_user_oauth(email: str, name: str, provider: str) -> bool:
+def create_user_oauth(email: str, name: str, provider: str, oauth_id: str = None) -> bool:
     try:
+        now = datetime.utcnow()
         _users().insert_one({
             "email":         email,
             "name":          name,
             "password_hash": "OAUTH_BYPASS",
             "dob":           None,
             "provider":      provider,
+            "phone_number":  None,
+            "oauth_id":      oauth_id,
+            "is_verified":   True,
             "preferences":   {},
-            "created_at":    datetime.utcnow(),
+            "created_at":    now,
+            "last_login":    now,
         })
         return True
     except DuplicateKeyError:
