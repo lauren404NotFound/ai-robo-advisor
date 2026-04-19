@@ -1813,10 +1813,14 @@ def render_auth_modal():
         st.markdown(f'<div style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 5px;">{title}</div>', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size: 14px; color: {MUTED}; margin-bottom: 30px;">Sign in to access your portfolio</div>', unsafe_allow_html=True)
         
-        # --- OAUTH ---
+        # --- OAUTH (Dynamic Redirect Detection) ---
         import asyncio
-        google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri="http://localhost:8501", scope=["openid", "email", "profile"]))
-        linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri="http://localhost:8501", scope=["openid", "profile", "email"]))
+        # Detect if we are on the live site or running locally
+        prod_url = "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
+        redirect_uri = prod_url if "streamlit.app" in prod_url else "http://localhost:8501"
+
+        google_url = asyncio.run(oauth2.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "email", "profile"]))
+        linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=redirect_uri, scope=["openid", "profile", "email"]))
 
         o1, o2 = st.columns(2)
         with o1: st.markdown(f'<a href="{google_url}" target="_self" class="social-btn"><div class="social-icon google-icon"></div>Google</a>', unsafe_allow_html=True)
