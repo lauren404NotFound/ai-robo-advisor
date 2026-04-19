@@ -32,12 +32,16 @@ from streamlit_oauth import OAuth2Component
 try:
     LINKEDIN_CLIENT_ID = st.secrets["linkedin"]["client_id"]
     LINKEDIN_CLIENT_SECRET = st.secrets["linkedin"]["client_secret"]
-    # LinkedIn redirect — no /oauth2callback (that suffix is only for Google's built-in flow)
-    REDIRECT_URI = st.secrets["auth"].get("redirect_uri", "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app")
+    # LinkedIn uses plain base URL (NO /oauth2callback)
+    REDIRECT_URI = st.secrets["linkedin"].get(
+        "redirect_uri",
+        "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
+    )
 except Exception:
     LINKEDIN_CLIENT_ID = ""
     LINKEDIN_CLIENT_SECRET = ""
     REDIRECT_URI = "http://localhost:8501"
+
 
 # LinkedIn manual component (still needed)
 linkedin_oauth = OAuth2Component(
