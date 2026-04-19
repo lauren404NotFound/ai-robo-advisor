@@ -46,6 +46,18 @@ def _portfolio_configs():
 def _notifications():
     return _db()["notifications"]
 
+def _sessions():
+    return _db()["sessions"]
+
+def _verification_codes():
+    return _db()["verification_codes"]
+
+def _audit_logs():
+    return _db()["audit_logs"]
+
+def _billing():
+    return _db()["billing"]
+
 
 # ── Init (idempotent) ───────────────────────────────────────────────────────
 def init_db():
@@ -57,6 +69,18 @@ def init_db():
         _watchlists().create_index("user_email", unique=True)
         _portfolio_configs().create_index("user_email", unique=True)
         _notifications().create_index([("user_email", 1), ("created_at", DESCENDING)])
+        
+        # Ensure Security & Compliance collections exist and apply TTL Indexes
+        # Sessions expire precisely when the 'expires_at' datetime is hit
+        _sessions().create_index("expires_at", expireAfterSeconds=0)
+        _sessions().create_index("token", unique=True)
+        
+        # Verification Codes (OTP) Auto-delete trick (TTL)
+        _verification_codes().create_index("expires_at", expireAfterSeconds=0)
+        
+        # Setup Audit Logs and Billing so they appear in MongoDB Atlas
+        _audit_logs().create_index([("user_email", 1), ("action", 1)])
+        _billing().create_index("user_email", unique=True)
     except Exception:
         pass 
 
