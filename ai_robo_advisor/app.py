@@ -1820,6 +1820,17 @@ def render_auth_modal():
             transform: translateY(-2px) !important;
         }}
         
+        /* Remove the hook's physical space footprint so the button perfectly aligns horizontally */
+        div[data-testid="stElementContainer"]:has(#google-btn-hook) {{
+            position: absolute !important;
+            height: 0 !important;
+            width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            visibility: hidden !important;
+        }}
+
         /* GUARANTEED hook for the native Google button */
         div[data-testid="stElementContainer"]:has(#google-btn-hook) + div[data-testid="stElementContainer"] button {{
             display: flex !important; align-items: center !important; justify-content: center !important;
@@ -1837,7 +1848,7 @@ def render_auth_modal():
         }}
         
         div[data-testid="stElementContainer"]:has(#google-btn-hook) + div[data-testid="stElementContainer"] button:hover {{
-            background: rgba(255,255,255,0.15) !important; 
+            background-color: rgba(255,255,255,0.15) !important; 
             border-color: {ACCENT} !important;
             box-shadow: 0 0 20px rgba(155, 114, 242, 0.2) !important;
             transform: translateY(-2px) !important;
