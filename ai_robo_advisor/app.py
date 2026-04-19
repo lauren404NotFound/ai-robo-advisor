@@ -1958,7 +1958,7 @@ def render_auth_modal():
         if st.button(lbl_mode, key="mode_toggle_f"):
             st.session_state.auth_mode = "signup" if mode == "login" else "login"; st.rerun()
 
-        if st.button("✕ Close Modal", use_container_width=True, key="close_f_final"):
+        if st.button("RETURN HOME", type="primary", use_container_width=True, key="close_f_final"):
             st.session_state.show_auth = False; st.rerun()
 
 
