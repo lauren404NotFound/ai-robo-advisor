@@ -29,23 +29,25 @@ import hashlib
 from streamlit_oauth import OAuth2Component
 import anthropic
 
-# ── Triple-Check for API Key (Streamlit Cloud Robustness) ─────────────────────
+# ── Robust API Key Retrieval ────────────────────────────────────────────────
 _api_key = st.secrets.get("anthropic_api_key") 
 if not _api_key: _api_key = st.secrets.get("ANTHROPIC_API_KEY")
 if not _api_key: 
     try: _api_key = st.secrets.anthropic.get("api_key")
     except: pass
 
-try:
-    if _api_key:
+# Global status for debugging
+claude_status = "Disconnected"
+anthropic_client = None
+
+if _api_key:
+    try:
         anthropic_client = anthropic.Anthropic(api_key=_api_key)
-        st.sidebar.success("Claude: Connected")
-    else:
-        anthropic_client = None
-        st.sidebar.warning("Claude: Not Configured")
-except Exception as e:
-    anthropic_client = None
-    st.sidebar.error(f"Claude Init Error: {e}")
+        claude_status = "Connected"
+    except Exception as e:
+        claude_status = f"Init Error: {e}"
+else:
+    claude_status = "Key Missing in Secrets"
 
 
 # Securely load credentials from .streamlit/secrets.toml
@@ -205,6 +207,17 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Render Claude connection status in sidebar
+st.sidebar.markdown("### Systems Status")
+if claude_status == "Connected":
+    st.sidebar.success(f"● Claude: {claude_status}")
+elif "Not Configured" in claude_status:
+    st.sidebar.warning(f"● Claude: {claude_status}")
+    if st.sidebar.button("🔍 Debug Secrets"):
+        st.sidebar.write("Available Keys:", list(st.secrets.keys()))
+else:
+    st.sidebar.error(f"● Claude: {claude_status}")
+
 st.markdown("""
 <style>
     header {visibility: hidden;}
@@ -249,15 +262,6 @@ header[data-testid="stHeader"], div[data-testid="stToolbar"],
   border-bottom: 1px solid rgba(155, 114, 242, 0.15);
   pointer-events: none;
 }}
-    st.sidebar.markdown("---")
-    if anthropic_client:
-        st.sidebar.success("● Claude: Online")
-    else:
-        st.sidebar.error("● Claude: Offline")
-        if st.sidebar.button("Show Secret Keys"):
-            st.sidebar.write("Found keys:", list(st.secrets.keys()))
-
-    page = st.sidebar.radio("Navigation", ["Dashboard", "Survey", "Performance", "Admin"])
 
 .nav-link {{
   color: {MUTED}; font-size: 14px; font-weight: 500;
@@ -1329,12 +1333,46 @@ def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> li
 
 
 def get_real_claude_insight(port_data, user_answers, mode="simple"):
-    """
-    This is the backend function that actually 'writes' the explanation.
-    Acts as the 'AssessmentEngine' backend call.
-    """
     if not anthropic_client:
-        return "⚠️ **Anthropic Client Not Initialized**: Check if the 'anthropic' library is installed and the API key is set in `secrets.toml`."
+        return f"⚠️ **AI Offline**: {claude_status}. Check your `.streamlit/secrets.toml`."
+
+    # Logic to identify the biggest holding for the prompt
+    try:
+        top_asset = list(port_data['allocation_pct'].keys())[0] if port_data.get('allocation_pct') else "Core Assets"
+    except:
+        top_asset = "Diversified ETFs"
+
+    prompt = f"""
+    You are the DeepAtomicIQ Neural Investment Officer. 
+    Analyze this investor profile and write a personalized narrative.
+    
+    DATA:
+    - Profile: {port_data['risk_category']}
+    - Sharpe Ratio: {port_data['stats']['sharpe_ratio']:.2f}
+    - User Age: {user_answers.get('q2_age', 'Unknown')}
+    - Time Horizon: {user_answers.get('q3_horizon', 'Unknown')}
+    - Reaction to 25% Market Drop: "{user_answers.get('q10_reaction', 'Hold')}"
+
+    TASK:
+    Write a 3-paragraph explanation. 
+    1. Explain WHY the {port_data['risk_category']} strategy was chosen for their age and horizon.
+    2. Specifically address their reaction to a drop and how the inclusion of {top_asset} balances that fear.
+    3. End with a professional, data-driven reassurance based on the Sharpe Ratio.
+    
+    TONE: Professional, reassuring, human-like. No generic templates.
+    """
+
+    try:
+        # Calling Claude 3.5 Sonnet
+        message = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=800,
+            temperature=0.5,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return message.content[0].text
+    except Exception as e:
+        return f"⚠️ **Claude Connection Failed**: {str(e)}"
 
     # We send the RAW DATA to Claude, not a pre-written sentence
     try:
