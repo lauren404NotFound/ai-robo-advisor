@@ -2984,6 +2984,7 @@ def _render_portfolio():
 
     port  = res["portfolio"]
     ans   = st.session_state.survey_answers
+    email = st.session_state.get("user_email")
     iq    = port.get("iq_params", {})
     cat   = port["risk_category"]
     stats = port["stats"]
@@ -3243,24 +3244,26 @@ def _render_portfolio():
         if not notifs:
             st.markdown(f"""
             <div style="text-align:center;padding:40px 20px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1);">
-                <div style="font-size:32px;margin-bottom:10px;">📡</div>
+                <div style="font-size:32px;margin-bottom:10px;color:rgba(155,114,242,0.4);display:flex;justify-content:center;">{get_svg("risk", 40)}</div>
                 <div style="font-size:12px;color:#8BA6D3;font-weight:700;">Radar Scan Active</div>
                 <div style="font-size:10px;color:{MUTED};">No recent events detected on this manifold.</div>
             </div>
             """, unsafe_allow_html=True)
         else:
             for n in notifs:
-                icon = "✅" if n['level'] == "success" else "ℹ️"
+                icon_color = "#3BA4FF" if n['level'] == "success" else "#8BA6D3"
+                icon_svg = get_svg("shield-check", 14, icon_color) if n['level'] == "success" else get_svg("more", 14, icon_color)
                 time_str = n['created_at'].strftime("%H:%M")
                 st.markdown(f"""
                 <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                        <span style="font-size:11px;font-weight:800;color:#fff;">{icon} {n['title']}</span>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;gap:8px;">
+                        <span style="font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;">{icon_svg} {n['title']}</span>
                         <span style="font-size:9px;color:{MUTED};">{time_str}</span>
                     </div>
                     <div style="font-size:10px;color:#8BA6D3;line-height:1.4;">{n['message']}</div>
                 </div>
                 """, unsafe_allow_html=True)
+
         
         st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
         if st.button("Archive Event Log", use_container_width=True):
