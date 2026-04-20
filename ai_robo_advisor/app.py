@@ -1437,44 +1437,33 @@ def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> li
     return paragraphs
 
 
-def get_claude_assessment_insight(port, answers, mode="simple"):
+def generate_claude_explanation(port_data, user_answers, mode="simple"):
     """
-    Acts as the 'AssessmentEngine' backend call. 
-    Sends results to Claude 3.5 Sonnet to generate a narrative.
+    This is the backend function that actually 'writes' the explanation.
+    Acts as the 'AssessmentEngine' backend call.
     """
     if not anthropic_client:
-        return None  # Fallback to local heuristic if key missing
+        return None # Fallback to local heuristic if key missing
 
     # 1. Structure the Context
-    context_data = {
-        "strategy": port['risk_category'],
-        "sharpe": port['stats']['sharpe_ratio'],
-        "return": port['stats']['expected_annual_return'],
-        "behavior": {
-            "comfort": answers.get('q1_risk_comfort'),
-            "panic_reaction": answers.get('q10_reaction'),
-            "time_horizon": answers.get('q3_horizon')
-        }
-    }
+    strategy = port_data.get("risk_category")
+    sharpe = port_data["stats"].get("sharpe_ratio", 0)
+    horizon = user_answers.get("q3_horizon", "Long (10-20 years)")
+    reaction = user_answers.get("q10_reaction", "Stay calm and do nothing")
 
-    # 2. Construct the Prompt
-    system_prompt = "You are a professional financial AI risk officer. Your goal is to explain a portfolio strategy based on an investor's behavioral survey results."
-    
-    user_message = f"""
-    The investor has been assigned a {context_data['strategy']} strategy.
-    
-    PORTFOLIO METRICS:
-    - Expected Volatility: {port['stats']['expected_volatility']}%
-    - Efficiency Score (Sharpe): {context_data['sharpe']:.2f}
-    
-    USER BEHAVIOR DATA:
-    - Stated Risk Comfort: {context_data['behavior']['comfort']}
-    - Reaction to 25% Market Drop: {context_data['behavior']['panic_reaction']}
-    - Duration: {context_data['behavior']['time_horizon']}
-    
+    # 2. Build the Prompt
+    prompt = f"""
+    You are a professional financial AI risk officer. Review this investor's profile:
+    - Assigned Strategy: {strategy}
+    - Sharpe Ratio: {sharpe:.2f}
+    - Time Horizon: {horizon}
+    - User's reaction to a 25% market drop: "{reaction}"
+
     TASK:
-    Write a {mode} explanation (under 120 words) explaining why this specific allocation 
-    balances their fear of losses with their desired long-term growth. Use a calm, reassuring tone.
+    Generate a concise, reassuring explanation (max 120 words) for their dashboard.
+    Explain specifically HOW this portfolio protects them during the market drop they 
+    described while still meeting their {horizon} goals. 
+    Use a professional tone. Do not use generic disclaimers.
     """
 
     try:
@@ -1482,9 +1471,8 @@ def get_claude_assessment_insight(port, answers, mode="simple"):
         message = anthropic_client.messages.create(
             model="claude-3-5-sonnet-20240620",
             max_tokens=300,
-            temperature=0.3, # Lower temperature for factual accuracy
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}]
+            temperature=0.4, # Balanced for creativity and factual consistency
+            messages=[{"role": "user", "content": prompt}]
         )
         return message.content[0].text
     except Exception as e:
@@ -1493,7 +1481,7 @@ def get_claude_assessment_insight(port, answers, mode="simple"):
 def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tuple[str, str]:
     """Return (explanation_text, source_tag)."""
     # Try Real AI first (Claude)
-    claude_insight = get_claude_assessment_insight(port, answers, mode)
+    claude_insight = generate_claude_explanation(port, answers, mode)
     if claude_insight and "Error" not in claude_insight:
         return claude_insight, "LIVE CLAUDE 3.5 SONNET"
 
@@ -3076,16 +3064,13 @@ def _render_portfolio():
             if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
             st.rerun()
 
-    st.markdown(f"""
-        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-            {get_svg('brain', 24, ACCENT)} Personalised Strategy Insight
-        </h3>
-    """, unsafe_allow_html=True)
+    st.markdown(f"### {get_svg('brain', 24, ACCENT)} Claude AI Strategy Interpretation")
 
+    # Use session_state to prevent re-triggering the expensive API call on every click
     if "ai_insight_text" not in st.session_state:
         # Show a high-end loading state matching your TypeScript pattern
-        with st.status("Claude 3.5 Sonnet is interpreting your neural manifold...", expanded=True) as status:
-            st.write("Analysing behavioral patterns...")
+        with st.status("Claude 3.5 Sonnet is analyzing your profile...", expanded=True) as status:
+            st.write("Reviewing risk co-movements...")
             time.sleep(0.6)
             st.write("Mapping risk-return co-movements...")
             time.sleep(0.4)
@@ -3094,17 +3079,17 @@ def _render_portfolio():
             st.session_state.ai_insight_text = insight
             st.session_state.ai_insight_source = source
             status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
+            
+            # Connection to Database: Save the narrative to MongoDB result
+            st.session_state.result["ai_narrative"] = insight
+            database.save_assessment(st.session_state.get("user_email", "guest"), st.session_state.survey_answers, st.session_state.result)
 
-    # Render the dynamic text box with original premium styling
+    # Display the result in a styled box matching your dark theme
     st.markdown(f"""
-        <div style="background: rgba(155, 114, 242, 0.08); 
-                    border: 1px solid rgba(155, 114, 242, 0.25); 
-                    border-radius: 20px; 
-                    padding: 30px; 
-                    margin: 10px 0 30px 0;
-                    line-height: 1.8;
-                    color: white;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+        <div style="background: rgba(155, 114, 242, 0.1); 
+                    border: 1px solid rgba(155, 114, 242, 0.3); 
+                    padding: 24px; border-radius: 16px; color: white;
+                    line-height: 1.8; margin-bottom: 30px;">
             <div style="font-size: 11px; font-weight: 800; color: {ACCENT2}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;">
                 Neural Assessment Narrative 
                 <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
