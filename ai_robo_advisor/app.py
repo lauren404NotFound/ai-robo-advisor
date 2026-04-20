@@ -1482,19 +1482,19 @@ def get_claude_assessment_insight(port, answers, mode="simple"):
     except Exception as e:
         return f"Error connecting to Anthropic: {str(e)}"
 
-def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> str:
-    """Return the full explanation text as a single string."""
+def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tuple[str, str]:
+    """Return (explanation_text, source_tag)."""
     # Try Real AI first (Claude)
     claude_insight = get_claude_assessment_insight(port, answers, mode)
     if claude_insight and "Error" not in claude_insight:
-        return claude_insight
+        return claude_insight, "LIVE CLAUDE 3.5 SONNET"
 
     # Fallback to local heuristic if Claude fails or key is missing
     if mode == "simple":
         paragraphs = generate_simple_explanation(port, inputs, answers)
     else:
         paragraphs = generate_advanced_explanation(port, inputs, answers)
-    return "\n\n".join(paragraphs)
+    return "\n\n".join(paragraphs), "REACTIVE HEURISTIC (LOCAL)"
 
 
 
@@ -3082,9 +3082,10 @@ def _render_portfolio():
             st.write("Mapping risk-return co-movements...")
             time.sleep(0.4)
             # The actual "Backend" call
-            insight = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
+            insight, source = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
             st.session_state.ai_insight_text = insight
-            status.update(label="Insight Generated!", state="complete", expanded=False)
+            st.session_state.ai_insight_source = source
+            status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
 
     # Render the dynamic text box with original premium styling
     st.markdown(f"""
@@ -3097,7 +3098,11 @@ def _render_portfolio():
                     color: white;
                     box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
             <div style="font-size: 11px; font-weight: 800; color: {ACCENT2}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;">
-                Neural Assessment Narrative <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
+                Neural Assessment Narrative 
+                <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
+                <span style="font-size:9px; background:rgba(0,255,200,0.1); color:#00FFC8; padding:2px 8px; border-radius:20px; border: 1px solid rgba(0,255,200,0.2);">
+                    {st.session_state.get('ai_insight_source', 'CHECKING...')}
+                </span>
             </div>
             <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
                 {st.session_state.ai_insight_text}
