@@ -171,7 +171,15 @@ def get_svg(name, size=18, color="currentColor"):
         "logout": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
         "shield-check": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
         "bell": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
-        "list": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>'
+        "list": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+        "cart": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.56-7.43h-13.88"/></svg>',
+        "info": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        "puzzle": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 14.9C18.4 14 18 12.8 18 11.6c0-1.1-.9-2-2-2h-2c-1.1 0-2-.9-2-2V5.6c0-1.2-.4-2.4-1.4-3.3-1.8-1.5-4.5-1.5-6.3 0-1 1-1.4 2.1-1.4 3.3V7.6c0 1.1-.9 2-2 2H1c-1.1 0-2 .9-2 2v2c0 1.1.4 2.2 1.4 3s2.4 1.4 3.6 1.4c1.1 0 2 .9 2 2v1c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-1c0-1.2.4-2.4 1.4-3.3s2.1-1.4 3.3-1.4h.7c1.1 0 2-.9 2-2v-2"></path></svg>',
+        "warning": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        "refresh": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>',
+        "clipboard": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
+        "lightbulb": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-3.36 3-5.74a7 7 0 0 0-7-7Z"/></svg>',
+        "globe": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>'
     }
     return icons.get(name, "")
 
@@ -977,7 +985,7 @@ def render_actionable_advice(port: dict, initial_investment: float, monthly_cont
                 padding:24px 24px 20px;margin:18px 0;">
 
       <h3 style="color:#E6D5FF;margin:0 0 6px;font-size:18px;font-weight:800;
-                 display:flex;align-items:center;gap:8px;">📋 What To Buy &#8212; Step by Step</h3>
+                 display:flex;align-items:center;gap:8px;">{get_svg("list", 18, ACCENT)} What To Buy &#8212; Step by Step</h3>
       <p style="color:#8BA6D3;font-size:13px;margin:0 0 18px;">
         Based on your profile, here are the <b style='color:#fff;'>exact ETFs to purchase</b>.
         Buy them through any brokerage (Vanguard, Fidelity, Hargreaves Lansdown, Trading 212).
@@ -3024,8 +3032,8 @@ def _render_portfolio():
 
     # ── ACTIONABLE ADVICE ─────────────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:24px 0 4px;">
-      🛒 Portfolio Implementation Guide
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:24px 0 4px;display:flex;align-items:center;gap:10px;">
+      {get_svg("cart", 24, "#ffffff")} Portfolio Implementation Guide
     </div>
     <div style="font-size:13px;color:{MUTED};margin-bottom:14px;">
       Enter your numbers below to get a personalised shopping list for your brokerage account.
@@ -3128,7 +3136,7 @@ def _render_portfolio():
     # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
     col1, col2 = st.columns([1, 1.4], gap="large")
     with col1:
-        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📊 Asset Allocation</div>This chart shows how your money is divided across asset classes. Spreading across different areas reduces the risk of losing money if one area performs poorly — this is the core of Markowitz portfolio theory.</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Asset Allocation</div>This chart shows how your money is divided across asset classes. Spreading across different areas reduces the risk of losing money if one area performs poorly — this is the core of Markowitz portfolio theory.</span></div></div>', unsafe_allow_html=True)
         # Sort weights for cleaner display
         sorted_weights = dict(sorted(port["allocation_pct"].items(), key=lambda x: x[1], reverse=True))
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
@@ -3168,7 +3176,7 @@ def _render_portfolio():
 
     with col2:
         if st.session_state.explanation_mode == "advanced":
-            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">{get_svg("brain", 14)} Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("brain", 14)} Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
             
             ic1, ic2 = st.columns(2)
             with ic1:
@@ -3189,7 +3197,7 @@ def _render_portfolio():
                 """, unsafe_allow_html=True)
                 
             st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📈 Market Regimes</div>Financial markets go through different phases — normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This shows which regime the MINN believes is active, and how it has weighted your portfolio to handle it.</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Market Regimes</div>Financial markets go through different phases — normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This shows which regime the MINN believes is active, and how it has weighted your portfolio to handle it.</span></div></div>', unsafe_allow_html=True)
             regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
             r_names = list(regimes.keys())
             r_vals = list(regimes.values())
@@ -3266,7 +3274,7 @@ def _render_portfolio():
     # ── Row 2: Performance | Intelligence Feed ────────────────────────────
     c1, c2 = st.columns([1.3, 1.0], gap="large")
     with c1:
-        st.markdown('<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">🎲 Monte Carlo Simulation</div>We ran 2,000 different simulated futures for your portfolio based on historical data. This shows the range of possible outcomes over time — giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Monte Carlo Simulation</div>We ran 2,000 different simulated futures for your portfolio based on historical data. This shows the range of possible outcomes over time — giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
         st.plotly_chart(monte_chart(sim, color), use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -3469,8 +3477,8 @@ def _render_portfolio():
     # ── WHY EACH ASSET ────────────────────────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
     st.markdown(f"""
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:28px 0 4px;">
-      🧩 Why Each Asset Was Chosen
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:28px 0 4px; display:flex; align-items:center; gap:10px;">
+      {get_svg("puzzle", 24, ACCENT)} Why Each Asset Was Chosen
     </div>
     <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
       The MINN selected these specific ETFs based on your risk score of <b style="color:#ffffff;">{res.get('score',5):.0f}/10</b> and how they interact in the co-movement model.
@@ -3478,14 +3486,14 @@ def _render_portfolio():
     """, unsafe_allow_html=True)
 
     ASSET_DETAIL = {
-        "VOO":  {"icon":"📈","colour":"#3BA4FF","why":"VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
-        "QQQ":  {"icon":"💻","colour":"#6D5EFC","why":"QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
-        "VWRA": {"icon":"🌍","colour":"#8EF6D1","why":"VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
-        "AGG":  {"icon":"🛡️","colour":"#8BA6D3","why":"AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
-        "GLD":  {"icon":"🏅","colour":"#FFD700","why":"Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
-        "VNQ":  {"icon":"🏢","colour":"#FF9B6B","why":"VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
-        "ESGU": {"icon":"🌱","colour":"#4CAF50","why":"ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
-        "PDBC": {"icon":"⛽","colour":"#FF6B6B","why":"PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
+        "VOO":  {"icon":get_svg("chart", 14, "#3BA4FF"),"colour":"#3BA4FF","why":"VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
+        "QQQ":  {"icon":get_svg("zap", 14, "#6D5EFC"),"colour":"#6D5EFC","why":"QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
+        "VWRA": {"icon":get_svg("globe", 14, "#8EF6D1"),"colour":"#8EF6D1","why":"VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
+        "AGG":  {"icon":get_svg("shield", 14, "#8BA6D3"),"colour":"#8BA6D3","why":"AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
+        "GLD":  {"icon":get_svg("shield", 14, "#FFD700"),"colour":"#FFD700","why":"Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
+        "VNQ":  {"icon":get_svg("layers", 14, "#FF9B6B"),"colour":"#FF9B6B","why":"VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
+        "ESGU": {"icon":get_svg("shield-check", 14, "#4CAF50"),"colour":"#4CAF50","why":"ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
+        "PDBC": {"icon":get_svg("risk", 14, "#FF6B6B"),"colour":"#FF6B6B","why":"PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
     }
 
     why_cols = st.columns(2)
@@ -3510,7 +3518,7 @@ def _render_portfolio():
             """, unsafe_allow_html=True)
 
     # ── Survey summary expander ───────────────────────────────────────────────
-    with st.expander("📋 Survey Summary"):
+    with st.expander("Survey Summary", icon=":material/assignment:"):
         st.markdown("**Your Answers**")
         for q in QUESTIONS:
             val = st.session_state.survey_answers.get(q["key"], "—")
@@ -3519,7 +3527,7 @@ def _render_portfolio():
 
     # ── HISTORICAL STRESS TEST ──
     st.markdown("---")
-    st.markdown(f"""<div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.01em;margin:12px 0 16px;">🛡️ Resilience Stress Test</div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.01em;margin:12px 0 16px; display:flex; align-items:center; gap:10px;">{get_svg("shield", 24, ACCENT)} Resilience Stress Test</div>""", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     stress_scenarios = [
         ("2008 Financial Crisis", "-18.2%", "Capital preservation focus enabled."),
@@ -3537,16 +3545,17 @@ def _render_portfolio():
     st.markdown(f"""
 <div style='margin:8px 0;padding:12px;background:rgba(255,107,107,0.06);
 border-left:3px solid rgba(255,107,107,0.35);border-radius:8px;
-font-size:12px;color:rgba(237,237,243,0.45);'>
-⚠️ <b>Disclaimer:</b> This is for educational and research purposes only. 
+font-size:12px;color:rgba(237,237,243,0.45); display:flex; gap:10px; align-items:flex-start;'>
+<div style="margin-top:2px;">{get_svg("warning", 16, "#FF6B6B")}</div>
+<div><b>Disclaimer:</b> This is for educational and research purposes only. 
 Not financial advice. Consult a qualified financial adviser before investing. 
-Past performance does not guarantee future results.
+Past performance does not guarantee future results.</div>
 </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     col_r, _ = st.columns([1, 3])
     with col_r:
-        if st.button("🔄  Try a Different Profile", use_container_width=True):
+        if st.button("Try a Different Profile", icon=":material/refresh:", use_container_width=True):
             st.session_state.survey_page    = "survey"
             st.session_state.survey_step    = 0
             st.session_state.survey_answers = {}
@@ -4937,7 +4946,7 @@ CHATBOT_HTML = """
 
   async function callGemini(userMsg) {
     if (!GEMINI_KEY) {
-      return "⚠️ **Offline mode** – Add your Gemini API key to `secrets.toml` to enable full AI. For now, ask me about portfolio basics, risk profiles, or ETF allocation. I can still give general guidance based on the app's design.";
+      return f"{get_svg('warning', 16, ACCENT)} **Offline mode** – Add your Gemini API key to `secrets.toml` to enable full AI. For now, ask me about portfolio basics, risk profiles, or ETF allocation.";
     }
     chatHistory.push({ role: "user", parts: [{ text: userMsg }] });
     try {
