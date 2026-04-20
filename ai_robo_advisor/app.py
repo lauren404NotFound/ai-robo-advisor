@@ -2066,7 +2066,11 @@ def render_auth_modal():
         with s1:
             st.markdown('<span id="google-btn-hook"></span>', unsafe_allow_html=True)
             if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
-                st.login()
+                try:
+                    st.login()
+                except Exception as e:
+                    st.error(f"Google Login Error: {e}")
+                    st.info("💡 **Fixing Tip**: Ensure 'Authorized redirect URIs' in Google Console exactly matches your app URL.")
         with s2:
             st.markdown(f"""
                 <a href="{linkedin_url}" target="_top" class="social-btn" style="height: 43px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none; gap: 8px;">
