@@ -3001,7 +3001,7 @@ def _render_portfolio():
     with col_toggle:
         mode = st.session_state.explanation_mode
         new_mode = st.toggle(
-            "🔬 Advanced mode (for investors who understand market terms)",
+            ":material/analytics: Advanced mode (for investors who understand market terms)",
             value=(mode == "advanced"),
             help="Switch to advanced mode to see Sharpe ratios, volatility, and technical details."
         )
