@@ -2094,7 +2094,7 @@ def render_auth_modal():
             if st.session_state.get("real_email_sent"):
                 st.success(f"A verification code was securely emailed to you!", icon=":material/mail:")
             else:
-                st.info(f"**Demo note:** App Password not configured. Use this test code to continue: `{st.session_state.get('mock_code', '1234')}`")
+                # The Demo note is removed to allow for professional testing.
             code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input_final", max_chars=4)
             vc1, vc2 = st.columns(2)
             with vc1:
@@ -2172,7 +2172,7 @@ def render_auth_modal():
                         st.rerun()
                     else:
                         user = database.get_user(email_in)
-                        if user and user["password_hash"] == database.hash_password(pw_in):
+                        if user and database.check_password(pw_in, user["password_hash"]):
                             st.session_state.auth_verify_pending = True
                             vcode = str(random.randint(1000, 9999))
                             st.session_state.mock_code = vcode

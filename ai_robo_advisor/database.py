@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 from pymongo import MongoClient, DESCENDING
 from pymongo.errors import DuplicateKeyError
+import bcrypt
 
 # ── Connection ──────────────────────────────────────────────────────────────
 @st.cache_resource
@@ -101,7 +102,16 @@ def init_db():
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash a password using bcrypt for high security."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def check_password(password: str, hashed: str) -> bool:
+    """Verify a password against its bcrypt hash."""
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception:
+        return False
 
 
 # ── Users ────────────────────────────────────────────────────────────────────
