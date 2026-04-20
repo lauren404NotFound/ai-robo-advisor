@@ -2998,7 +2998,7 @@ def _render_portfolio():
         <div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("zap", 24, "#fff")}</div>
         <div class="profile-name" style="margin-bottom:0;">Markowitz-Informed Neural Network (MINN)</div>
       </div>
-      <div class="profile-desc">Neural state optimization completed for date **{port['date']}**. Models tuned to maximize Sharpe Ratio under current co-movement regimes.</div>
+      <div class="profile-desc">Neural state optimization completed. Models tuned to maximize Sharpe Ratio under current co-movement regimes.</div>
       <div class="tag-row">
         <span class="tag">AI Inference Validated</span>
         <span class="tag">δ={iq.get('delta',0):.2f}</span>
