@@ -2094,7 +2094,8 @@ def render_auth_modal():
             if st.session_state.get("real_email_sent"):
                 st.success(f"A verification code was securely emailed to you!", icon=":material/mail:")
             else:
-                # The Demo note is removed to allow for professional testing.
+                # App Password not configured; relying on session mock
+                pass
             code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input_final", max_chars=4)
             vc1, vc2 = st.columns(2)
             with vc1:
