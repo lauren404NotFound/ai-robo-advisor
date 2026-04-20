@@ -211,12 +211,12 @@ st.set_page_config(
 st.sidebar.markdown("### Systems Status")
 if claude_status == "Connected":
     st.sidebar.success(f"● Claude: {claude_status}")
-elif "Not Configured" in claude_status:
+elif "Key Missing" in claude_status:
     st.sidebar.warning(f"● Claude: {claude_status}")
     if st.sidebar.button("🔍 Debug Secrets"):
+        st.sidebar.write("App Path:", __file__)
         st.sidebar.write("Available Keys:", list(st.secrets.keys()))
-else:
-    st.sidebar.error(f"● Claude: {claude_status}")
+        st.sidebar.info(f"Total keys found: {len(st.secrets.keys())}")
 
 st.markdown("""
 <style>
