@@ -29,7 +29,6 @@ import hashlib
 from streamlit_oauth import OAuth2Component
 import anthropic
 
-# Configure your API Key (Ensure this is in your .streamlit/secrets.toml)
 try:
     # Initialize the Anthropic Client
     anthropic_client = anthropic.Anthropic(api_key=st.secrets["anthropic_api_key"])
