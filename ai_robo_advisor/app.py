@@ -2067,7 +2067,6 @@ def render_auth_modal():
             st.markdown('<span id="google-btn-hook"></span>', unsafe_allow_html=True)
             if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
                 st.login()
-            st.caption(f"ℹ️ Google Redirect URI must be `{st.secrets['auth']['redirect_uri']}`")
         with s2:
             st.markdown(f"""
                 <a href="{linkedin_url}" target="_top" class="social-btn" style="height: 43px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none; gap: 8px;">
