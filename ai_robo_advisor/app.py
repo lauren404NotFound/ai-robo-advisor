@@ -29,11 +29,21 @@ import hashlib
 from streamlit_oauth import OAuth2Component
 import anthropic
 
+# ── Search for API Key in multiple places ──────────────────────────────────────
+_api_key = st.secrets.get("anthropic_api_key")
+if not _api_key:
+    _api_key = os.environ.get("ANTHROPIC_API_KEY")
+
 try:
-    # Initialize the Anthropic Client
-    anthropic_client = anthropic.Anthropic(api_key=st.secrets["anthropic_api_key"])
-except Exception:
+    if _api_key:
+        anthropic_client = anthropic.Anthropic(api_key=_api_key)
+        # Force anthropic into globals for the connection check below
+        globals()["anthropic"] = anthropic
+    else:
+        anthropic_client = None
+except Exception as e:
     anthropic_client = None
+    st.error(f"Anthropic Client Init Error: {e}")
 
 
 # Securely load credentials from .streamlit/secrets.toml
@@ -72,7 +82,7 @@ except (KeyError, ImportError):
     TICKER_MAP = portfolio_engine.TICKER_MAP
     ASSETS = portfolio_engine.ASSETS
 
-from explainer import DeepIQInterpreter
+from explainer import DeepIQInterpreter, explain as local_explain
 import database
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1327,11 +1337,11 @@ def get_real_claude_insight(port_data, user_answers, mode="simple"):
     Acts as the 'AssessmentEngine' backend call.
     """
     if not anthropic_client:
-        return None # Fallback if key missing
+        return "⚠️ **Anthropic Client Not Initialized**: Check if the 'anthropic' library is installed and the API key is set in `secrets.toml`."
 
     # We send the RAW DATA to Claude, not a pre-written sentence
     try:
-        first_asset = list(port_data['allocation_pct'].keys())[0]
+        first_asset = list(port_data['allocation_pct'].keys())[0] if port_data.get('allocation_pct') else "Core Assets"
     except:
         first_asset = "Core Assets"
 
@@ -1343,31 +1353,40 @@ def get_real_claude_insight(port_data, user_answers, mode="simple"):
     - User Horizon: {user_answers.get('q3_horizon')}
     - Their Panic Reaction: {user_answers.get('q10_reaction')}
 
-    TASK: Do not use a template. Write a 3-paragraph explanation explaining 
-    why this portfolio fits their specific psychology. Mention how their 
-    panic reaction influenced the choice of {first_asset}.
+    TASK: Write a 3-paragraph explanation explaining why this portfolio fits their specific psychology. 
+    Mention how their panic reaction influenced the choice of {first_asset}. 
+    Be professional yet encouraging.
     """
 
     try:
         # Call Claude 3.5 Sonnet
         message = anthropic_client.messages.create(
             model="claude-3-5-sonnet-20240620",
-            max_tokens=500,
+            max_tokens=600,
             messages=[{"role": "user", "content": prompt}]
         )
         return message.content[0].text
     except Exception as e:
-        return f"Error connecting to Anthropic: {str(e)}"
+        # Check specifically for balance issues to help the user
+        err_msg = str(e)
+        if "credit balance is too low" in err_msg.lower():
+            return f"⚠️ **Claude API reached but out of credits**: {err_msg}"
+        return f"⚠️ **Claude API Error**: {err_msg}"
 
 def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tuple[str, str]:
     """Return (explanation_text, source_tag)."""
     # Try Real AI first (Claude)
     claude_insight = get_real_claude_insight(port, answers, mode)
-    if claude_insight and "Error" not in claude_insight:
+    if claude_insight and "⚠️" not in claude_insight:
         return claude_insight, "LIVE CLAUDE 3.5 SONNET"
 
-    # Fallback if key missing
-    return "⚠️ **Claude API Key Missing** — Please add your Anthropic API key to Streamlit secrets to enable the real AI narrative engine.", "REACTIVE HEURISTIC (OFFLINE)"
+    # If Claude failed or is unreachable, provide the real local logic but prefix with the reason
+    try:
+        heuristic_insight = local_explain(port, answers)
+        full_text = f"{claude_insight}\n\n---\n\n### 🤖 Local Redundant Interpretation\n{heuristic_insight}" if claude_insight else heuristic_insight
+        return full_text, "DEEPIQ HEURISTIC + CLAUDE STATUS"
+    except Exception as e:
+        return f"⚠️ **AI Narrative Error**: {str(e)}", "ERROR"
 
 
 
@@ -2941,20 +2960,27 @@ def _render_portfolio():
             if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
             st.rerun()
 
-    st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Claude AI Strategy Interpretation</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Neural AI Strategy Interpretation</h3>', unsafe_allow_html=True)
+    
+    # Connection Status
+    if not anthropic_client:
+        with st.sidebar:
+            st.error("🤖 **AI Engine Offline**")
+            if "anthropic" not in globals():
+                st.info("Missing library: `anthropic` (Try: pip install anthropic)")
+            elif "anthropic_api_key" not in st.secrets:
+                st.info("Missing Secret: `anthropic_api_key` in secrets.toml")
+            else:
+                st.info("Unknown initialization error. Check logs.")
 
     # Use session_state to prevent re-triggering the expensive API call on every click
-    if "ai_insight_text" not in st.session_state:
+    if "ai_insight_text_v2" not in st.session_state:
         # Show a high-end loading state matching your TypeScript pattern
-        with st.status("Claude 3.5 Sonnet is analyzing your profile...", expanded=True) as status:
-            st.write("Reviewing risk co-movements...")
-            time.sleep(0.6)
-            st.write("Mapping risk-return co-movements...")
-            time.sleep(0.4)
+        with st.status("Analyzing your profile via DeepIQ Neural Manifold...", expanded=True) as status:
             # The actual "Backend" call
             insight, source = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
-            st.session_state.ai_insight_text = insight
-            st.session_state.ai_insight_source = source
+            st.session_state.ai_insight_text_v2 = insight
+            st.session_state.ai_insight_source_v2 = source
             status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
             
             # Connection to Database: Save the narrative to MongoDB result
@@ -2971,11 +2997,11 @@ def _render_portfolio():
                 Neural Assessment Narrative 
                 <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
                 <span style="font-size:9px; background:rgba(0,255,200,0.1); color:#00FFC8; padding:2px 8px; border-radius:20px; border: 1px solid rgba(0,255,200,0.2);">
-                    {st.session_state.get('ai_insight_source', 'CHECKING...')}
+                    {st.session_state.get('ai_insight_source_v2', 'CHECKING...')}
                 </span>
             </div>
             <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
-                {st.session_state.ai_insight_text}
+                {st.session_state.ai_insight_text_v2}
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -2984,7 +3010,7 @@ def _render_portfolio():
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
         if st.button("Refresh AI Narrative", icon=":material/refresh:", use_container_width=True):
-            if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
+            if "ai_insight_text_v2" in st.session_state: del st.session_state.ai_insight_text_v2
             st.rerun()
     with btn_col2:
         if st.session_state.get("user_email") != "guest":
