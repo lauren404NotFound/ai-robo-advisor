@@ -1,0 +1,9 @@
+# Streamlit secrets (Sensitive data)
+.streamlit/secrets.toml
+
+# Python build artifacts
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
