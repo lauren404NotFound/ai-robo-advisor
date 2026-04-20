@@ -27,6 +27,15 @@ import hashlib
 
 # Architectural Node: Decentralized Local Storage Auth Engaged
 from streamlit_oauth import OAuth2Component
+import anthropic
+
+# Configure your API Key (Ensure this is in your .streamlit/secrets.toml)
+try:
+    # Initialize the Anthropic Client
+    anthropic_client = anthropic.Anthropic(api_key=st.secrets["anthropic_api_key"])
+except Exception:
+    anthropic_client = None
+
 
 # Securely load credentials from .streamlit/secrets.toml
 try:
@@ -1421,13 +1430,73 @@ def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> li
     return paragraphs
 
 
+def get_claude_assessment_insight(port, answers, mode="simple"):
+    """
+    Acts as the 'AssessmentEngine' backend call. 
+    Sends results to Claude 3.5 Sonnet to generate a narrative.
+    """
+    if not anthropic_client:
+        return None  # Fallback to local heuristic if key missing
+
+    # 1. Structure the Context
+    context_data = {
+        "strategy": port['risk_category'],
+        "sharpe": port['stats']['sharpe_ratio'],
+        "return": port['stats']['expected_annual_return'],
+        "behavior": {
+            "comfort": answers.get('q1_risk_comfort'),
+            "panic_reaction": answers.get('q10_reaction'),
+            "time_horizon": answers.get('q3_horizon')
+        }
+    }
+
+    # 2. Construct the Prompt
+    system_prompt = "You are a professional financial AI risk officer. Your goal is to explain a portfolio strategy based on an investor's behavioral survey results."
+    
+    user_message = f"""
+    The investor has been assigned a {context_data['strategy']} strategy.
+    
+    PORTFOLIO METRICS:
+    - Expected Volatility: {port['stats']['expected_volatility']}%
+    - Efficiency Score (Sharpe): {context_data['sharpe']:.2f}
+    
+    USER BEHAVIOR DATA:
+    - Stated Risk Comfort: {context_data['behavior']['comfort']}
+    - Reaction to 25% Market Drop: {context_data['behavior']['panic_reaction']}
+    - Duration: {context_data['behavior']['time_horizon']}
+    
+    TASK:
+    Write a {mode} explanation (under 120 words) explaining why this specific allocation 
+    balances their fear of losses with their desired long-term growth. Use a calm, reassuring tone.
+    """
+
+    try:
+        # 3. Call Claude 3.5 Sonnet
+        message = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=300,
+            temperature=0.3, # Lower temperature for factual accuracy
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        )
+        return message.content[0].text
+    except Exception as e:
+        return f"Error connecting to Anthropic: {str(e)}"
+
 def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> str:
     """Return the full explanation text as a single string."""
+    # Try Real AI first (Claude)
+    claude_insight = get_claude_assessment_insight(port, answers, mode)
+    if claude_insight and "Error" not in claude_insight:
+        return claude_insight
+
+    # Fallback to local heuristic if Claude fails or key is missing
     if mode == "simple":
         paragraphs = generate_simple_explanation(port, inputs, answers)
     else:
         paragraphs = generate_advanced_explanation(port, inputs, answers)
     return "\n\n".join(paragraphs)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
