@@ -1260,123 +1260,7 @@ if "explanation_mode" not in st.session_state:
 # AI EXPLAIN  (adapted from BalanceHer AssessmentEngine.fetchInsight)
 # — No external API needed; uses portfolio data + SHAP to write plain English —
 # ══════════════════════════════════════════════════════════════════════════════
-def generate_simple_explanation(port: dict, inputs: dict, answers: dict) -> list[str]:
-    """Super simple, jargon‑free explanation for beginners."""
-    cat = port["risk_category"]
-    stats = port["stats"]
-    sim = port["simulated_growth"]
-    alloc = port["allocation_pct"]
-    horizon = inputs.get("horizon", 10)
-
-    # User answers in plain language
-    risk_ans = answers.get("q1_risk_comfort", "Medium — balanced growth and stability")
-    react_ans = answers.get("q10_reaction", "Hold and wait for recovery")
-    age_ans = answers.get("q2_age", "30–39")
-    horizon_ans = answers.get("q3_horizon", "Long (10–20 years)")
-
-    # Risk category description
-    if "Very Conservative" in cat:
-        risk_desc = "you want your money to be as safe as possible, even if that means it grows very slowly"
-    elif "Conservative" in cat:
-        risk_desc = "you prefer mostly safety, but you're okay with a little bit of ups and downs if it means your money can grow a bit faster"
-    elif "Moderate" in cat:
-        risk_desc = "you are comfortable with a balanced mix of safety and growth – some good years, some less good, but overall a steady climb"
-    elif "Aggressive" in cat:
-        risk_desc = "you are willing to take bigger risks for the chance of bigger rewards – you understand that some years might be tough, but you're in it for the long term"
-    else:
-        risk_desc = "you are ready for a roller‑coaster ride – big ups and downs – because you believe that over many years you will come out ahead"
-
-    # Reaction description
-    if "sell everything" in react_ans.lower():
-        reaction_desc = "you would panic and sell everything if the market dropped sharply"
-    elif "reduce exposure" in react_ans.lower():
-        reaction_desc = "you would get nervous and sell some, but keep most of your investments"
-    elif "hold and wait" in react_ans.lower():
-        reaction_desc = "you would stay calm and do nothing, trusting that markets usually recover"
-    elif "buy more" in react_ans.lower():
-        reaction_desc = "you would see a drop as a great chance to buy more at lower prices"
-    else:
-        reaction_desc = "you would consider adding to your investments if prices fell"
-
-    # Horizon description
-    if horizon >= 15:
-        horizon_desc = "you have a very long time ahead – this gives your money many years to grow and recover from any bumps"
-    elif horizon >= 7:
-        horizon_desc = "you have a medium‑long horizon – plenty of time to ride out market ups and downs"
-    else:
-        horizon_desc = "you plan to use this money relatively soon, so we focus on keeping it safe"
-
-    # Top two allocations with simple asset names
-    top_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)[:2]
-    asset_descriptions = {
-        "US Equities": "American company shares",
-        "Global Equities": "company shares from all over the world",
-        "Technology": "technology company shares (like Apple, Microsoft, etc.)",
-        "Core Fixed Income": "government and corporate bonds (loans that pay you interest)",
-        "Gold": "physical gold",
-        "Commodities": "raw materials like oil and wheat",
-        "Real Estate": "property investments",
-        "ESG Equities": "shares of companies that are good for the planet and society"
-    }
-    simple_alloc = [f"{asset_descriptions.get(a, a)} ({p:.0f}%)" for a, p in top_alloc]
-    simple_alloc_str = " and ".join(simple_alloc)
-    alloc_str = f"**{top_alloc[0][0]}** ({top_alloc[0][1]:.0f}%) and **{top_alloc[1][0]}** ({top_alloc[1][1]:.0f}%)" if len(top_alloc) == 2 else f"**{top_alloc[0][0]}** ({top_alloc[0][1]:.0f}%)"
-
-    # Expected return and risk in simple terms
-    expected_return = stats['expected_annual_return']
-    if expected_return > 7:
-        return_desc = "a high potential growth rate"
-    elif expected_return > 4:
-        return_desc = "a moderate growth rate"
-    else:
-        return_desc = "a lower but more stable growth rate"
-
-    volatility = stats['expected_volatility']
-    if volatility > 15:
-        vol_desc = "your portfolio will have big swings – some years up a lot, some years down a lot"
-    elif volatility > 8:
-        vol_desc = "your portfolio will have noticeable ups and downs, but nothing too extreme"
-    else:
-        vol_desc = "your portfolio will be fairly steady, with small ups and downs"
-
-    # Simulation numbers
-    p50 = sim['p50']
-    p10 = sim['p10']
-    p90 = sim['p90']
-    years = sim['years']
-
-    paragraphs = [
-        f"**What our AI sees in your answers**\n\n"
-        f"After analyzing your answers, our AI has placed you in the **{cat}** investor type. "
-        f"That means {risk_desc}. "
-        f"Your age ({age_ans}) and your investment horizon ({horizon_ans}) were two of the biggest clues. "
-        f"Also, when we asked what you would do if your investments suddenly dropped 25%, you told us: “{reaction_desc}”. "
-        f"This behaviour tells us a lot about how you handle financial ups and downs.",
-
-        f"**What this means for your money**\n\n"
-        f"A {cat} profile typically grows at {return_desc}. "
-        f"In practical terms, {vol_desc}. "
-        f"The good news is that over many years, taking on some bumps usually leads to higher overall growth. "
-        f"Your portfolio is designed to give you the best possible growth for the level of bumpiness you are comfortable with.",
-
-        f"**Where your money should go**\n\n"
-        f"Based on our AI calculations, your money should be split mainly between {simple_alloc_str}. "
-        f"That means you would buy shares in {alloc_str}. "
-        f"By spreading your money across different types of investments, you protect yourself from any one company or market crashing. "
-        f"This is called **diversification** – it's like not putting all your eggs in one basket.",
-
-        f"**What you might end up with**\n\n"
-        f"We ran a computer simulation of **2,000 possible futures** for the stock market, using real historical data. "
-        f"After **{years} years**, the most likely outcome (the middle scenario) is that your portfolio would be worth **£{p50:,.0f}**. "
-        f"In a very good market (top 10% of scenarios), it could reach **£{p90:,.0f}**. "
-        f"Even in a bad market (bottom 10% of scenarios), the model predicts **£{p10:,.0f}** – that's the power of diversification and staying invested.",
-
-        f"**A few simple tips**\n\n"
-        f"✔️ The most important thing is to **stay invested** – don't panic sell when markets drop. History shows that markets recover.\n"
-        f"✔️ **Review your plan once a year** or after big life changes (marriage, new job, etc.).\n"
-        f"✔️ If you ever feel confused, remember: this AI is here to help. You can always retake the survey or talk to a human financial adviser."
-    ]
-    return paragraphs
+# Obsolete internal templates removed.
 
 
 def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> list[str]:
@@ -1437,41 +1321,38 @@ def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> li
     return paragraphs
 
 
-def generate_claude_explanation(port_data, user_answers, mode="simple"):
+def get_real_claude_insight(port_data, user_answers, mode="simple"):
     """
     This is the backend function that actually 'writes' the explanation.
     Acts as the 'AssessmentEngine' backend call.
     """
     if not anthropic_client:
-        return None # Fallback to local heuristic if key missing
+        return None # Fallback if key missing
 
-    # 1. Structure the Context
-    strategy = port_data.get("risk_category")
-    sharpe = port_data["stats"].get("sharpe_ratio", 0)
-    horizon = user_answers.get("q3_horizon", "Long (10-20 years)")
-    reaction = user_answers.get("q10_reaction", "Stay calm and do nothing")
+    # We send the RAW DATA to Claude, not a pre-written sentence
+    try:
+        first_asset = list(port_data['allocation_pct'].keys())[0]
+    except:
+        first_asset = "Core Assets"
 
-    # 2. Build the Prompt
     prompt = f"""
-    You are a professional financial AI risk officer. Review this investor's profile:
-    - Assigned Strategy: {strategy}
-    - Sharpe Ratio: {sharpe:.2f}
-    - Time Horizon: {horizon}
-    - User's reaction to a 25% market drop: "{reaction}"
+    Analyze this investor data and write a unique, personal narrative:
+    - Profile: {port_data['risk_category']}
+    - Sharpe Ratio: {port_data['stats']['sharpe_ratio']}
+    - User Age: {user_answers.get('q2_age')}
+    - User Horizon: {user_answers.get('q3_horizon')}
+    - Their Panic Reaction: {user_answers.get('q10_reaction')}
 
-    TASK:
-    Generate a concise, reassuring explanation (max 120 words) for their dashboard.
-    Explain specifically HOW this portfolio protects them during the market drop they 
-    described while still meeting their {horizon} goals. 
-    Use a professional tone. Do not use generic disclaimers.
+    TASK: Do not use a template. Write a 3-paragraph explanation explaining 
+    why this portfolio fits their specific psychology. Mention how their 
+    panic reaction influenced the choice of {first_asset}.
     """
 
     try:
-        # 3. Call Claude 3.5 Sonnet
+        # Call Claude 3.5 Sonnet
         message = anthropic_client.messages.create(
             model="claude-3-5-sonnet-20240620",
-            max_tokens=300,
-            temperature=0.4, # Balanced for creativity and factual consistency
+            max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
         )
         return message.content[0].text
@@ -1481,16 +1362,12 @@ def generate_claude_explanation(port_data, user_answers, mode="simple"):
 def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tuple[str, str]:
     """Return (explanation_text, source_tag)."""
     # Try Real AI first (Claude)
-    claude_insight = generate_claude_explanation(port, answers, mode)
+    claude_insight = get_real_claude_insight(port, answers, mode)
     if claude_insight and "Error" not in claude_insight:
         return claude_insight, "LIVE CLAUDE 3.5 SONNET"
 
-    # Fallback to local heuristic if Claude fails or key is missing
-    if mode == "simple":
-        paragraphs = generate_simple_explanation(port, inputs, answers)
-    else:
-        paragraphs = generate_advanced_explanation(port, inputs, answers)
-    return "\n\n".join(paragraphs), "REACTIVE HEURISTIC (LOCAL)"
+    # Fallback if key missing
+    return "⚠️ **Claude API Key Missing** — Please add your Anthropic API key to Streamlit secrets to enable the real AI narrative engine.", "REACTIVE HEURISTIC (OFFLINE)"
 
 
 
