@@ -3064,7 +3064,7 @@ def _render_portfolio():
             if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
             st.rerun()
 
-    st.markdown(f"### {get_svg('brain', 24, ACCENT)} Claude AI Strategy Interpretation")
+    st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Claude AI Strategy Interpretation</h3>', unsafe_allow_html=True)
 
     # Use session_state to prevent re-triggering the expensive API call on every click
     if "ai_insight_text" not in st.session_state:
