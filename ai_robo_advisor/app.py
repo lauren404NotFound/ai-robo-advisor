@@ -29,21 +29,23 @@ import hashlib
 from streamlit_oauth import OAuth2Component
 import anthropic
 
-# ── Search for API Key in multiple places ──────────────────────────────────────
-_api_key = st.secrets.get("anthropic_api_key")
-if not _api_key:
-    _api_key = os.environ.get("ANTHROPIC_API_KEY")
+# ── Triple-Check for API Key (Streamlit Cloud Robustness) ─────────────────────
+_api_key = st.secrets.get("anthropic_api_key") 
+if not _api_key: _api_key = st.secrets.get("ANTHROPIC_API_KEY")
+if not _api_key: 
+    try: _api_key = st.secrets.anthropic.get("api_key")
+    except: pass
 
 try:
     if _api_key:
         anthropic_client = anthropic.Anthropic(api_key=_api_key)
-        # Force anthropic into globals for the connection check below
-        globals()["anthropic"] = anthropic
+        st.sidebar.success("Claude: Connected")
     else:
         anthropic_client = None
+        st.sidebar.warning("Claude: Not Configured")
 except Exception as e:
     anthropic_client = None
-    st.error(f"Anthropic Client Init Error: {e}")
+    st.sidebar.error(f"Claude Init Error: {e}")
 
 
 # Securely load credentials from .streamlit/secrets.toml
@@ -247,20 +249,15 @@ header[data-testid="stHeader"], div[data-testid="stToolbar"],
   border-bottom: 1px solid rgba(155, 114, 242, 0.15);
   pointer-events: none;
 }}
-.nav-grid {{
-  display: grid; width: 100%; gap: 0 !important;
-  grid-template-columns: 240px repeat(5, 110px) 1fr 360px;
-  align-items: center;
-}}
-.nav-brand {{
-  font-size: 19px; font-weight: 900; color: #ffffff;
-  letter-spacing: -0.04em; display: flex; align-items: center; gap: 10px;
-}}
-.nav-link-wrap {{
-  display: flex; justify-content: center; align-items: center; height: 68px;
-}}
-.nav-link:hover {{ color: #ffffff; background: rgba(255,255,255,0.05); }}
-.nav-link-wrap.active .nav-link {{ color: #3BA4FF; font-weight: 700; border-bottom: 2px solid #3BA4FF; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }}
+    st.sidebar.markdown("---")
+    if anthropic_client:
+        st.sidebar.success("● Claude: Online")
+    else:
+        st.sidebar.error("● Claude: Offline")
+        if st.sidebar.button("Show Secret Keys"):
+            st.sidebar.write("Found keys:", list(st.secrets.keys()))
+
+    page = st.sidebar.radio("Navigation", ["Dashboard", "Survey", "Performance", "Admin"])
 
 .nav-link {{
   color: {MUTED}; font-size: 14px; font-weight: 500;
