@@ -2096,10 +2096,11 @@ def render_auth_modal():
         # VERIFICATION
         if st.session_state.get("auth_verify_pending"):
             if st.session_state.get("real_email_sent"):
-                st.success(f"A verification code was securely emailed to you!", icon=":material/mail:")
+                st.success(f"Verified: Code sent to `{st.session_state.pending_data['email']}`", icon=":material/mail:")
             else:
-                # App Password not configured; relying on session mock
-                pass
+                st.warning("⚠️ **Email Delivery Failed**: The SMTP server rejected the connection. Check your 'App Password' or SMTP settings.")
+                if st.sidebar.button("🛠️ Show SMTP Logs"):
+                    st.sidebar.write("Last SMTP Error:", st.session_state.get("last_smtp_error", "None"))
             code_in = st.text_input("Enter 4-digit code", placeholder="####", key="auth_code_input_final", max_chars=4)
             vc1, vc2 = st.columns(2)
             with vc1:
