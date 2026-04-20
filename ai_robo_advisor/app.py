@@ -3135,7 +3135,7 @@ def _render_portfolio():
 
     # ── Methodology Section ──────────────────────────────────────────────
     st.markdown("---")
-    with st.expander("📊 Data Source & Methodology — Where do these numbers come from?"):
+    with st.expander("Data Source & Methodology — Where do these numbers come from?", icon=":material/info:"):
         st.markdown(f"""
         <div style="font-size:14px; color:{MUTED}; line-height:1.7;">
           <h4 style="color:#ffffff; margin-top:0;">1. Data Foundation</h4>
@@ -3162,70 +3162,101 @@ def _render_portfolio():
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">{get_svg("brain", 14)} Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
-        
-        ic1, ic2 = st.columns(2)
-        with ic1:
-            st.markdown(f"""
-            <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">THRESHOLD (δ)<span class="tooltip-text">This number controls how carefully the AI watches for risky market behavior. A higher number means the AI is heavily filtering out 'market noise' to focus only on major, dangerous trends.</span></div></div>
-                <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{iq.get('delta',0):.2f}</div>
-                <div style="font-size:9px; color:{MUTED};">Manifold Boundary</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with ic2:
-            st.markdown(f"""
-            <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">DECAY (γ)<span class="tooltip-text">This number controls the AI's 'memory'. A higher number means the AI cares more about what the market did yesterday than what it did 5 years ago, making it react faster to sudden changes.</span></div></div>
-                <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{iq.get('gamma',0):.3f}</div>
-                <div style="font-size:9px; color:{MUTED};">Temporal Discount</div>
-            </div>
-            """, unsafe_allow_html=True)
+        if st.session_state.explanation_mode == "advanced":
+            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">{get_svg("brain", 14)} Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
             
-        st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📈 Market Regimes</div>Financial markets go through different phases — normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This shows which regime the MINN believes is active, and how it has weighted your portfolio to handle it.</span></div></div>', unsafe_allow_html=True)
-        regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
-        r_names = list(regimes.keys())
-        r_vals = list(regimes.values())
-        r_exps = []
-        for r in r_names:
-            if r == "Body": r_exps.append("Normal, calm market conditions.")
-            elif r == "Tail": r_exps.append("Severe market crashes or extreme events.")
-            elif r == "Wing": r_exps.append("Moderate turbulence and volatility.")
-            else: r_exps.append("Baseline mathematical smoothing (Identity matrix).")
-        
-        # Simple regime bar chart
-        fig_r = px.bar(
-            x=r_vals, y=r_names, orientation='h',
-            color=r_names,
-            color_discrete_map={"Body":ACCENT, "Wing":ACCENT2, "Tail":NEG, "Identity":MUTED},
-            custom_data=[r_exps]
-        )
-        fig_r.update_traces(hovertemplate="<b>%{y} Regime</b><br>Probability: %{x:.1%}<br><i>%{customdata[0]}</i><extra></extra>")
-        fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None, height=180, margin=dict(l=0,r=20,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig_r, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+            ic1, ic2 = st.columns(2)
+            with ic1:
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                    <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">THRESHOLD (δ)<span class="tooltip-text">This number controls how carefully the AI watches for risky market behavior. A higher number means the AI is heavily filtering out 'market noise' to focus only on major, dangerous trends.</span></div></div>
+                    <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{iq.get('delta',0):.2f}</div>
+                    <div style="font-size:9px; color:{MUTED};">Manifold Boundary</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with ic2:
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                    <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">DECAY (γ)<span class="tooltip-text">This number controls the AI's 'memory'. A higher number means the AI cares more about what the market did yesterday than what it did 5 years ago, making it react faster to sudden changes.</span></div></div>
+                    <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{iq.get('gamma',0):.3f}</div>
+                    <div style="font-size:9px; color:{MUTED};">Temporal Discount</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability <span class="tt-icon">ℹ️</span><span class="tooltip-text"><div class="tt-header">📈 Market Regimes</div>Financial markets go through different phases — normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This shows which regime the MINN believes is active, and how it has weighted your portfolio to handle it.</span></div></div>', unsafe_allow_html=True)
+            regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
+            r_names = list(regimes.keys())
+            r_vals = list(regimes.values())
+            r_exps = []
+            for r in r_names:
+                if r == "Body": r_exps.append("Normal, calm market conditions.")
+                elif r == "Tail": r_exps.append("Severe market crashes or extreme events.")
+                elif r == "Wing": r_exps.append("Moderate turbulence and volatility.")
+                else: r_exps.append("Baseline mathematical smoothing (Identity matrix).")
+            
+            # Simple regime bar chart
+            fig_r = px.bar(
+                x=r_vals, y=r_names, orientation='h',
+                color=r_names,
+                color_discrete_map={"Body":ACCENT, "Wing":ACCENT2, "Tail":NEG, "Identity":MUTED},
+                custom_data=[r_exps]
+            )
+            fig_r.update_traces(hovertemplate="<b>%{y} Regime</b><br>Probability: %{x:.1%}<br><i>%{customdata[0]}</i><extra></extra>")
+            fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None, height=180, margin=dict(l=0,r=20,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_r, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Strategic Tuning Panel (Persistent) ───────────────────────────────
-        st.markdown(f'<div class="card" style="margin-top:20px;"><div class="panel-title">{get_svg("settings", 14, ACCENT)} &nbsp; Strategic AI Tuning</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:15px;">Manually override the neural manifold parameters to tune your risk exposure.</div>', unsafe_allow_html=True)
-        
-        # Load existing config from DB if available
-        user_email = st.session_state.get("user_email", "guest")
-        saved_config = database.get_portfolio_config(user_email)
-        def_delta = saved_config.get("delta", iq.get("delta", 0.5))
-        def_gamma = saved_config.get("gamma", iq.get("gamma", 0.1))
-        
-        new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(def_delta), 0.1, help="Higher = more aggressive filtering of market noise.")
-        new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(def_gamma), 0.001, format="%.3f", help="Higher = faster reaction to recent volatility.")
-        
-        if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
-            new_config = {"delta": new_delta, "gamma": new_gamma}
-            database.save_portfolio_config(user_email, new_config)
-            database.add_notification(user_email, "Strategic Sync Successful", f"Your MINN parameters (δ={new_delta}, γ={new_gamma}) have been synchronized with the LEM StratIQ cloud.", "success")
-            st.success("Configuration Pushed to MongoDB Atlas!")
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+            # ── Strategic Tuning Panel (Persistent) ───────────────────────────────
+            st.markdown(f'<div class="card" style="margin-top:20px;"><div class="panel-title">{get_svg("settings", 14, ACCENT)} &nbsp; Strategic AI Tuning</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:15px;">Manually override the neural manifold parameters to tune your risk exposure.</div>', unsafe_allow_html=True)
+            
+            # Load existing config from DB if available
+            saved_config = database.get_portfolio_config(st.session_state.get("user_email", "guest"))
+            def_delta = saved_config.get("delta", iq.get("delta", 0.5))
+            def_gamma = saved_config.get("gamma", iq.get("gamma", 0.1))
+            
+            new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(def_delta), 0.1, help="Higher = more aggressive filtering of market noise.")
+            new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(def_gamma), 0.001, format="%.3f", help="Higher = faster reaction to recent volatility.")
+            
+            if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
+                new_config = {"delta": new_delta, "gamma": new_gamma}
+                database.save_portfolio_config(st.session_state.get("user_email", "guest"), new_config)
+                database.add_notification(st.session_state.get("user_email", "guest"), "Strategic Sync Successful", f"Your MINN parameters have been synchronized with the LEM StratIQ cloud.", "success")
+                st.success("Configuration Pushed to MongoDB Atlas!")
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            # Simple Mode Placeholder or just the Intelligence Feed
+            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("zap", 14, ACCENT)} &nbsp; Intelligence Feed</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:20px;">Real-time feed of neural diagnostic events and profile changes.</div>', unsafe_allow_html=True)
+            
+            # Load from MongoDB
+            notifs = database.get_notifications(st.session_state.get("user_email", "guest"), limit=6)
+            
+            if not notifs:
+                st.markdown(f"""
+                <div style="text-align:center;padding:60px 20px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1);">
+                    <div style="font-size:32px;margin-bottom:10px;color:rgba(155,114,242,0.4);display:flex;justify-content:center;">{get_svg("risk", 40)}</div>
+                    <div style="font-size:13px;color:#8BA6D3;font-weight:700;">Radar Scan Active</div>
+                    <div style="font-size:11px;color:{MUTED};">No recent events detected on this manifold.</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                for n in notifs:
+                    icon_color = "#3BA4FF" if n['level'] == "success" else "#8BA6D3"
+                    icon_svg = get_svg("shield-check", 14, icon_color) if n['level'] == "success" else get_svg("more", 14, icon_color)
+                    time_str = n['created_at'].strftime("%H:%M")
+                    st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;gap:8px;">
+                            <span style="font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;">{icon_svg} {n['title']}</span>
+                            <span style="font-size:9px;color:{MUTED};">{time_str}</span>
+                        </div>
+                        <div style="font-size:10px;color:#8BA6D3;line-height:1.4;">{n['message']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Row 2: Performance | Intelligence Feed ────────────────────────────
     c1, c2 = st.columns([1.3, 1.0], gap="large")
