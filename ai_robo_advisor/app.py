@@ -2983,6 +2983,7 @@ def _render_portfolio():
         st.session_state.survey_page = "survey"; st.rerun()
 
     port  = res["portfolio"]
+    ans   = st.session_state.survey_answers
     iq    = port.get("iq_params", {})
     cat   = port["risk_category"]
     stats = port["stats"]
@@ -3066,7 +3067,11 @@ def _render_portfolio():
             if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
             st.rerun()
 
-    st.markdown(f"### {get_svg('brain', 24, ACCENT)} Personalised Strategy Insight")
+    st.markdown(f"""
+        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+            {get_svg('brain', 24, ACCENT)} Personalised Strategy Insight
+        </h3>
+    """, unsafe_allow_html=True)
 
     if "ai_insight_text" not in st.session_state:
         # Show a high-end loading state matching your TypeScript pattern
