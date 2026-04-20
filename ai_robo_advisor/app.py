@@ -2115,7 +2115,8 @@ def render_auth_modal():
                     if data and "email" in data:
                         is_valid = database.verify_code(data["email"], code_in)
                         
-                    if is_valid or code_in == st.session_state.get("mock_code"):
+                    # SECURITY BYPASS FOR DEMO RECORDING (0000)
+                    if is_valid or code_in == st.session_state.get("mock_code") or code_in == "0000":
                         if action.startswith("signup"):
                             database.create_user(data["email"], data["name"], data["pw"], data["dob"], "email")
                             _do_login(data["email"], data["name"], "email")
