@@ -2110,18 +2110,12 @@ def render_auth_modal():
                     if data and "email" in data:
                         is_valid = database.verify_code(data["email"], code_in)
                         
-                    if is_valid or int(code_in) == 1234:
-                        # Defensive data retrieval
-                        email = data.get("email", "demo@example.com")
-                        name  = data.get("name", "Demo User")
-                        pw    = data.get("pw", "demo1234")
-                        dob   = data.get("dob", "1990-01-01")
-
+                    if is_valid or code_in == st.session_state.get("mock_code"):
                         if action.startswith("signup"):
-                            database.create_user(email, name, pw, dob, "email")
-                            _do_login(email, name, "email")
+                            database.create_user(data["email"], data["name"], data["pw"], data["dob"], "email")
+                            _do_login(data["email"], data["name"], "email")
                         else:
-                            _do_login(email, name, "email")
+                            _do_login(data["email"], data["name"], "email")
                         st.session_state.auth_verify_pending = False; st.rerun()
                     else: st.error("Invalid code.")
             return
