@@ -2954,18 +2954,12 @@ def _render_analysing():
         }
         inputs = {"horizon": horizon_yrs}
         
-        dynamic_paragraphs = get_ai_explanation(st.session_state.explanation_mode, portfolio, inputs, ans)
-        minn_base = "This project implements a Markowitz-Informed Neural Network (MINN) to learn how to build investment portfolios that balance risk and return intelligently. It combines ideas from finance (portfolio theory) and machine learning (deep neural networks). The model learns how assets \"move together\" — their co-movements or correlations — and finds portfolio weights that maximize the Sharpe Ratio, a measure of performance defined as average return divided by risk. In plain terms: the network learns how to distribute money across several assets so that the overall portfolio performs well relative to its volatility (ups and downs)."
-        
-        final_summary = minn_base + "\n\n" + dynamic_paragraphs
-        
         pb.progress(100)
         msg.empty()
         time.sleep(0.3)
 
         st.session_state.result = {
             "portfolio":   portfolio,
-            "ai_summary":  final_summary,
             "score":       score
         }
         
@@ -2973,7 +2967,6 @@ def _render_analysing():
         email = st.session_state.get("user_email")
         if email and email != "guest":
             database.save_assessment(email, ans, st.session_state.result)
-            send_portfolio_report(email, portfolio["risk_category"], score, final_summary)
         
         st.session_state.survey_page = "portfolio"
         st.rerun()
@@ -2996,7 +2989,6 @@ def _render_portfolio():
     stats = port["stats"]
     sim   = port["simulated_growth"]
     color = PROFILE_COLORS.get(f"Profile {port['profile_score']}", ACCENT2)
-    summary = res.get("ai_summary", "")
 
     # ── Profile hero ──────────────────────────────────────────────────────────
     st.markdown(f"""
@@ -3059,12 +3051,7 @@ def _render_portfolio():
 
     st.markdown(render_actionable_advice(port, lump_sum, monthly_contrib), unsafe_allow_html=True)
 
-    import re
-    summary = res.get("ai_summary", "")
-    summary = re.sub(r'<div class="ai-explain-box">', '', summary, flags=re.IGNORECASE)
-    summary = summary.replace('</div>', '').strip()
-
-    # ── AI EXPLANATION WITH TOGGLE ──────────────────────────────────────────
+    # ── AI EXPLANATION SECTION (Assessment Engine Pattern) ──────────────────
     st.markdown("---")
     col_toggle, col_spacer = st.columns([1, 3])
     with col_toggle:
@@ -3072,48 +3059,67 @@ def _render_portfolio():
         new_mode = st.toggle(
             ":material/analytics: Advanced mode (for investors who understand market terms)",
             value=(mode == "advanced"),
-            help="Switch to advanced mode to see Sharpe ratios, volatility, and technical details."
+            help="Switch to advanced mode to see technical details."
         )
-        # Fix label visibility for toggle specifically
-        st.markdown('<style>div[data-testid="stCheckbox"] label p { color: white !important; font-weight: 500 !important; }</style>', unsafe_allow_html=True)
-        st.session_state.explanation_mode = "advanced" if new_mode else "simple"
+        if (st.session_state.explanation_mode == "advanced" and not new_mode) or \
+           (st.session_state.explanation_mode == "simple" and new_mode):
+            st.session_state.explanation_mode = "advanced" if new_mode else "simple"
+            if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
+            st.rerun()
 
-    # Generate explanation on the fly based on current mode
-    ans = st.session_state.survey_answers
-    horizon_map = {"Short (under 3 years)":3, "Medium (3–10 years)":7, "Long (10–20 years)":15, "Very long (over 20 years)":25}
-    horizon_yrs = horizon_map.get(ans.get("q3_horizon"), 10)
-    
-    inputs = {"horizon": horizon_yrs}
-    explanation_text = get_ai_explanation(st.session_state.explanation_mode, port, inputs, ans)
+    st.markdown(f"### {get_svg('brain', 24, ACCENT)} Personalised Strategy Insight")
 
+    if "ai_insight_text" not in st.session_state:
+        # Show a high-end loading state matching your TypeScript pattern
+        with st.status("Claude 3.5 Sonnet is interpreting your neural manifold...", expanded=True) as status:
+            st.write("Analysing behavioral patterns...")
+            time.sleep(0.6)
+            st.write("Mapping risk-return co-movements...")
+            time.sleep(0.4)
+            # The actual "Backend" call
+            insight = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
+            st.session_state.ai_insight_text = insight
+            status.update(label="Insight Generated!", state="complete", expanded=False)
+
+    # Render the dynamic text box with original premium styling
     st.markdown(f"""
-    <div style="background-color: rgba(155, 114, 242, 0.06); border: 1px solid rgba(155, 114, 242, 0.25); border-radius: 12px; padding: 24px; margin-top: 10px; margin-bottom: 28px;">
-        <h3 style="font-weight: 600; color: #E6D5FF; margin-top: 0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 16px;">
-            <span style="display:inline-block;vertical-align:middle;margin-top:-3px;">{get_svg("brain", 20, "#6D5EFC")}</span>
-            AI‑Powered Insight
-            <span style="font-size:12px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">
-                {st.session_state.explanation_mode.upper()} MODE
-            </span>
-        </h3>
-        <div style="font-size: 15px; color: rgba(237,237,243,0.9); white-space: pre-line; line-height: 1.75;">
-            {explanation_text}
+        <div style="background: rgba(155, 114, 242, 0.08); 
+                    border: 1px solid rgba(155, 114, 242, 0.25); 
+                    border-radius: 20px; 
+                    padding: 30px; 
+                    margin: 10px 0 30px 0;
+                    line-height: 1.8;
+                    color: white;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <div style="font-size: 11px; font-weight: 800; color: {ACCENT2}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;">
+                Neural Assessment Narrative <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
+            </div>
+            <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
+                {st.session_state.ai_insight_text}
+            </div>
+            <div style="margin-top:20px;">
+                <button onclick="window.parent.postMessage({{type: 'streamlit:set_component_value', value: 'email_requested'}}, '*')" 
+                        style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">
+                    📬 Email me a copy of these results
+                </button>
+            </div>
         </div>
-        <div style="margin-top:16px;">
-            <button onclick="window.parent.postMessage({{type: 'streamlit:set_component_value', value: 'email_requested'}}, '*')" 
-                    style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">
-                📬 Email me a copy of these results
-            </button>
-        </div>
-    </div>
     """, unsafe_allow_html=True)
 
-    # Bridge for the JS button above
-    if st.session_state.get("user_email") != "guest":
-        if st.button("Email me a copy of these results", icon=":material/mail:", type="secondary"):
-            with st.spinner("AI is generating your PDF report and sending..."):
-                sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], explanation_text)
-                if sent: st.success("Report delivered to your inbox!")
-                else: st.error("Email service currently busy. Redirecting to cloud log...")
+    # UI Bridge for buttons
+    btn_col1, btn_col2, _ = st.columns([1, 1, 2])
+    with btn_col1:
+        if st.button("🔄 Refresh AI Narrative", use_container_width=True):
+            if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
+            st.rerun()
+    with btn_col2:
+        if st.session_state.get("user_email") != "guest":
+            if st.button("📬 Email Results", icon=":material/mail:", use_container_width=True):
+                with st.spinner("Delivering report..."):
+                    sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], st.session_state.ai_insight_text)
+                    if sent: st.success("Sent!")
+                    else: st.error("Failed")
+
 
     # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
     col1, col2 = st.columns([1, 1.4], gap="large")
