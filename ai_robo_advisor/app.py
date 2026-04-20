@@ -3030,7 +3030,7 @@ def _render_portfolio():
             {explanation_text}
         </div>
         <div style="margin-top:16px;">
-            <button onclick="window.parent.postMessage({type: 'streamlit:set_component_value', value: 'email_requested'}, '*')" 
+            <button onclick="window.parent.postMessage({{type: 'streamlit:set_component_value', value: 'email_requested'}}, '*')" 
                     style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">
                 📬 Email me a copy of these results
             </button>
