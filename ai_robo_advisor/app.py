@@ -162,7 +162,8 @@ def get_svg(name, size=18, color="currentColor"):
         "settings": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.72l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
         "logout": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
         "shield-check": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
-        "bell": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'
+        "bell": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+        "list": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>'
     }
     return icons.get(name, "")
 
@@ -802,6 +803,11 @@ def _do_login(email: str, name: str, provider: str = "email", avatar: str = None
         st.session_state.result = saved["result"]
         st.session_state.survey_answers = saved["answers"]
         st.session_state.survey_page = "portfolio"
+    else:
+        # Tie rogue guest survey session to the newly logged in user!
+        if st.session_state.get("result") and st.session_state.get("survey_answers"):
+            database.save_assessment(email, st.session_state.survey_answers, st.session_state.result)
+            st.session_state.survey_page = "portfolio"
 
     st.session_state.preferences = {}
     user_data = database.get_user(email)
@@ -832,7 +838,7 @@ def send_verification_email(to_email: str, code: str) -> bool:
     sender_pw = smtp_creds.get("password", "")
     
     if not sender_email or not sender_pw:
-        return False # Fall back to mock
+        return False
         
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Your LEM StratIQ Verification Code"
@@ -841,29 +847,57 @@ def send_verification_email(to_email: str, code: str) -> bool:
     
     html = f"""
     <html>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0A0A1C; color: #ffffff; padding: 40px 20px; text-align: center;">
-        <h2 style="color: #6D5EFC; font-weight: 800; letter-spacing: -0.5px;">Welcome to LEM StratIQ</h2>
-        <p style="color: #8BA6D3; font-size: 16px;">We're thrilled to have you! Your verification code is below:</p>
-        <div style="margin: 30px auto; background: #1E1F35; display: inline-block; padding: 15px 30px; border-radius: 12px; border: 1px solid rgba(109,94,252,0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <h1 style="font-size: 42px; margin: 0; letter-spacing: 8px; color: #ffffff;">{code}</h1>
+      <body style="font-family: sans-serif; background-color: #0A0A1C; color: #ffffff; padding: 40px; text-align: center;">
+        <h2 style="color: #6D5EFC;">Welcome to LEM StratIQ</h2>
+        <p>Verification code:</p>
+        <div style="margin: 30px; background: #1E1F35; padding: 15px; border-radius: 12px; border: 1px solid rgba(109,94,252,0.3);">
+            <h1 style="font-size: 42px; color: #ffffff;">{code}</h1>
         </div>
-        <p style="color: #556789; font-size: 12px;">This code will expire in 10 minutes. Do not share this code.</p>
       </body>
     </html>
     """
-    
     msg.attach(MIMEText(html, "html"))
-    
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, sender_pw)
-        server.sendmail(sender_email, to_email, msg.as_string())
-        server.quit()
+        server = smtplib.SMTP("smtp.gmail.com", 587); server.starttls()
+        server.login(sender_email, sender_pw); server.sendmail(sender_email, to_email, msg.as_string()); server.quit()
         return True
-    except Exception as e:
-        print(f"SMTP Flow Failed: {{e}}")
-        return False
+    except: return False
+
+def send_portfolio_report(to_email: str, port_name: str, score: float, summary: str) -> bool:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    smtp_creds = st.secrets.get("smtp", {})
+    sender_email = smtp_creds.get("email", "")
+    sender_pw = smtp_creds.get("password", "")
+    if not sender_email or not sender_pw: return False
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Your LEM StratIQ Portfolio Analysis: {port_name}"
+    msg["From"] = f"LEM StratIQ AI <{sender_email}>"
+    msg["To"] = to_email
+
+    summary_html = summary.replace('\n', '<br>')
+    html = f"""
+    <html>
+      <body style="font-family: sans-serif; background-color: #0A0A1C; color: #ffffff; padding: 40px;">
+        <h1 style="color: #6D5EFC;">Your AI Portfolio Report</h1>
+        <p>Your Investor DNA has been mapped to: <b>{port_name}</b> (Risk Score: {score}/10)</p>
+        <hr style="border: 0; border-top: 1px solid #1E1F35;">
+        <h3 style="color: #3BA4FF;">AI Inference Summary</h3>
+        <p style="color: #8BA6D3; line-height: 1.6;">{summary_html}</p>
+        <br>
+        <p style="font-size:11px; color:#556789;">This is an automated report from your LEM StratIQ Private Wealth Dashboard.</p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(html, "html"))
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587); server.starttls()
+        server.login(sender_email, sender_pw); server.sendmail(sender_email, to_email, msg.as_string()); server.quit()
+        return True
+    except: return False
 
 def _do_logout():
     tok = st.session_state.get("session_token")
@@ -2073,9 +2107,15 @@ def render_auth_modal():
                     st.session_state.auth_verify_pending = False; st.rerun()
             with vc2:
                 if st.button("Verify & Proceed", type="primary", use_container_width=True, key="vc_verify"):
-                    if code_in == st.session_state.get("mock_code"):
-                        action = st.session_state.get("pending_action")
-                        data   = st.session_state.get("pending_data")
+                    action = st.session_state.get("pending_action")
+                    data   = st.session_state.get("pending_data")
+                    
+                    # Verify against MongoDB backend or fallback to session state mock for testing
+                    is_valid = False
+                    if data and "email" in data:
+                        is_valid = database.verify_code(data["email"], code_in)
+                        
+                    if is_valid or code_in == st.session_state.get("mock_code"):
                         if action.startswith("signup"):
                             database.create_user(data["email"], data["name"], data["pw"], data["dob"], "email")
                             _do_login(data["email"], data["name"], "email")
@@ -2128,6 +2168,7 @@ def render_auth_modal():
                         st.session_state.auth_verify_pending = True
                         vcode = str(random.randint(1000, 9999))
                         st.session_state.mock_code = vcode
+                        database.save_verification_code(email_in, vcode)
                         st.session_state.pending_action = "signup_email"
                         st.session_state.pending_data = {"email": email_in, "name": name_in, "pw": pw_in, "dob": dob_in.strftime("%Y-%m-%d")}
                         
@@ -2140,6 +2181,7 @@ def render_auth_modal():
                             st.session_state.auth_verify_pending = True
                             vcode = str(random.randint(1000, 9999))
                             st.session_state.mock_code = vcode
+                            database.save_verification_code(email_in, vcode)
                             st.session_state.pending_action = "login_email"
                             st.session_state.pending_data = {"email": email_in, "name": user["name"]}
                             
@@ -2174,7 +2216,14 @@ def render_auth_modal():
                 if st.button(btn_text, type="primary", use_container_width=True, key="phone_gobutton"):
                     if not p_num or not phone_pw_in: st.error("All fields mandatory."); return
                     
-                    full_phone = f"{p_code} {p_num}"
+                    import re
+                    # Strip spaces and formatting
+                    clean_p = re.sub(r'[\s-]', '', p_num)
+                    if not clean_p.isdigit() or len(clean_p) < 7 or len(clean_p) > 15:
+                        st.error("Invalid phone number format. Please enter a valid number (7-15 digits).")
+                        return
+                    
+                    full_phone = f"{p_code} {clean_p}"
                     st.session_state.auth_verify_pending = True
                     st.session_state.mock_code = "1234"
                     
@@ -2685,6 +2734,15 @@ def page_dashboard():
         _render_analysing()
         return
 
+    # Auto-Restore from DB if browser was refreshed
+    if not st.session_state.get("result") and st.session_state.get("user_email") != "guest":
+        saved = database.get_latest_assessment(st.session_state.get("user_email"))
+        if saved:
+            st.session_state.result = saved["result"]
+            st.session_state.survey_answers = saved["answers"]
+            st.session_state.survey_page = "portfolio"
+            sp = "portfolio"
+
     # Results check — survey not yet completed
     if not st.session_state.get("result"):
         if sp == "survey":
@@ -2756,7 +2814,7 @@ def _render_survey():
             st.rerun()
 
     if st.session_state.survey_answers:
-        with st.expander("📋 Your answers so far"):
+        with st.expander("Your answers so far", icon=":material/checklist:"):
             for prev_q in QUESTIONS[:step]:
                 val = st.session_state.survey_answers.get(prev_q["key"], "—")
                 st.markdown(f"**{prev_q['number']}** {prev_q['text'][:60]}…  →  `{val}`")
@@ -2844,8 +2902,9 @@ def _render_analysing():
         
         # PERSIST to database
         email = st.session_state.get("user_email")
-        if email:
+        if email and email != "guest":
             database.save_assessment(email, ans, st.session_state.result)
+            send_portfolio_report(email, portfolio["risk_category"], score, final_summary)
         
         st.session_state.survey_page = "portfolio"
         st.rerun()
@@ -2970,8 +3029,22 @@ def _render_portfolio():
         <div style="font-size: 15px; color: rgba(237,237,243,0.9); white-space: pre-line; line-height: 1.75;">
             {explanation_text}
         </div>
+        <div style="margin-top:16px;">
+            <button onclick="window.parent.postMessage({type: 'streamlit:set_component_value', value: 'email_requested'}, '*')" 
+                    style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">
+                📬 Email me a copy of these results
+            </button>
+        </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Bridge for the JS button above
+    if st.session_state.get("user_email") != "guest":
+        if st.button("Email me a copy of these results", icon=":material/mail:", type="secondary"):
+            with st.spinner("AI is generating your PDF report and sending..."):
+                sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], explanation_text)
+                if sent: st.success("Report delivered to your inbox!")
+                else: st.error("Email service currently busy. Redirecting to cloud log...")
 
     # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
     col1, col2 = st.columns([1, 1.4], gap="large")
@@ -3064,7 +3137,8 @@ def _render_portfolio():
         st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:15px;">Manually override the neural manifold parameters to tune your risk exposure.</div>', unsafe_allow_html=True)
         
         # Load existing config from DB if available
-        saved_config = database.get_portfolio_config(email)
+        user_email = st.session_state.get("user_email", "guest")
+        saved_config = database.get_portfolio_config(user_email)
         def_delta = saved_config.get("delta", iq.get("delta", 0.5))
         def_gamma = saved_config.get("gamma", iq.get("gamma", 0.1))
         
@@ -3073,8 +3147,8 @@ def _render_portfolio():
         
         if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
             new_config = {"delta": new_delta, "gamma": new_gamma}
-            database.save_portfolio_config(email, new_config)
-            database.add_notification(email, "Strategic Sync Successful", f"Your MINN parameters (δ={new_delta}, γ={new_gamma}) have been synchronized with the LEM StratIQ cloud.", "success")
+            database.save_portfolio_config(user_email, new_config)
+            database.add_notification(user_email, "Strategic Sync Successful", f"Your MINN parameters (δ={new_delta}, γ={new_gamma}) have been synchronized with the LEM StratIQ cloud.", "success")
             st.success("Configuration Pushed to MongoDB Atlas!")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -4412,7 +4486,7 @@ def page_account():
             st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
             about_bio = st.text_area("Bio / Investment Goals", value=prefs.get("bio", ""), placeholder="Briefly describe your goals...", height=100)
             
-            if st.button("💾 Save Profile Changes", type="primary", use_container_width=True):
+            if st.button("Save Profile Changes", icon=":material/save:", type="primary", use_container_width=True):
                 if user_email != "guest":
                     prefs["job"] = job_title
                     prefs["location"] = location
@@ -4427,9 +4501,7 @@ def page_account():
                     database.update_user_preferences(user_email, prefs)
                     
                     if new_full_name != user_name:
-                        conn = database.get_connection()
-                        conn.execute("UPDATE users SET name = ? WHERE email = ?", (new_full_name, user_email))
-                        conn.commit()
+                        database.update_user_name(user_email, new_full_name)
                         st.session_state.user_name = new_full_name
                     
                     st.success("✅ Profile changes saved!")

@@ -8,7 +8,7 @@ All function signatures are identical — no changes required in app.py.
 
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import streamlit as st
 from pymongo import MongoClient, DESCENDING
@@ -58,6 +58,14 @@ def _audit_logs():
 def _billing():
     return _db()["billing"]
 
+def _market_data_cache():
+    return _db()["market_data_cache"]
+
+def _portfolio_history():
+    return _db()["portfolio_history"]
+
+def _activity_feed():
+    return _db()["activity_feed"]
 
 # ── Init (idempotent) ───────────────────────────────────────────────────────
 def init_db():
@@ -81,6 +89,12 @@ def init_db():
         # Setup Audit Logs and Billing so they appear in MongoDB Atlas
         _audit_logs().create_index([("user_email", 1), ("action", 1)])
         _billing().create_index("user_email", unique=True)
+        
+        # Added per requirements
+        _market_data_cache().create_index("ticker", unique=True)
+        _portfolio_history().create_index([("user_email", 1), ("date", DESCENDING)])
+        _activity_feed().create_index([("user_email", 1), ("created_at", DESCENDING)])
+        _activity_feed().create_index("is_read")
     except Exception:
         pass 
 
@@ -95,7 +109,7 @@ def create_user(email: str, name: str, password: str, dob: str, provider: str = 
     try:
         now = datetime.utcnow()
         _users().insert_one({
-            "email":         email,
+            "email":         email.lower().strip(),
             "name":          name,
             "password_hash": hash_password(password),
             "dob":           dob,
@@ -134,7 +148,7 @@ def create_user_oauth(email: str, name: str, provider: str, oauth_id: str = None
 
 
 def get_user(email: str):
-    doc = _users().find_one({"email": email}, {"_id": 0})
+    doc = _users().find_one({"email": email.lower().strip()}, {"_id": 0})
     if not doc:
         return None
     # Normalise preferences to JSON string so app.py code doesn't break
@@ -145,17 +159,44 @@ def get_user(email: str):
 
 def update_user_preferences(email: str, preferences: dict):
     _users().update_one(
-        {"email": email},
+        {"email": email.lower().strip()},
         {"$set": {"preferences": preferences, "preferences_json": json.dumps(preferences)}}
     )
 
 
+def update_user_name(email: str, new_name: str) -> bool:
+    _users().update_one(
+        {"email": email.lower().strip()},
+        {"$set": {"name": new_name}}
+    )
+    return True
+
 def update_password(email: str, new_password: str) -> bool:
     _users().update_one(
-        {"email": email},
+        {"email": email.lower().strip()},
         {"$set": {"password_hash": hash_password(new_password)}}
     )
     return True
+
+# ── Verification Codes ───────────────────────────────────────────────────────
+def save_verification_code(identifier: str, code: str, minutes_valid: int = 15):
+    _verification_codes().update_one(
+        {"identifier": identifier},
+        {
+            "$set": {
+                "code": code,
+                "expires_at": datetime.utcnow() + timedelta(minutes=minutes_valid)
+            }
+        },
+        upsert=True
+    )
+
+def verify_code(identifier: str, code: str) -> bool:
+    doc = _verification_codes().find_one({"identifier": identifier, "code": code})
+    if doc:
+        _verification_codes().delete_one({"_id": doc["_id"]})
+        return True
+    return False
 
 
 # ── Watchlist Management ──────────────────────────────────────────────────────
@@ -214,7 +255,7 @@ def get_notifications(email: str, limit: int = 20) -> list:
 # ── Assessments ───────────────────────────────────────────────────────────────
 def save_assessment(email: str, answers: dict, result: dict):
     _assessments().insert_one({
-        "user_email": email,
+        "user_email": email.lower().strip(),
         "answers":    answers,
         "result":     result,
         "created_at": datetime.utcnow(),
@@ -223,7 +264,7 @@ def save_assessment(email: str, answers: dict, result: dict):
 
 def get_latest_assessment(email: str):
     doc = _assessments().find_one(
-        {"user_email": email},
+        {"user_email": email.lower().strip()},
         sort=[("created_at", DESCENDING)]
     )
     if doc:
@@ -240,6 +281,70 @@ def save_ticket(email: str, subject: str, message: str):
         "status":     "pending",
         "created_at": datetime.utcnow(),
     })
+
+
+# ── Market Data Cache ─────────────────────────────────────────────────────────
+def update_market_cache(ticker: str, last_price: float, change_pct: float, sparkline_data: list):
+    _market_data_cache().update_one(
+        {"ticker": ticker},
+        {
+            "$set": {
+                "last_price": last_price,
+                "change_pct": change_pct,
+                "sparkline_data": sparkline_data,
+                "last_updated": datetime.utcnow()
+            }
+        },
+        upsert=True
+    )
+
+def get_market_cache(ticker: str):
+    return _market_data_cache().find_one({"ticker": ticker}, {"_id": 0})
+
+def get_all_market_cache():
+    return list(_market_data_cache().find({}, {"_id": 0}))
+
+
+# ── Portfolio Historical Performance ──────────────────────────────────────────
+def add_portfolio_history(email: str, total_value: float, daily_profit_loss: float, deposited_amount: float):
+    _portfolio_history().insert_one({
+        "user_email": email,
+        "date": datetime.utcnow(),
+        "total_value": total_value,
+        "daily_profit_loss": daily_profit_loss,
+        "deposited_amount": deposited_amount
+    })
+
+def get_portfolio_history(email: str, limit: int = 30) -> list:
+    cursor = _portfolio_history().find(
+        {"user_email": email},
+        {"_id": 0}
+    ).sort("date", DESCENDING).limit(limit)
+    return list(cursor)
+
+
+# ── User Activity Feed ────────────────────────────────────────────────────────
+def add_activity_feed_event(email: str, event_type: str, message: str):
+    _activity_feed().insert_one({
+        "user_email": email,
+        "event_type": event_type,
+        "message": message,
+        "is_read": False,
+        "created_at": datetime.utcnow()
+    })
+
+def get_activity_feed(email: str, limit: int = 20) -> list:
+    cursor = _activity_feed().find(
+        {"user_email": email},
+        {"_id": 0}
+    ).sort("created_at", DESCENDING).limit(limit)
+    return list(cursor)
+
+def mark_activity_feed_read(email: str):
+    _activity_feed().update_many(
+        {"user_email": email, "is_read": False},
+        {"$set": {"is_read": True}}
+    )
 
 
 # ── Init on import ────────────────────────────────────────────────────────────

@@ -134,6 +134,9 @@ def build_portfolio(risk_score: float, initial=10000, monthly=500, years=20) -> 
     sim = simulate_growth(initial, monthly, ret_est, vol_est, years)
     curve = growth_curve(initial, monthly, ret_est, years)
     
+    from datetime import datetime
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    
     return {
         "risk_category": f"DeepIQ Profile {p_num}",
         "profile_score": p_num,
@@ -147,7 +150,7 @@ def build_portfolio(risk_score: float, initial=10000, monthly=500, years=20) -> 
         },
         "simulated_growth": sim,
         "growth_curve": curve,
-        "date": iq_params["date"] if iq_params else "2025-10-11"
+        "date": today_str  # Use current date for simulation realism
     }
 
 ASSETS = list(TICKER_MAP.values())

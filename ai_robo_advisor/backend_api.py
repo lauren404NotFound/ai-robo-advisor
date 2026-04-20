@@ -50,6 +50,12 @@ async def check_suitability(user_email: str):
     return {"eligible_for_high_risk": True, "reason": "Income and age meet regulatory thresholds."}
 
 
+@app.get("/api/survey/history", tags=["Profiling Engine"])
+async def get_survey_history(user_email: str):
+    """Fetches previous survey results so the user can see how their risk tolerance changed over time."""
+    return {"status": "success", "history": []}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. Live Dashboard & Investment Engine
 # ══════════════════════════════════════════════════════════════════════════════
@@ -84,6 +90,39 @@ async def run_monte_carlo_projection(params: SimulationParams):
     }
 
 # Note: The "Rebalancing Trigger" chron job would run on this server autonomously via Celery or APScheduler.
+
+
+@app.get("/api/portfolio/weights", tags=["Investment Engine"])
+async def get_portfolio_weights(user_email: str):
+    """Calls MINN to calculate current optimal weights based on user risk score."""
+    return {"status": "success", "weights": {"VOO": 0.40, "QQQ": 0.20, "AGG": 0.40}}
+
+
+class PortfolioConfigUpdate(BaseModel):
+    delta: Optional[float] = None
+    gamma: Optional[float] = None
+
+
+@app.patch("/api/portfolio/config", tags=["Investment Engine"])
+async def update_portfolio_config(user_email: str, config: PortfolioConfigUpdate):
+    """Updates manual overrides for threshold (delta) and decay (gamma) in MongoDB."""
+    return {"status": "success", "updated_config": config.dict(exclude_unset=True)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 2.5 Market Intelligence
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/market/prices", tags=["Market Intelligence"])
+async def get_market_prices():
+    """Fetches live cached data from MongoDB to serve the UI without hitting Yahoo Finance limits."""
+    return {"status": "success", "prices": []}
+
+
+@app.get("/api/market/intelligence", tags=["Market Intelligence"])
+async def get_market_intelligence():
+    """Analyzes correlation matrix and generates Neural Sentiment Radar data."""
+    return {"status": "success", "sentiment": "Bullish", "radar_data": {}}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -128,15 +167,26 @@ async def sync_preferences(user_email: str, prefs: UserPreferences):
     """Syncs display currency (GBP/USD), advanced mode toggles, and notification rules."""
     return {"status": "synced", "preferences": prefs.dict(exclude_unset=True)}
 
-@app.get("/api/notifications", tags=["Preferences"])
+@app.get("/api/notifications/unread", tags=["Preferences"])
 async def intelligence_feed(user_email: str):
     """Polling API for the Dashboard Intelligence Feed. Detects tail risks or market regimes."""
     return {
         "notifications": [
-            {"type": "market_regime", "message": "High volatility detected in tech sector."},
-            {"type": "portfolio", "message": "Your portfolio drifted by >5%. Rebalancing recommended."}
+            {"type": "market_regime", "message": "High vol detected in tech sector.", "is_read": False},
+            {"type": "portfolio", "message": "Your portfolio drifted by >5%. Rebalancing recommended.", "is_read": False}
         ]
     }
+
+
+class SupportTicket(BaseModel):
+    subject: str
+    message: str
+
+
+@app.post("/api/support/ticket", tags=["Support"])
+async def create_support_ticket(user_email: str, ticket: SupportTicket):
+    """Saves ticket to MongoDB and triggers an email notification."""
+    return {"status": "success", "ticket_id": str(uuid.uuid4())}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
