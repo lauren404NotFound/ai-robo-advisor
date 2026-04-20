@@ -207,22 +207,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# 🚨 EMERGENCY CLAUDE DIAGNOSTIC 🚨
-with st.sidebar:
-    st.markdown("### 🤖 Engine Status")
-    if claude_status == "Connected":
-        st.success("● Claude: ONLINE")
-    else:
-        st.error(f"● Claude: {claude_status}")
-        if st.button("🚨 EMERGENCY CLAUDE DEBUG 🚨"):
-            st.write("---")
-            st.write("**Diagnostics Info:**")
-            st.write("App Path:", __file__)
-            st.write("Available Secret Keys:", list(st.secrets.keys()))
-            st.write("Current Work Dir:", os.getcwd())
-            if len(st.secrets.keys()) == 0:
-                st.warning("ERROR: Streamlit Cloud found ZERO secrets. Please check the 'Secrets' tab in the Cloud dashboard.")
-            st.write("---")
+# Render Claude connection status in sidebar
+st.sidebar.markdown("### Systems Status")
+if claude_status == "Connected":
+    st.sidebar.success(f"● Claude: {claude_status}")
+elif "Key Missing" in claude_status:
+    st.sidebar.warning(f"● Claude: {claude_status}")
+    if st.sidebar.button("🔍 Debug Secrets"):
+        st.sidebar.write("App Path:", __file__)
+        st.sidebar.write("Available Keys:", list(st.secrets.keys()))
+        st.sidebar.info(f"Total keys found: {len(st.secrets.keys())}")
 
 st.markdown("""
 <style>
