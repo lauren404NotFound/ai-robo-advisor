@@ -3101,24 +3101,18 @@ def _render_portfolio():
             <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
                 {st.session_state.ai_insight_text}
             </div>
-            <div style="margin-top:20px;">
-                <button onclick="window.parent.postMessage({{type: 'streamlit:set_component_value', value: 'email_requested'}}, '*')" 
-                        style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">
-                    📬 Email me a copy of these results
-                </button>
-            </div>
         </div>
     """, unsafe_allow_html=True)
 
     # UI Bridge for buttons
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
-        if st.button("🔄 Refresh AI Narrative", use_container_width=True):
+        if st.button("Refresh AI Narrative", icon=":material/refresh:", use_container_width=True):
             if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
             st.rerun()
     with btn_col2:
         if st.session_state.get("user_email") != "guest":
-            if st.button("📬 Email Results", icon=":material/mail:", use_container_width=True):
+            if st.button("Email Results", icon=":material/mail:", use_container_width=True):
                 with st.spinner("Delivering report..."):
                     sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], st.session_state.ai_insight_text)
                     if sent: st.success("Sent!")
