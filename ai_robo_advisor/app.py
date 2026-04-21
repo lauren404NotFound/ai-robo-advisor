@@ -65,7 +65,24 @@ except Exception:
     REDIRECT_URI = "http://localhost:8501"
 
 
-# LinkedIn manual component (still needed)
+# Google OAuth Manual Component
+try:
+    GOOGLE_CLIENT_ID = st.secrets["auth"]["client_id"]
+    GOOGLE_CLIENT_SECRET = st.secrets["auth"]["client_secret"]
+except Exception:
+    GOOGLE_CLIENT_ID = ""
+    GOOGLE_CLIENT_SECRET = ""
+
+google_oauth = OAuth2Component(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    "https://accounts.google.com/o/oauth2/v2/auth",
+    "https://oauth2.googleapis.com/token",
+    "https://www.googleapis.com/oauth2/v3/userinfo",
+    "https://www.googleapis.com/oauth2/v3/userinfo", # UserInfo Endpoint
+)
+
+# LinkedIn manual component
 linkedin_oauth = OAuth2Component(
     LINKEDIN_CLIENT_ID,
     LINKEDIN_CLIENT_SECRET,
@@ -1572,8 +1589,8 @@ def _handle_query_params():
         code = params["code"]
         import asyncio, base64, json, httpx
         try:
-            # Manually extract Google JWT Payload
-            token = asyncio.run(oauth2.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
+            # Manually exchange code for Google token
+            token = google_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI)
             jwt = token["id_token"].split(".")[1]
             jwt += "=" * ((4 - len(jwt) % 4) % 4)
             user_info = json.loads(base64.urlsafe_b64decode(jwt).decode("utf-8"))
@@ -1581,9 +1598,9 @@ def _handle_query_params():
             _do_login(user_info.get("email"), user_info.get("name", "Google User"), "google", user_info.get("picture"))
             if not database.get_user(user_info.get("email")):
                 database.create_user_oauth(user_info.get("email"), user_info.get("name", "Google User"), "google")
-        except Exception:
+        except Exception as e:
             try:
-                # Fallback to LinkedIn API Endpoint
+                # Fallback to LinkedIn API Endpoint if Google fails or code was for LinkedIn
                 token = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
                 res = httpx.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"})
                 user_info = res.json()
@@ -2059,25 +2076,28 @@ def render_auth_modal():
         
         # --- OAUTH (Safe Link Generation) ---
         import asyncio
+        google_url = "#"
         linkedin_url = "#"
+        g_err = None
         l_err = None
         
         try:
+            google_url = google_oauth.authorize_button(
+                name="Continue with Google",
+                icon="https://www.google.com/favicon.ico",
+                redirect_uri=REDIRECT_URI,
+                scope="openid email profile",
+                key="google_manual_auth"
+            )
             linkedin_url = asyncio.run(linkedin_oauth.client.get_authorization_url(redirect_uri=REDIRECT_URI, scope=["openid", "profile", "email"]))
-        except Exception as e: l_err = str(e)
-
-        if l_err: st.error(f"LinkedIn Error: {l_err}")
+        except Exception as e: g_err = str(e)
 
         # Social Buttons
         s1, s2 = st.columns(2)
         with s1:
             st.markdown('<span id="google-btn-hook"></span>', unsafe_allow_html=True)
-            if st.button("Google", type="secondary", use_container_width=True, key="google_oauth_btn"):
-                try:
-                    st.login()
-                except Exception as e:
-                    st.error(f"Google Login Error: {e}")
-                    st.info("💡 **Fixing Tip**: Ensure 'Authorized redirect URIs' in Google Console exactly matches your app URL.")
+            # Use the Manual Google Component
+            st.write(google_url, unsafe_allow_html=True)
         with s2:
             st.markdown(f"""
                 <a href="{linkedin_url}" target="_top" class="social-btn" style="height: 43px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none; gap: 8px;">
