@@ -55,10 +55,8 @@ try:
     LINKEDIN_CLIENT_ID = st.secrets["linkedin"]["client_id"]
     LINKEDIN_CLIENT_SECRET = st.secrets["linkedin"]["client_secret"]
     # LinkedIn uses plain base URL (NO /oauth2callback)
-    REDIRECT_URI = st.secrets["linkedin"].get(
-        "redirect_uri",
-        "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
-    )
+    # FORCE the canonical Production URL (NO trailing slash)
+    REDIRECT_URI = "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
 except Exception:
     LINKEDIN_CLIENT_ID = ""
     LINKEDIN_CLIENT_SECRET = ""
