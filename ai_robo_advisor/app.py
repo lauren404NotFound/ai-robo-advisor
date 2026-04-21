@@ -1606,19 +1606,21 @@ def _handle_auth_bridge():
     """
     Bridge between built-in st.user (Google) and app's custom session_state.
     """
-    if st.user.is_logged_in:
+    if st.user.get("is_logged_in"):
         if not st.session_state.get("authenticated"):
             # Auto-sync st.user to our state
             st.session_state.authenticated = True
-            st.session_state.user_name = st.user.name
-            st.session_state.user_email = st.user.email
-            st.session_state.user_avatar = st.user.picture
+            st.session_state.user_name = st.user.get("name", "Google User")
+            st.session_state.user_email = st.user.get("email")
+            st.session_state.user_avatar = st.user.get("picture", "")
             st.session_state.auth_provider = "google"
             
             # Ensure user exists in DB
-            user = database.get_user(st.user.email)
-            if not user:
-                database.create_user(st.user.email, st.user.name, "google_oauth_fresh", "1990-01-01", "google")
+            u_email = st.user.get("email")
+            if u_email:
+                user = database.get_user(u_email)
+                if not user:
+                    database.create_user(u_email, st.user.get("name", "Google User"), "google_oauth_fresh", "1990-01-01", "google")
 
 def render_nav():
     try:
