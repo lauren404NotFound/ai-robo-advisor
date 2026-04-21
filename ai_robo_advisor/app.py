@@ -1589,8 +1589,11 @@ def _handle_query_params():
         code = params["code"]
         import asyncio, base64, json, httpx
         try:
-            # Manually exchange code for Google token
-            token = google_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI)
+            # FORCE CLEAN REDIRECT URI for the exchange
+            STRICT_URI = REDIRECT_URI.rstrip("/")
+            
+            # Exchange code for token
+            token = google_oauth.client.get_access_token(code=code, redirect_uri=STRICT_URI)
             jwt = token["id_token"].split(".")[1]
             jwt += "=" * ((4 - len(jwt) % 4) % 4)
             user_info = json.loads(base64.urlsafe_b64decode(jwt).decode("utf-8"))
@@ -1599,8 +1602,10 @@ def _handle_query_params():
             if not database.get_user(user_info.get("email")):
                 database.create_user_oauth(user_info.get("email"), user_info.get("name", "Google User"), "google")
         except Exception as e:
+            st.error(f"⚠️ **Token Exchange Failed**: {e}")
+            st.info("Check if your Google Client Secret is correct in the dashboard.")
             try:
-                # Fallback to LinkedIn API Endpoint if Google fails or code was for LinkedIn
+                # Fallback to LinkedIn API Endpoint
                 token = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
                 res = httpx.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"})
                 user_info = res.json()
