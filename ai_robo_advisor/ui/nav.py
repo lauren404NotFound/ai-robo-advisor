@@ -10,7 +10,7 @@ from __future__ import annotations
 import streamlit as st
 
 from ui.styles import ACCENT, ACCENT2, BORDER, MUTED, get_svg
-from ui.auth import _do_logout, _handle_auth_bridge
+from ui.auth import _do_logout, _handle_auth_bridge, _session_cache
 import database
 
 NAV_ITEMS = [

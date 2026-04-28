@@ -46,9 +46,17 @@ def _user_name() -> str:
 
 # ── Server-side session cache (survives browser URL navigation) ───────────────
 @st.cache_resource
-def _session_cache():
-    """Shared in-memory dict: {token -> auth dict}. Lives for the lifetime of
-    the Streamlit server process — survives individual session reruns."""
+def _session_cache() -> dict:
+    """Shared in-memory dict: {token -> auth dict}.
+
+    @st.cache_resource runs this function ONCE per server process and returns
+    the SAME dict object on every subsequent call — mutations (inserts/deletes)
+    persist for the lifetime of the Streamlit server process and are visible
+    across all user sessions and reruns.
+
+    This is correct behaviour and is distinct from @st.cache_data, which
+    serialises/copies the return value on each call (which would lose writes).
+    """
     return {}
 
 def _do_login(email: str, name: str, provider: str = "email", avatar: str = None, remember: bool = True):
