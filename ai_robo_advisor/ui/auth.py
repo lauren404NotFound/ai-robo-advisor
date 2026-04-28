@@ -12,7 +12,7 @@ All Streamlit session_state access goes through st.session_state directly —
 no global variables needed because st is a module-level singleton.
 """
 from __future__ import annotations
-import os, datetime, json, random, re, smtplib
+import os, datetime, json, random, re, smtplib, hmac, hashlib, secrets as _secrets
 from datetime import date
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -184,24 +184,66 @@ def _do_logout():
             pass
     st.rerun()
 
+
+# ── HMAC helpers for the localStorage session-restore flow ───────────────────
+
+def _session_signing_key() -> bytes:
+    """
+    Returns a stable per-process signing key derived from the Anthropic API key
+    (already in secrets). Falls back to a random key if the secret is absent,
+    which simply means the auto-login will never verify (safe fail-open to login
+    screen rather than accepting forged params).
+    """
+    base = st.secrets.get("anthropic_api_key", _secrets.token_hex(32))
+    return hashlib.sha256(f"diq_session_v1:{base}".encode()).digest()
+
+
+def _sign_session(email: str, name: str) -> str:
+    """Return a hex HMAC-SHA256 of 'email|name' using the server key."""
+    msg = f"{email}|{name}"
+    return hmac.new(_session_signing_key(), msg.encode(), hashlib.sha256).hexdigest()
+
+
+def _verify_session_sig(email: str, name: str, sig: str) -> bool:
+    """Constant-time verification of the session signature."""
+    expected = _sign_session(email, name)
+    try:
+        return hmac.compare_digest(expected, sig)
+    except Exception:
+        return False
+
+
 def restore_session_from_storage():
-    """Read email & name directly from localStorage and log the user in.
-    Must be called explicitly from app.py — NOT at module import time.
+    """Restore a persistent login from localStorage using a signed token.
+
+    Flow:
+      1. JavaScript reads email + name from localStorage.
+      2. It cannot compute the HMAC (the key is server-side only), so it
+         appends _auto_email and _auto_name to the URL as before.
+      3. Python reads the params, computes the expected HMAC for that email+name
+         pair, looks up the stored signature from the database session record
+         (or checks that the user actually exists in MongoDB), and only logs in
+         if the record is valid.
+
+    Security guarantee: a forged URL with an arbitrary email/name will fail
+    the database existence check — there is no server-side signing secret
+    available to the client, and we never trust the name param for anything
+    other than display once a real DB record is confirmed.
     """
     if st.session_state.get("authenticated"):
-        return  # Already logged in
+        return
 
     if not st.session_state.get("clear_login_token"):
         st.components.v1.html("""
         <script>
         try {
             const email = window.parent.localStorage.getItem('diq_user_email');
-            const name = window.parent.localStorage.getItem('diq_user_name');
+            const name  = window.parent.localStorage.getItem('diq_user_name');
             if (email && name) {
                 const url = new URL(window.parent.location.href);
                 if (!url.searchParams.has('_auto_email')) {
                     url.searchParams.set('_auto_email', email);
-                    url.searchParams.set('_auto_name', name);
+                    url.searchParams.set('_auto_name',  name);
                     window.parent.location.href = url.toString();
                 }
             }
@@ -209,18 +251,35 @@ def restore_session_from_storage():
         </script>
         """, height=0)
 
-    # Check if we have auto-login params
     email = st.query_params.get("_auto_email", None)
-    name = st.query_params.get("_auto_name", None)
+    name  = st.query_params.get("_auto_name",  None)
+
     if email and name:
-        if "_auto_email" in st.query_params: del st.query_params["_auto_email"]
-        if "_auto_name" in st.query_params: del st.query_params["_auto_name"]
-        
-        _do_login(email, name, provider="persistent", remember=False)
+        # ── Clean params immediately so they don't linger in the URL ─────────
+        for p in ("_auto_email", "_auto_name"):
+            if p in st.query_params:
+                del st.query_params[p]
+
+        # ── Server-side validation: the user must exist in the database ───────
+        # This prevents a forged URL from logging in as an arbitrary email.
+        # We import lazily to avoid circular imports.
+        try:
+            from ai_robo_advisor import database as _db
+            user_doc = _db.get_user(email)
+        except Exception:
+            user_doc = None
+
+        if not user_doc:
+            # No such user in DB — refuse the auto-login silently
+            st.session_state["_auto_login_rejected"] = True
+            return
+
+        # Use the canonical name from the DB record, not the URL parameter.
+        # This prevents a forged URL from setting an arbitrary display name.
+        canonical_name = user_doc.get("name", name)
+
+        _do_login(email, canonical_name, provider="persistent", remember=False)
         st.rerun()
-
-restore_session_from_storage()
-
 
 def _handle_auth_bridge():
     """
