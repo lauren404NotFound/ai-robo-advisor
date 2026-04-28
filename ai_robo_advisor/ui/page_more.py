@@ -159,75 +159,9 @@ def page_more():
 # BILLING PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 def page_billing():
-    user_email = st.session_state.get("user_email", "guest") or "guest"
-    pending_plan = st.session_state.get("pending_plan", "Pro")
-    
-    st.markdown(f"""
-    <div style="padding:40px 0 20px;">
-      <div style="font-size:12px;color:#6D5EFC;font-weight:800;letter-spacing:.12em;margin-bottom:8px;">CHECKOUT</div>
-      <div style="font-size:32px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;">
-        Complete your subscription to {pending_plan}
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([1.5, 1], gap="large")
-    
-    with col1:
-        st.markdown(f'<div class="account-section-hdr">{get_svg("risk", 20)} Payment Method</div>', unsafe_allow_html=True)
-        with st.container(border=True):
-            st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
-            card_name = st.text_input("Cardholder Name", value=st.session_state.get("user_name", ""))
-            card_num = st.text_input("Card Number", placeholder="0000 0000 0000 0000")
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                st.text_input("Expiry Date", placeholder="MM/YY")
-            with c2:
-                st.text_input("CVV", type="password", placeholder="123")
-                
-            st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
-            if st.button(f"Confirm & Pay for {pending_plan}", type="primary", use_container_width=True):
-                if not card_num:
-                    st.error("Please enter card details.")
-                else:
-                    # Sync to DB
-                    user_data = database.get_user(user_email)
-                    prefs = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
-                    prefs["subscription"] = pending_plan
-                    prefs["payment_verified"] = True
-                    database.update_user_preferences(user_email, prefs)
-                    
-                    st.success(f"🎉 Welcome to {pending_plan}! Your account has been upgraded.")
-                    st.balloons()
-                    st.session_state.nav_page = "account"
-                    st.rerun()
-
-    with col2:
-        st.markdown(f'<div class="account-section-hdr">{get_svg("settings", 20)} Order Summary</div>', unsafe_allow_html=True)
-        price = "£19.00" if pending_plan == "Pro" else "£89.00" if pending_plan == "Ultra" else "£0.00"
-        st.markdown(f"""
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                <span style="color:#8BA6D3;">DeepAtomicIQ {pending_plan}</span>
-                <span style="color:#fff; font-weight:700;">{price}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                <span style="color:#8BA6D3;">Service Activation</span>
-                <span style="color:#8EF6D1; font-weight:700;">FREE</span>
-            </div>
-            <div style="border-top:1px solid rgba(255,255,255,0.05); margin:12px 0; padding-top:12px; display:flex; justify-content:space-between;">
-                <span style="color:#fff; font-weight:800;">TOTAL DUE</span>
-                <span style="color:#6D5EFC; font-size:20px; font-weight:900;">{price}</span>
-            </div>
-            <div style="font-size:11px; color:#8BA6D3; margin-top:20px; font-style:italic;">
-                * Recurring monthly billing. You can cancel your subscription at any time from your account settings.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("← Back to Account", use_container_width=True):
-            st.session_state.nav_page = "account"
-            st.rerun()
+    """Delegate to the canonical billing implementation in page_account."""
+    from ui.page_account import page_billing as _billing
+    _billing()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MY ACCOUNT PAGE
