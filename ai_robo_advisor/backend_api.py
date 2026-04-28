@@ -474,23 +474,47 @@ async def intelligence_feed(user_email: str):
 # ═════════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/auth/session/refresh", tags=["Security"])
-async def refresh_session_token(current_token: str):
+async def refresh_session_token(current_token: str, user_email: str):
     """
-    Validates an existing session token and issues a fresh one.
-    The old token is invalidated immediately to prevent replay attacks.
+    Validates an existing session_id against MongoDB and issues a fresh one
+    via SessionManager.rotate().  The old session_id is hard-deleted
+    immediately — prevents replay attacks even if the old cookie is captured.
     """
-    import secrets as _secrets
-    new_token = _secrets.token_urlsafe(32)
-    # In production: _sessions().update_one(
-    #     {"token": current_token},
-    #     {"$set": {"token": new_token, "expires_at": datetime.datetime.utcnow() + timedelta(days=30)}}
-    # )
-    log_audit_action("system", "SESSION_REFRESH", {"old_prefix": current_token[:8]})
-    return {
-        "status":     "refreshed",
-        "new_token":  new_token,
-        "expires_in": 2_592_000,   # 30 days in seconds
-    }
+    try:
+        from session_manager import SessionManager
+        sm = SessionManager()
+
+        # Validate the existing session first
+        session_doc = sm.validate(current_token)
+        if not session_doc:
+            raise HTTPException(
+                status_code=401,
+                detail="Session not found or expired. Please log in again.",
+            )
+
+        # Ensure the token actually belongs to the claimed user
+        if session_doc.get("email", "").lower() != user_email.lower().strip():
+            raise HTTPException(status_code=403, detail="Session / email mismatch.")
+
+        # Rotate: create new session, invalidate old one atomically
+        new_sid = sm.rotate(
+            old_session_id=current_token,
+            email=session_doc["email"],
+            name=session_doc.get("name", ""),
+            provider=session_doc.get("provider", "email"),
+            avatar=session_doc.get("avatar"),
+        )
+
+        log_audit_action(user_email, "SESSION_ROTATED", {"old_prefix": current_token[:8]})
+        return {
+            "status":      "refreshed",
+            "session_id":  new_sid,
+            "expires_in":  86_400,   # 24 hours in seconds
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 class SupportTicket(BaseModel):
@@ -503,11 +527,12 @@ async def create_support_ticket(user_email: str, ticket: SupportTicket):
     """Saves a support ticket to MongoDB and returns a unique ticket ID."""
     ticket_id = str(uuid.uuid4())
     try:
-        database.save_support_ticket(user_email, ticket.subject, ticket.message, ticket_id)
+        database.save_ticket(user_email, ticket.subject, ticket.message)
     except Exception:
         pass  # Don't fail the endpoint if DB write fails — ticket ID still returned
     log_audit_action(user_email, "SUPPORT_TICKET_CREATED", {"ticket_id": ticket_id})
     return {"status": "success", "ticket_id": ticket_id}
+
 
 
 # ═════════════════════════════════════════════════════════════════════════════
