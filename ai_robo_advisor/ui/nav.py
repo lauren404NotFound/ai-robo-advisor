@@ -10,7 +10,9 @@ from __future__ import annotations
 import streamlit as st
 
 from ui.styles import ACCENT, ACCENT2, BORDER, MUTED, get_svg
-from ui.auth import _do_logout, _handle_auth_bridge, _session_cache
+from ui.auth import _do_logout, _handle_auth_bridge
+from session_manager import SessionManager as _SM
+_sm = _SM()
 import database
 
 NAV_ITEMS = [
@@ -26,26 +28,25 @@ def _handle_query_params():
     """Read URL query params set by the HTML nav and update session state."""
     params = st.query_params
 
-    # ── Restore auth from server-side session token ─────────────────────────
-    if "_tok" in params:
-        token = params["_tok"]
-        if not st.session_state.get("authenticated"):
-            cached = _session_cache().get(token)
-            if cached:
-                st.session_state.authenticated  = True
-                st.session_state.user_email     = cached["email"]
-                st.session_state.user_name      = cached["name"]
-                st.session_state.user_provider  = cached["provider"]
-                st.session_state.user_avatar    = cached["avatar"]
-                st.session_state.session_token  = token
-                # Reload saved assessment too
-                saved = database.get_latest_assessment(cached["email"])
-                if saved:
-                    st.session_state.result = saved["result"]
-                    st.session_state.survey_answers = saved["answers"]
-                    st.session_state.survey_page = "portfolio"
-        # Keep _tok in params across reruns so it travels with every navigation
-        # (Don't delete it so the next nav link pick-up still works)
+    # ── Restore auth from server-side session (MongoDB) ───────────────────
+    sid = _sm.get_cookie()
+    if sid and not st.session_state.get("authenticated"):
+        session_doc = _sm.validate(sid)
+        if session_doc:
+            st.session_state.authenticated  = True
+            st.session_state.user_email     = session_doc["email"]
+            st.session_state.user_name      = session_doc["name"]
+            st.session_state.user_provider  = session_doc.get("provider", "persistent")
+            st.session_state.user_avatar    = session_doc.get("avatar")
+            st.session_state.session_id     = sid
+            # Reload saved assessment
+            saved = database.get_latest_assessment(session_doc["email"])
+            if saved:
+                st.session_state.result = saved["result"]
+                st.session_state.survey_answers = saved["answers"]
+                st.session_state.survey_page = "portfolio"
+        else:
+            _sm.clear_cookie()  # stale/expired cookie
 
     if "page" in params:
         pg = params["page"]

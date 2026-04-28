@@ -44,34 +44,35 @@ def _user_email() -> str:
 def _user_name() -> str:
     return st.session_state.get("user_name", "")
 
-# ── Server-side session cache (survives browser URL navigation) ───────────────
-@st.cache_resource
-def _session_cache() -> dict:
-    """Shared in-memory dict: {token -> auth dict}.
+# ── Server-side session manager ──────────────────────────────────────────────
+# Sessions are stored in MongoDB; only an opaque session_id lives in the
+# browser cookie.  No sensitive user data is ever stored client-side.
+from session_manager import SessionManager as _SM
+_sm = _SM()
 
-    @st.cache_resource runs this function ONCE per server process and returns
-    the SAME dict object on every subsequent call — mutations (inserts/deletes)
-    persist for the lifetime of the Streamlit server process and are visible
-    across all user sessions and reruns.
 
-    This is correct behaviour and is distinct from @st.cache_data, which
-    serialises/copies the return value on each call (which would lose writes).
+def _do_login(email: str, name: str, provider: str = "email",
+              avatar: str = None, remember: bool = True):
     """
-    return {}
+    Authenticate the user:
+      1. Create a server-side session in MongoDB.
+      2. Write the opaque session_id to a SameSite=Strict cookie.
+      3. Populate st.session_state for the current render cycle.
+    """
+    # Invalidate any previous session for this email before creating a new one
+    # (prevents session accumulation; single-session enforcement)
+    _sm.invalidate_all_for_email(email)
 
-def _do_login(email: str, name: str, provider: str = "email", avatar: str = None, remember: bool = True):
-    import uuid as _uuid
-    token = str(_uuid.uuid4())
-    _session_cache()[token] = {
-        "email": email, "name": name, "provider": provider, "avatar": avatar
-    }
-    st.session_state.session_token  = token
-    st.session_state.authenticated  = True
-    st.session_state.user_email     = email
-    st.session_state.user_name      = name
-    st.session_state.user_provider  = provider
-    st.session_state.user_avatar    = avatar
-    st.session_state.show_auth      = False
+    sid = _sm.create_session(email, name, provider, avatar)
+    _sm.set_cookie(sid)
+
+    st.session_state.session_id    = sid
+    st.session_state.authenticated = True
+    st.session_state.user_email    = email
+    st.session_state.user_name     = name
+    st.session_state.user_provider = provider
+    st.session_state.user_avatar   = avatar
+    st.session_state.show_auth     = False
 
     if remember:
         st.session_state.save_login_email = email
@@ -173,15 +174,21 @@ def send_portfolio_report(to_email: str, port_name: str, score: float, summary: 
     except: return False
 
 def _do_logout():
-    tok = st.session_state.get("session_token")
-    if tok:
-        _session_cache().pop(tok, None)
+    """
+    Invalidate the server-side session in MongoDB, clear the cookie,
+    and wipe all auth state from st.session_state.
+    """
+    sid = st.session_state.get("session_id")
+    if sid:
+        _sm.invalidate(sid)   # hard-delete from MongoDB
+    _sm.clear_cookie()         # remove cookie from browser
+
     st.session_state.clear_login_token = True
     for k in ["authenticated", "user_email", "user_name", "user_provider",
-              "user_avatar", "session_token"]:
+              "user_avatar", "session_id"]:
         st.session_state.pop(k, None)
-        
-    st.session_state.result = None
+
+    st.session_state.result   = None
     st.session_state.nav_page = "home"
 
     if hasattr(st, "user") and hasattr(st.user, "is_logged_in") and getattr(st.user, "is_logged_in"):
@@ -222,72 +229,62 @@ def _verify_session_sig(email: str, name: str, sig: str) -> bool:
 
 
 def restore_session_from_storage():
-    """Restore a persistent login from localStorage using a signed token.
+    """
+    Restore a persistent login by reading the session_id from the browser
+    cookie and validating it against MongoDB.
 
-    Flow:
-      1. JavaScript reads email + name from localStorage.
-      2. It cannot compute the HMAC (the key is server-side only), so it
-         appends _auto_email and _auto_name to the URL as before.
-      3. Python reads the params, computes the expected HMAC for that email+name
-         pair, looks up the stored signature from the database session record
-         (or checks that the user actually exists in MongoDB), and only logs in
-         if the record is valid.
-
-    Security guarantee: a forged URL with an arbitrary email/name will fail
-    the database existence check — there is no server-side signing secret
-    available to the client, and we never trust the name param for anything
-    other than display once a real DB record is confirmed.
+    Security properties:
+      - The cookie value is an opaque random ID (no user data).
+      - The session document lives in MongoDB — expiry is enforced server-side.
+      - Forging a cookie requires guessing 384 bits of entropy (infeasible).
+      - User identity (email, name) is always sourced from the DB record,
+        never from the cookie or URL parameters.
+      - On logout the session is hard-deleted from MongoDB; the old cookie
+        value becomes permanently invalid (no replay possible).
     """
     if st.session_state.get("authenticated"):
         return
 
-    if not st.session_state.get("clear_login_token"):
-        st.components.v1.html("""
-        <script>
-        try {
-            const email = window.parent.localStorage.getItem('diq_user_email');
-            const name  = window.parent.localStorage.getItem('diq_user_name');
-            if (email && name) {
-                const url = new URL(window.parent.location.href);
-                if (!url.searchParams.has('_auto_email')) {
-                    url.searchParams.set('_auto_email', email);
-                    url.searchParams.set('_auto_name',  name);
-                    window.parent.location.href = url.toString();
-                }
-            }
-        } catch(e) {}
-        </script>
-        """, height=0)
+    if st.session_state.get("clear_login_token"):
+        return
 
-    email = st.query_params.get("_auto_email", None)
-    name  = st.query_params.get("_auto_name",  None)
+    # Read the session_id from the browser cookie
+    sid = _sm.get_cookie()
+    if not sid:
+        return
 
-    if email and name:
-        # ── Clean params immediately so they don't linger in the URL ─────────
-        for p in ("_auto_email", "_auto_name"):
-            if p in st.query_params:
-                del st.query_params[p]
+    # Validate against MongoDB (enforces expiry server-side)
+    session_doc = _sm.validate(sid)
+    if not session_doc:
+        _sm.clear_cookie()
+        return
 
-        # ── Server-side validation: the user must exist in the database ───────
-        # This prevents a forged URL from logging in as an arbitrary email.
-        # We import lazily to avoid circular imports.
-        try:
-            from ai_robo_advisor import database as _db
-            user_doc = _db.get_user(email)
-        except Exception:
-            user_doc = None
+    # Session valid — populate state from the DB record (never from cookie)
+    st.session_state.session_id    = sid
+    st.session_state.authenticated = True
+    st.session_state.user_email    = session_doc["email"]
+    st.session_state.user_name     = session_doc["name"]
+    st.session_state.user_provider = session_doc.get("provider", "persistent")
+    st.session_state.user_avatar   = session_doc.get("avatar")
+    st.session_state.show_auth     = False
 
-        if not user_doc:
-            # No such user in DB — refuse the auto-login silently
-            st.session_state["_auto_login_rejected"] = True
-            return
+    # Restore saved assessment and preferences
+    try:
+        import database as _db
+        saved = _db.get_latest_assessment(session_doc["email"])
+        if saved:
+            st.session_state.result         = saved["result"]
+            st.session_state.survey_answers = saved["answers"]
+            st.session_state.survey_page    = "portfolio"
+        user_data = _db.get_user(session_doc["email"])
+        if user_data and user_data.get("preferences_json"):
+            try:
+                st.session_state.preferences = json.loads(user_data["preferences_json"])
+            except Exception:
+                pass
+    except Exception:
+        pass
 
-        # Use the canonical name from the DB record, not the URL parameter.
-        # This prevents a forged URL from setting an arbitrary display name.
-        canonical_name = user_doc.get("name", name)
-
-        _do_login(email, canonical_name, provider="persistent", remember=False)
-        st.rerun()
 
 def _handle_auth_bridge():
     """

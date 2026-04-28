@@ -80,10 +80,10 @@ def init_db():
         _portfolio_configs().create_index("user_email", unique=True)
         _notifications().create_index([("user_email", 1), ("created_at", DESCENDING)])
         
-        # Ensure Security & Compliance collections exist and apply TTL Indexes
-        # Sessions expire precisely when the 'expires_at' datetime is hit
+        # Sessions: TTL auto-expiry + fast lookup by session_id and email
         _sessions().create_index("expires_at", expireAfterSeconds=0)
-        _sessions().create_index("token", unique=True)
+        _sessions().create_index("session_id", unique=True)
+        _sessions().create_index("email")
         
         # Verification Codes (OTP) Auto-delete trick (TTL)
         _verification_codes().create_index("expires_at", expireAfterSeconds=0)
