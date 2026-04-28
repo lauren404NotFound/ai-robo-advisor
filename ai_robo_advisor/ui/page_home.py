@@ -406,7 +406,6 @@ def page_home():
             st.rerun()
 
     # ── Savings vs Investing Comparison (inspired by InvestEngine) ───────────
-    import numpy as np
     st.markdown("""
 <div style="margin:80px 0 20px; text-align:center;">
   <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;">The Power of Investing</div>

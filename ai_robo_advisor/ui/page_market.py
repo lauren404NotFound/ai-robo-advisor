@@ -72,7 +72,6 @@ def get_sparkline_data():
         return None
 
 def page_market():
-    import datetime
     st.markdown("""
 <style>
 .ticker-wrap {

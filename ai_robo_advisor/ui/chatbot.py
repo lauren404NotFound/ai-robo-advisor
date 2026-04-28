@@ -15,7 +15,6 @@ def render_chatbot():
     # =============================================================================
     # FLOATING CHATBOT (Fixed & working)
     # =============================================================================
-    import streamlit.components.v1 as components
     
     # Try to load Gemini key if available (not required for UI)
     try:

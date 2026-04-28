@@ -192,7 +192,6 @@ def page_billing():
                     st.error("Please enter card details.")
                 else:
                     # Sync to DB
-                    import json
                     user_data = database.get_user(user_email)
                     prefs = json.loads(user_data["preferences_json"]) if user_data and user_data.get("preferences_json") else {}
                     prefs["subscription"] = pending_plan

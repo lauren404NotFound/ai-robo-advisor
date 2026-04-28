@@ -12,7 +12,10 @@ All Streamlit session_state access goes through st.session_state directly —
 no global variables needed because st is a module-level singleton.
 """
 from __future__ import annotations
-import os, datetime, json, random, re
+import os, datetime, json, random, re, smtplib
+from datetime import date
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import streamlit as st
 
 # Shared constants imported from styles
@@ -81,7 +84,6 @@ def _do_login(email: str, name: str, provider: str = "email", avatar: str = None
     st.session_state.preferences = {}
     user_data = database.get_user(email)
     if user_data and user_data.get("preferences_json"):
-        import json
         try:
             st.session_state.preferences = json.loads(user_data["preferences_json"])
         except:
@@ -98,9 +100,6 @@ def get_currency_symbol() -> str:
 # SMTP REAL EMAIL VERIFICATION ENGINE
 # ────────────────────────────────────────────────────────────────────────────────
 def send_verification_email(to_email: str, code: str) -> bool:
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
     
     smtp_creds = st.secrets.get("smtp", {})
     sender_email = smtp_creds.get("email", "")
@@ -133,9 +132,6 @@ def send_verification_email(to_email: str, code: str) -> bool:
     except: return False
 
 def send_portfolio_report(to_email: str, port_name: str, score: float, summary: str) -> bool:
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
     
     smtp_creds = st.secrets.get("smtp", {})
     sender_email = smtp_creds.get("email", "")
@@ -531,7 +527,6 @@ def render_auth_modal():
                     if mode == "signup":
                         if not name_in: st.error("Name mandatory."); return
                         
-                        from datetime import date
                         today = date.today()
                         age = today.year - dob_in.year - ((today.month, today.day) < (dob_in.month, dob_in.day))
                         if age < 18:
@@ -604,7 +599,6 @@ def render_auth_modal():
                     if mode == "signup":
                         if not name_in_phone: st.error("Name mandatory."); return
                         
-                        from datetime import date
                         today = date.today()
                         age = today.year - dob_in_phone.year - ((today.month, today.day) < (dob_in_phone.month, dob_in_phone.day))
                         if age < 18:

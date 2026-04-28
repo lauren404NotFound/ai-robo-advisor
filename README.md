@@ -77,12 +77,25 @@ The test suite covers:
 ```
 Demo_prototype copy/
 ├── ai_robo_advisor/
-│   ├── app.py               ← Streamlit UI layer (navigation, auth, survey, dashboard)
+│   ├── app.py               ← Streamlit entry point (220 lines — routes to ui/ package)
+│   ├── ui/                  ← Modular UI package (split from monolithic app.py)
+│   │   ├── styles.py        ← Theme constants, SVG icons, global CSS
+│   │   ├── auth.py          ← Session management, OAuth bridge, auth modal
+│   │   ├── ai_engine.py     ← Survey questions, Claude + local AI explanations
+│   │   ├── charts.py        ← Plotly chart factories
+│   │   ├── nav.py           ← Fixed top navigation bar
+│   │   ├── page_home.py     ← Landing page
+│   │   ├── page_dashboard.py← Survey wizard + portfolio dashboard
+│   │   ├── page_insights.py ← Why DeepAtomicIQ page
+│   │   ├── page_market.py   ← Live market data page
+│   │   ├── page_more.py     ← Preferences / settings
+│   │   ├── page_account.py  ← Account + billing pages
+│   │   └── chatbot.py       ← Floating Gemini chatbot widget
 │   ├── portfolio_engine.py  ← DeepAtomicIQ portfolio mapping + Monte Carlo simulation
 │   ├── train_model.py       ← Random Forest training on synthetic investor data
 │   ├── explainer.py         ← IQ parameter → plain-English translation engine
 │   ├── database.py          ← MongoDB Atlas persistence layer
-│   ├── backend_api.py       ← FastAPI REST API design blueprint (production architecture)
+│   ├── backend_api.py       ← FastAPI REST API (live — wired to real engines)
 │   ├── market_updater.py    ← Yahoo Finance market data caching
 │   └── tests/
 │       ├── test_portfolio_engine.py
@@ -99,12 +112,13 @@ Demo_prototype copy/
 | MongoDB Atlas | Schema-flexible for evolving investor profiles; TTL indexes for sessions/OTP |
 | Random Forest + SHAP | Interpretable ML — regulators can audit feature importance |
 | Monte Carlo simulation | Captures sequence-of-returns risk across 1,000 paths |
-| FastAPI `backend_api.py` | Demonstrates production decoupled architecture (REST API layer) |
+| FastAPI `backend_api.py` | Live REST API — wired to real engines, shows production decoupled architecture |
 | bcrypt password hashing | Industry standard; resistant to rainbow table attacks |
+| `ui/` package | Single Responsibility Principle — each module owns one page or concern |
 
 ### Production Architecture (Intended)
 
-In a production deployment, the Streamlit UI would call the FastAPI service in `backend_api.py`, which would handle ML inference and MongoDB writes independently — decoupling the UI from heavy computation and enabling horizontal scaling.
+In a production deployment, the Streamlit UI would call the FastAPI service in `backend_api.py`, which handles ML inference and MongoDB writes independently — decoupling the UI from heavy computation and enabling horizontal scaling.
 
 ---
 
