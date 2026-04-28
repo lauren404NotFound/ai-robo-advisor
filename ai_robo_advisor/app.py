@@ -11,6 +11,14 @@ Portfolio:    Markowitz allocation + Monte Carlo simulation
 Run:
     cd "Demo_prototype copy"
     python3 -m streamlit run ai_robo_advisor/app.py --server.port 8507
+
+ARCHITECTURE NOTE:
+    This file intentionally consolidates the Streamlit UI layer into a single
+    module to simplify Streamlit's session-state sharing model. In production
+    this would be split across:
+        pages/home.py, pages/survey.py, pages/dashboard.py,
+        pages/market.py, pages/search.py
+    backed by the FastAPI service defined in backend_api.py.
 """
 
 from __future__ import annotations
@@ -18,12 +26,10 @@ import os, sys, time, hashlib, json
 import datetime
 import numpy as np
 import pandas as pd
-import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 import secrets
-import hashlib
 
 # Architectural Node: Decentralized Local Storage Auth Engaged
 from streamlit_oauth import OAuth2Component

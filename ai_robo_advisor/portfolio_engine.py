@@ -12,6 +12,10 @@ import os
 import pandas as pd
 import numpy as np
 
+# Risk-free rate used in Sharpe ratio calculations.
+# Approximates the UK 10-year Gilt yield (2024 average ~4.3%).
+RISK_FREE_RATE = 0.043
+
 # Mapping of tickers in CSVs to human-readable names
 TICKER_MAP = {
     "SPX":      "S&P 500 (US Equities)",
@@ -145,8 +149,12 @@ def build_portfolio(risk_score: float, initial=10000, monthly=500, years=20) -> 
         "stats": {
             "expected_annual_return": round(ret_est * 100, 2),
             "expected_volatility": round(vol_est * 100, 2),
-            "sharpe_ratio": round((ret_est - 0.04) / vol_est, 2) if vol_est > 0 else 0,
-            "max_drawdown_est": round(vol_est * 200, 2)
+            # Sharpe ratio: excess return above risk-free rate per unit of volatility.
+            # Risk-free rate sourced from RISK_FREE_RATE constant (UK 10-yr Gilt, 2024).
+            "sharpe_ratio": round((ret_est - RISK_FREE_RATE) / vol_est, 2) if vol_est > 0 else 0,
+            # Max drawdown approximation: 95th percentile 1-year loss (1.65 σ rule).
+            # A full path-dependent MDD would require recording intermediate portfolio values.
+            "max_drawdown_est": round(vol_est * 1.65 * 100, 2)
         },
         "simulated_growth": sim,
         "growth_curve": curve,

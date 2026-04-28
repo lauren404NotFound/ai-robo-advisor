@@ -8,6 +8,7 @@ All function signatures are identical — no changes required in app.py.
 
 import json
 import hashlib
+import hmac
 from datetime import datetime, timedelta
 
 import streamlit as st
@@ -202,8 +203,16 @@ def save_verification_code(identifier: str, code: str, minutes_valid: int = 15):
     )
 
 def verify_code(identifier: str, code: str) -> bool:
-    doc = _verification_codes().find_one({"identifier": identifier, "code": code})
-    if doc:
+    """
+    Verify an OTP code using constant-time comparison to prevent timing attacks.
+    Retrieves the stored code first, then compares using hmac.compare_digest
+    so the response time does not leak information about partial matches.
+    """
+    doc = _verification_codes().find_one({"identifier": identifier})
+    if not doc:
+        return False
+    # Constant-time comparison prevents timing side-channel attacks
+    if hmac.compare_digest(str(doc.get("code", "")), str(code)):
         _verification_codes().delete_one({"_id": doc["_id"]})
         return True
     return False
