@@ -366,5 +366,50 @@ def mark_activity_feed_read(email: str):
     )
 
 
+# ── backend_api.py support functions ─────────────────────────────────────────
+
+def get_assessment_history(email: str) -> list:
+    """All past assessments for a user, newest first (used by /api/survey/history)."""
+    cursor = _assessments().find(
+        {"user_email": email},
+        {"_id": 0}
+    ).sort("created_at", DESCENDING)
+    return list(cursor)
+
+
+def get_cached_market_data() -> list:
+    """Return all tickers from the market data cache (used by /api/market/prices)."""
+    cursor = _market_data_cache().find({}, {"_id": 0})
+    return list(cursor)
+
+
+def get_unread_notifications(email: str) -> list:
+    """Return unread notifications for a user (used by /api/notifications/unread)."""
+    cursor = _notifications().find(
+        {"user_email": email, "is_read": False},
+        {"_id": 0}
+    ).sort("created_at", DESCENDING).limit(20)
+    return list(cursor)
+
+
+def save_audit_log(entry: dict) -> None:
+    """Persist an immutable audit log entry (used by backend_api.log_audit_action)."""
+    _audit_logs().insert_one(entry)
+
+
+def save_support_ticket(email: str, subject: str, message: str, ticket_id: str) -> None:
+    """Save a support ticket to MongoDB (used by /api/support/ticket)."""
+    import datetime as _dt
+    _tickets().insert_one({
+        "user_email": email,
+        "ticket_id":  ticket_id,
+        "subject":    subject,
+        "message":    message,
+        "status":     "open",
+        "created_at": _dt.datetime.utcnow(),
+    })
+
+
 # ── Init on import ────────────────────────────────────────────────────────────
 init_db()
+
