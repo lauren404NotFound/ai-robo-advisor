@@ -144,6 +144,14 @@ elif "Key Missing" in claude_status:
         st.sidebar.write("App Path:", __file__)
         st.sidebar.write("Available Keys:", list(st.secrets.keys()))
 
+# MongoDB health check — surfaces connection failures immediately on startup
+_db_health = database.db_health_check()
+if _db_health["status"] == "ok":
+    st.sidebar.success(f"● MongoDB: Connected ({_db_health['latency_ms']} ms)")
+else:
+    st.sidebar.error(f"● MongoDB: ⚠ Unreachable — {_db_health['detail']}")
+
+
 # ── Session init + splash + session restore ───────────────────────────────────
 _init()
 

@@ -19,13 +19,28 @@ import bcrypt
 # ── Connection ──────────────────────────────────────────────────────────────
 @st.cache_resource
 def _get_client():
-    """Return a cached MongoClient using the URI stored in st.secrets."""
+    """
+    Return a cached MongoClient.
+    Tries the URI in st.secrets first; falls back to localhost ONLY for local
+    development, and logs a warning so the fallback is never silent.
+    """
+    import logging
+    _log = logging.getLogger("lem_stratiq.database")
     try:
         uri = st.secrets["mongodb"]["uri"]
-        return MongoClient(uri, serverSelectionTimeoutMS=5000)
-    except Exception:
-        # Fallback for local testing if secrets aren't loaded
-        return MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=2000)
+        client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        return client
+    except KeyError:
+        _log.warning(
+            "[database] 'mongodb.uri' not found in st.secrets — "
+            "falling back to mongodb://localhost:27017/ (local dev only)."
+        )
+    except Exception as exc:
+        _log.warning(
+            f"[database] Failed to read secrets.toml: {exc} — "
+            "falling back to localhost."
+        )
+    return MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=2000)
 
 def _db():
     return _get_client()["lem_stratiq"]
@@ -69,36 +84,101 @@ def _portfolio_history():
 def _activity_feed():
     return _db()["activity_feed"]
 
-# ── Init (idempotent) ───────────────────────────────────────────────────────
+# ── Init (idempotent) ──────────────────────────────────────────────────────
 def init_db():
-    """Ensure indexes exist. Safe to call multiple times."""
+    """
+    Ensure all MongoDB indexes exist.  Safe to call multiple times.
+
+    Error handling:
+      - pymongo.OperationFailure with code 85/86 (IndexOptionsConflict /
+        IndexKeySpecsConflict) means the index already exists with different
+        options — logged as a warning, not fatal.
+      - Any other exception (connection failure, auth error, etc.) is logged
+        as an ERROR and re-raised so the caller knows initialisation failed.
+        The app must NOT silently continue with a broken database.
+    """
+    import logging
+    from pymongo.errors import OperationFailure
+    _log = logging.getLogger("lem_stratiq.database")
+
+    index_specs = [
+        # (collection_fn, args, kwargs)
+        (_users,           (["email"],),             {"unique": True}),
+        (_assessments,     ([("user_email", 1), ("created_at", DESCENDING)],), {}),
+        (_tickets,         (["user_email"],),          {}),
+        (_watchlists,      (["user_email"],),           {"unique": True}),
+        (_portfolio_configs, (["user_email"],),         {"unique": True}),
+        (_notifications,   ([("user_email", 1), ("created_at", DESCENDING)],), {}),
+        # Sessions — TTL auto-expiry + fast lookup
+        (_sessions,        (["expires_at"],),           {"expireAfterSeconds": 0}),
+        (_sessions,        (["session_id"],),            {"unique": True}),
+        (_sessions,        (["email"],),                 {}),
+        # OTP — TTL auto-delete
+        (_verification_codes, (["expires_at"],),        {"expireAfterSeconds": 0}),
+        # Audit / billing
+        (_audit_logs,      ([("user_email", 1), ("action", 1)],), {}),
+        (_billing,         (["user_email"],),            {"unique": True}),
+        # Extra collections
+        (_market_data_cache, (["ticker"],),             {"unique": True}),
+        (_portfolio_history, ([("user_email", 1), ("date", DESCENDING)],), {}),
+        (_activity_feed,   ([("user_email", 1), ("created_at", DESCENDING)],), {}),
+        (_activity_feed,   (["is_read"],),               {}),
+    ]
+
+    errors = []
+    for col_fn, args, kwargs in index_specs:
+        try:
+            col_fn().create_index(*args, **kwargs)
+        except OperationFailure as exc:
+            # Codes 85/86: index already exists — harmless on repeated calls
+            if exc.code in (85, 86):
+                _log.debug(
+                    f"[database.init_db] Index already exists on "
+                    f"{col_fn.__name__}: {exc}"
+                )
+            else:
+                _log.error(
+                    f"[database.init_db] OperationFailure on "
+                    f"{col_fn.__name__}: {exc}"
+                )
+                errors.append(exc)
+        except Exception as exc:
+            _log.error(
+                f"[database.init_db] Unexpected error on "
+                f"{col_fn.__name__}: {exc}"
+            )
+            errors.append(exc)
+
+    if errors:
+        raise RuntimeError(
+            f"[database.init_db] {len(errors)} index(es) failed to create. "
+            f"First error: {errors[0]}"
+        )
+
+
+def db_health_check() -> dict:
+    """
+    Probe the MongoDB connection and return a status dict.
+    Call this from app.py on startup to surface connection problems
+    immediately rather than discovering them on the first user request.
+
+    Returns:
+        {"status": "ok",      "latency_ms": float}   on success
+        {"status": "error",   "detail":     str}      on failure
+    """
+    import logging, time
+    _log = logging.getLogger("lem_stratiq.database")
     try:
-        _users().create_index("email", unique=True)
-        _assessments().create_index([("user_email", 1), ("created_at", DESCENDING)])
-        _tickets().create_index("user_email")
-        _watchlists().create_index("user_email", unique=True)
-        _portfolio_configs().create_index("user_email", unique=True)
-        _notifications().create_index([("user_email", 1), ("created_at", DESCENDING)])
-        
-        # Sessions: TTL auto-expiry + fast lookup by session_id and email
-        _sessions().create_index("expires_at", expireAfterSeconds=0)
-        _sessions().create_index("session_id", unique=True)
-        _sessions().create_index("email")
-        
-        # Verification Codes (OTP) Auto-delete trick (TTL)
-        _verification_codes().create_index("expires_at", expireAfterSeconds=0)
-        
-        # Setup Audit Logs and Billing so they appear in MongoDB Atlas
-        _audit_logs().create_index([("user_email", 1), ("action", 1)])
-        _billing().create_index("user_email", unique=True)
-        
-        # Added per requirements
-        _market_data_cache().create_index("ticker", unique=True)
-        _portfolio_history().create_index([("user_email", 1), ("date", DESCENDING)])
-        _activity_feed().create_index([("user_email", 1), ("created_at", DESCENDING)])
-        _activity_feed().create_index("is_read")
-    except Exception:
-        pass 
+        t0 = time.monotonic()
+        # server_info() forces a real network round-trip
+        _get_client().server_info()
+        latency_ms = round((time.monotonic() - t0) * 1000, 1)
+        _log.info(f"[database.db_health_check] MongoDB OK — {latency_ms} ms")
+        return {"status": "ok", "latency_ms": latency_ms}
+    except Exception as exc:
+        _log.error(f"[database.db_health_check] MongoDB unreachable: {exc}")
+        return {"status": "error", "detail": str(exc)}
+
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
