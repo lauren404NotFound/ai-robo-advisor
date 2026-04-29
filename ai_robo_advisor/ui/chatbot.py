@@ -105,6 +105,20 @@ def _handle_chat_input():
     if "chatbot_reply" not in st.session_state:
         st.session_state.chatbot_reply = ""
 
+    # Hide the backend Streamlit form — the HTML widget handles UI
+    st.markdown("""
+    <style>
+    /* Hide chatbot backend form — UI is handled by the floating HTML widget */
+    div[data-testid="stForm"]:has(input[aria-label="msg"]) {
+        position: absolute !important;
+        width: 0 !important; height: 0 !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     with st.form("chatbot_form", clear_on_submit=True):
         user_input = st.text_input("msg", label_visibility="collapsed", key="chatbot_input")
         submitted = st.form_submit_button("Send")

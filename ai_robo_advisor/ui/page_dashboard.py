@@ -5,9 +5,10 @@ Dashboard page: authentication gate, survey wizard, portfolio results.
 Includes: page_dashboard, _render_survey, _render_analysing, _render_portfolio
 """
 from __future__ import annotations
-import os, json, datetime
+import os, json, datetime, time
 import streamlit as st
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
@@ -31,6 +32,13 @@ from explainer import DeepIQInterpreter
 def _get_model_objects():
     import app as _app
     return _app.MODEL_PATH
+
+def _get_claude():
+    try:
+        import app as _app
+        return _app.anthropic_client, _app.claude_status
+    except Exception:
+        return None, "Key Missing"
 
 def page_dashboard():
     # Authentication check
@@ -332,6 +340,7 @@ def _render_portfolio():
     st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Neural AI Strategy Interpretation</h3>', unsafe_allow_html=True)
     
     # Connection Status
+    anthropic_client, claude_status = _get_claude()
     if not anthropic_client:
         with st.sidebar:
             st.error("🤖 **AI Engine Offline**")

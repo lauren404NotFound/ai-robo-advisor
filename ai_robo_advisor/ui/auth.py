@@ -507,43 +507,75 @@ def render_auth_modal():
         st.markdown(f'<div style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 5px;">{title}</div>', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size: 14px; color: {MUTED}; margin-bottom: 30px;">Sign in to access your portfolio</div>', unsafe_allow_html=True)
         
-        # --- OAUTH (Safe Link Generation) ---
-        import asyncio
-        google_url = "#"
-        linkedin_url = "#"
-        g_err = None
-        l_err = None
-        
+        # --- OAUTH Buttons ---
         try:
             _google_oauth, _linkedin_oauth, _redirect_uri = _get_oauth()
-            google_url = _google_oauth.authorize_button(
-                name="Continue with Google",
-                icon="https://www.google.com/favicon.ico",
-                redirect_uri=_redirect_uri,
-                scope="openid email profile",
-                key="google_manual_auth"
-            )
-            linkedin_url = asyncio.run(
-                _linkedin_oauth.client.get_authorization_url(
-                    redirect_uri=_redirect_uri, scope=["openid", "profile", "email"]
-                )
-            )
-        except Exception as e:
-            g_err = str(e)
+        except Exception:
+            _google_oauth = _linkedin_oauth = None
+            _redirect_uri = "http://localhost:8501"
 
         # Social Buttons
         s1, s2 = st.columns(2)
         with s1:
-            st.markdown('<span id="google-btn-hook"></span>', unsafe_allow_html=True)
-            # Use the Manual Google Component
-            st.write(google_url, unsafe_allow_html=True)
+            if _google_oauth:
+                google_result = _google_oauth.authorize_button(
+                    name="Continue with Google",
+                    icon="https://www.google.com/favicon.ico",
+                    redirect_uri=_redirect_uri,
+                    scope="openid email profile",
+                    key="google_manual_auth",
+                    use_container_width=True,
+                )
+                if google_result and "token" in google_result:
+                    import requests as _req, json as _json
+                    token = google_result["token"]["access_token"]
+                    info = _req.get(
+                        "https://www.googleapis.com/oauth2/v3/userinfo",
+                        headers={"Authorization": f"Bearer {token}"},
+                        timeout=10,
+                    ).json()
+                    email = info.get("email", "")
+                    name  = info.get("name", email.split("@")[0])
+                    if email:
+                        _do_login(email, name, "google")
+                        st.session_state.show_auth = False
+                        st.rerun()
+            else:
+                st.markdown("""
+                <div style="text-align:center;padding:14px;border:1px solid rgba(255,255,255,0.1);
+                     border-radius:12px;color:#8BA6D3;font-size:13px;">
+                  🔑 Google OAuth not configured
+                </div>""", unsafe_allow_html=True)
         with s2:
-            st.markdown(f"""
-                <a href="{linkedin_url}" target="_top" class="social-btn" style="height: 43px !important; margin: 0 !important; box-sizing: border-box; text-decoration: none; gap: 8px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#0A66C2" style="flex-shrink:0;"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                    <span style="font-size: 14px; color: white !important;">LinkedIn</span>
-                </a>
-            """, unsafe_allow_html=True)
+            if _linkedin_oauth:
+                li_result = _linkedin_oauth.authorize_button(
+                    name="LinkedIn",
+                    icon="https://www.linkedin.com/favicon.ico",
+                    redirect_uri=_redirect_uri,
+                    scope="openid profile email",
+                    key="linkedin_manual_auth",
+                    use_container_width=True,
+                )
+                if li_result and "token" in li_result:
+                    import requests as _req
+                    token = li_result["token"]["access_token"]
+                    info = _req.get(
+                        "https://api.linkedin.com/v2/userinfo",
+                        headers={"Authorization": f"Bearer {token}"},
+                        timeout=10,
+                    ).json()
+                    email = info.get("email", "")
+                    name  = info.get("name", info.get("sub", "LinkedIn User"))
+                    if email:
+                        _do_login(email, name, "linkedin")
+                        st.session_state.show_auth = False
+                        st.rerun()
+            else:
+                st.markdown("""
+                <div style="text-align:center;padding:14px;border:1px solid rgba(255,255,255,0.1);
+                     border-radius:12px;color:#8BA6D3;font-size:13px;">
+                  🔗 LinkedIn OAuth not configured
+                </div>""", unsafe_allow_html=True)
 
         st.markdown('<div class="modal-divider"><div class="modal-divider-line"></div><div class="modal-divider-text">OR EMAIL</div><div class="modal-divider-line"></div></div>', unsafe_allow_html=True)
 
