@@ -42,9 +42,45 @@ def update_password(email: str, new_password: str) -> bool:
 # objects that app.py creates before importing this module.
 # We use a lazy-import pattern to avoid circular imports.
 
+
 def _get_oauth():
-    import app as _app
-    return _app.google_oauth, _app.linkedin_oauth, _app.REDIRECT_URI
+    """
+    Build OAuth2Component objects directly from st.secrets.
+    Avoids importing app (which runs as __main__ and causes a second module
+    load where google_oauth / linkedin_oauth may not be set yet).
+    """
+    from streamlit_oauth import OAuth2Component
+
+    REDIRECT_URI = "https://ai-robo-advisor-gpxvxjfgyp4cml7xjswbsh.streamlit.app"
+
+    try:
+        g_id  = st.secrets["auth"]["client_id"]
+        g_sec = st.secrets["auth"]["client_secret"]
+    except Exception:
+        g_id = g_sec = ""
+
+    try:
+        li_id  = st.secrets["linkedin"]["client_id"]
+        li_sec = st.secrets["linkedin"]["client_secret"]
+    except Exception:
+        li_id = li_sec = ""
+
+    google_oauth = OAuth2Component(
+        g_id, g_sec,
+        "https://accounts.google.com/o/oauth2/v2/auth",
+        "https://oauth2.googleapis.com/token",
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+    ) if (g_id and g_sec) else None
+
+    linkedin_oauth = OAuth2Component(
+        li_id, li_sec,
+        "https://www.linkedin.com/oauth/v2/authorization",
+        "https://www.linkedin.com/oauth/v2/accessToken",
+        "https://api.linkedin.com/v2/userinfo",
+    ) if (li_id and li_sec) else None
+
+    return google_oauth, linkedin_oauth, REDIRECT_URI
 
 def _auth_check() -> bool:
     return st.session_state.get("authenticated", False)
