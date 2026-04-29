@@ -388,9 +388,10 @@ def render_auth_modal():
         <style>
         div[data-testid="stVerticalBlock"]:has(> div > div > #auth-modal-marker) {{
             position: fixed !important;
-            top: 50% !important; left: 50% !important;
-            transform: translate(-50%, -50%) !important;
+            top: 62px !important; left: 50% !important;
+            transform: translateX(-50%) !important;
             width: 90vw !important; max-width: 1000px !important;
+            max-height: calc(100vh - 74px) !important;
             padding: 0 !important;
             border-radius: 32px !important;
             background: {PANEL} !important; 
@@ -398,7 +399,7 @@ def render_auth_modal():
             border: 1px solid {BORDER} !important;
             box-shadow: 0 32px 100px rgba(0,0,0,0.9) !important;
             z-index: 10000 !important;
-            overflow: hidden !important;
+            overflow-y: auto !important;
         }}
 
         .auth-hero-col {{
