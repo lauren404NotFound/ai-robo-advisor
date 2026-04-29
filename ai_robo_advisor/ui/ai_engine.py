@@ -322,7 +322,6 @@ def get_real_claude_insight(port_data, user_answers, mode="simple"):
         )
         return message.content[0].text
     except Exception as e:
-        # Check specifically for balance issues to help the user
         err_msg = str(e)
         if "credit balance is too low" in err_msg.lower():
             return f"⚠️ **Claude API reached but out of credits**: {err_msg}"
@@ -335,8 +334,9 @@ def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tu
     if claude_insight and "⚠️" not in claude_insight:
         return claude_insight, "LIVE CLAUDE 3.5 SONNET"
 
-    # If Claude failed or is unreachable, provide the real local logic but prefix with the reason
+    # If Claude failed, fall back to local heuristic explainer
     try:
+        local_explain = _get_local_explain()
         heuristic_insight = local_explain(port, answers)
         full_text = f"{claude_insight}\n\n---\n\n### 🤖 Local Redundant Interpretation\n{heuristic_insight}" if claude_insight else heuristic_insight
         return full_text, "DEEPIQ HEURISTIC + CLAUDE STATUS"
