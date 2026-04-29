@@ -26,6 +26,17 @@ from ui.styles import (
 )
 import database
 
+# Re-export database profile-update helpers so ui modules only need to import
+# from ui.auth rather than reaching into database directly.
+def update_user_name(email: str, new_name: str) -> bool:
+    """Update the display name for *email* in MongoDB."""
+    return database.update_user_name(email, new_name)
+
+def update_password(email: str, new_password: str) -> bool:
+    """Update the hashed password for *email* in MongoDB."""
+    return database.update_password(email, new_password)
+
+
 # OAuth components are created in app.py and passed in where needed,
 # or re-imported here via the module-level google_oauth / linkedin_oauth
 # objects that app.py creates before importing this module.
