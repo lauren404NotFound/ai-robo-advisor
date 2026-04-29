@@ -12,8 +12,18 @@ import streamlit as st
 
 # Imports resolved at call time to avoid circular dependencies
 def _get_claude():
-    import app as _app
-    return _app.anthropic_client, _app.claude_status
+    """Read Anthropic credentials directly from st.secrets — no circular app import."""
+    try:
+        import anthropic
+        key = st.secrets.get("anthropic_api_key", "")
+        if not key:
+            return None, "Key Missing in Secrets"
+        client = anthropic.Anthropic(api_key=key)
+        return client, "Connected"
+    except ImportError:
+        return None, "anthropic package not installed"
+    except Exception as exc:
+        return None, str(exc)
 
 def _get_local_explain():
     from explainer import explain as local_explain
@@ -242,6 +252,7 @@ def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> li
 
 
 def get_real_claude_insight(port_data, user_answers, mode="simple"):
+    anthropic_client, claude_status = _get_claude()
     if not anthropic_client:
         return f"⚠️ **AI Offline**: {claude_status}. Check your `.streamlit/secrets.toml`."
 
