@@ -38,6 +38,28 @@ def _get_oauth():
 def _auth_check() -> bool:
     return st.session_state.get("authenticated", False)
 
+
+def _init() -> None:
+    """Initialise session-state keys to safe defaults on every page load."""
+    defaults = {
+        "authenticated": False,
+        "user_email": "",
+        "user_name": "",
+        "provider": "",
+        "page": "Home",
+        "auth_tab": 0,
+        "show_auth": False,
+        "otp_sent": False,
+        "otp_email": "",
+        "reg_otp_sent": False,
+        "reg_otp_email": "",
+        "splash_done": False,
+        "chatbot_open": False,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
 def _user_email() -> str:
     return st.session_state.get("user_email", "")
 
