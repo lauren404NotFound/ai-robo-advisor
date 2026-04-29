@@ -134,8 +134,7 @@ jobs:
             --ignore=tests/test_backend_api_integration.py \
             --junit-xml=test-results.xml \
             --cov=. \
-            --cov-report=term-missing \
-            --cov-omit="app_monolith_backup.py,tests/*"
+            --cov-report=term-missing
 
       - name: Upload test results
         if: always()
