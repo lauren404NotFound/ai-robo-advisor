@@ -134,7 +134,7 @@ def page_market():
     gainers = [m for m in markets if m[4]]
     losers  = [m for m in markets if not m[4]]
     st.markdown(f"""
-<div style="padding:28px 0 16px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
+<div style="padding:4px 0 16px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
   <div>
     <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Live Markets Terminal</div>
     <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Markets</div>

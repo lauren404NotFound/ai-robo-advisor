@@ -25,7 +25,7 @@ def page_insights():
 """, unsafe_allow_html=True)
 
     st.markdown("""
-<div style="padding:32px 0 8px;">
+<div style="padding:4px 0 8px;">
   <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:10px;">About the System</div>
   <div style="font-size:38px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin-bottom:12px;">Why DeepAtomicIQ?</div>
   <div style="font-size:16px;color:#8BA6D3;max-width:720px;line-height:1.6;">A Markowitz-Informed Neural Network that learns how markets move together and builds portfolios that maximise the Sharpe Ratio — intelligently, transparently, and in real time.</div>
