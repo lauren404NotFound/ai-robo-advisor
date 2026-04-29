@@ -27,12 +27,12 @@ POS     = "#4AE3A0"  # Spring Green
 NEG     = "#FF6B6B"  # Vibrant Coral
 
 PROFILE_COLORS = {
-    "Profile 1": "#60A5FA",
-    "Profile 2": "#4AE3A0",
-    "Profile 3": "#FBBF24",
-    "Profile 4": "#F97316",
-    "Profile 5": "#EF4444",
-    "Profile 6": "#9B72F2",
+    "Ultra Conservative": "#60A5FA",
+    "Conservative":        "#4AE3A0",
+    "Moderate":            "#FBBF24",
+    "Balanced Growth":     "#F97316",
+    "Growth":              "#EF4444",
+    "Aggressive Growth":   "#9B72F2",
 }
 
 

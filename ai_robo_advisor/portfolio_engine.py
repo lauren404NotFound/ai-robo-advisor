@@ -234,6 +234,15 @@ def build_portfolio(risk_score: float, initial: float = 10_000,
     elif risk_score <= 9: p_num = 5
     else:                 p_num = 6
 
+    _RISK_NAMES = {
+        1: "Ultra Conservative",
+        2: "Conservative",
+        3: "Moderate",
+        4: "Balanced Growth",
+        5: "Growth",
+        6: "Aggressive Growth",
+    }
+
     diq_data = get_latest_diq_data(p_num)
 
     if not diq_data:
@@ -258,7 +267,7 @@ def build_portfolio(risk_score: float, initial: float = 10_000,
 
     from datetime import datetime
     return {
-        "risk_category":   f"DeepIQ Profile {p_num}",
+        "risk_category":   _RISK_NAMES[p_num],
         "profile_score":   p_num,
         "allocation_pct":  alloc,
         "iq_params":       iq_params,
