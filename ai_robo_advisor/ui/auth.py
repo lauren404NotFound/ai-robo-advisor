@@ -517,6 +517,20 @@ def render_auth_modal():
             transition: background-color 5000s ease-in-out 0s !important;
             border-radius: 10px !important;
         }}
+
+        /* Placeholder text — lighter colour + italic so it's clearly hint text */
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) input::placeholder {{
+            color: rgba(255, 255, 255, 0.30) !important;
+            font-style: italic !important;
+        }}
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) input::-webkit-input-placeholder {{
+            color: rgba(255, 255, 255, 0.30) !important;
+            font-style: italic !important;
+        }}
+        div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) input::-moz-placeholder {{
+            color: rgba(255, 255, 255, 0.30) !important;
+            font-style: italic !important;
+        }}
         </style>
         <div id="auth-modal-marker"></div>
     """, unsafe_allow_html=True)
@@ -669,7 +683,7 @@ def render_auth_modal():
                 name_in = st.text_input("FULL NAME", placeholder="Jane Smith", key="auth_name_field_f")
                 dob_in = st.date_input(
                     "DATE OF BIRTH",
-                    value=datetime.date(1990, 1, 1),
+                    value=None,
                     min_value=datetime.date(1900, 1, 1),
                     max_value=datetime.date.today(),
                     key="auth_dob_field_f"
@@ -729,7 +743,7 @@ def render_auth_modal():
                 name_in_phone = st.text_input("FULL NAME", placeholder="John Doe", key="phone_name_f")
                 dob_in_phone = st.date_input(
                     "DATE OF BIRTH",
-                    value=datetime.date(1990, 1, 1),
+                    value=None,
                     min_value=datetime.date(1900, 1, 1),
                     max_value=datetime.date.today(),
                     key="phone_dob_f"
