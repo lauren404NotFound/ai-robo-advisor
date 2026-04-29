@@ -168,20 +168,30 @@ if not st.session_state.get("splash_done", False):
     st.session_state.splash_done = True
     st.markdown("""
     <style>
-    #diq-splash {
+    /* Full-viewport overlay — hides ALL page content behind the splash */
+    body::before {
+        content: '';
         position: fixed; inset: 0;
         background: #080818;
+        z-index: 99998;
+        animation: splashOut 0.7s ease 2.4s forwards;
+        pointer-events: none;
+    }
+    #diq-splash {
+        position: fixed; inset: 0;
+        background: transparent;
         z-index: 99999;
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
         animation: splashOut 0.7s ease 2.4s forwards;
+        pointer-events: none;
     }
     @keyframes splashOut {
         0%   { opacity:1; }
         100% { opacity:0; pointer-events:none; }
     }
     .splash-logo {
-        font-size: 42px; font-weight: 900; letter-spacing: -0.04em;
+        font-size: 48px; font-weight: 900; letter-spacing: -0.04em;
         background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 60%, #8EF6D1 100%);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         animation: splashPulse 1.2s ease-in-out infinite alternate;
@@ -196,7 +206,7 @@ if not st.session_state.get("splash_done", False):
         text-transform: uppercase;
         animation: fadeIn 0.8s ease 0.4s both;
     }
-    .splash-bar { margin-top: 40px; width: 120px; height: 3px;
+    .splash-bar { margin-top: 40px; width: 140px; height: 3px;
         background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
     .splash-bar-fill {
         height: 100%; width: 0;
@@ -214,8 +224,13 @@ if not st.session_state.get("splash_done", False):
     </div>
     <script>
     setTimeout(function(){
+      // Remove both the overlay and body::before
       var s = document.getElementById('diq-splash');
       if(s) s.style.display = 'none';
+      // Remove the body::before by injecting a style override
+      var st = document.createElement('style');
+      st.textContent = 'body::before { display: none !important; }';
+      document.head.appendChild(st);
     }, 3200);
     </script>
     """, unsafe_allow_html=True)
