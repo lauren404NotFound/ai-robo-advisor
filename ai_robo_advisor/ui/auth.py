@@ -518,6 +518,30 @@ def render_auth_modal():
             border-radius: 10px !important;
         }}
 
+        /* OAuth Social Buttons — dark glassmorphism style */
+        div[data-testid="stElementContainer"]:has(#oauth-btns-marker) + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(#oauth-btns-marker) + div[data-testid="stElementContainer"] a[data-testid] {{
+            background: rgba(255,255,255,0.07) !important;
+            border: 1px solid rgba(155,114,242,0.35) !important;
+            color: #ffffff !important;
+            border-radius: 14px !important;
+            min-height: 52px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.01em !important;
+            transition: all 0.25s ease !important;
+            width: 100% !important;
+            padding: 0 16px !important;
+        }}
+        div[data-testid="stElementContainer"]:has(#oauth-btns-marker) + div[data-testid="stElementContainer"] button:hover,
+        div[data-testid="stElementContainer"]:has(#oauth-btns-marker) + div[data-testid="stElementContainer"] a[data-testid]:hover {{
+            background: rgba(155,114,242,0.15) !important;
+            border-color: {ACCENT} !important;
+            box-shadow: 0 0 24px rgba(155,114,242,0.25) !important;
+            transform: translateY(-2px) !important;
+            color: #ffffff !important;
+        }}
+
         /* Placeholder text — lighter colour + italic so it's clearly hint text */
         div[data-testid="stVerticalBlock"]:has(#auth-modal-marker) input::placeholder {{
             color: rgba(255, 255, 255, 0.30) !important;
@@ -564,7 +588,8 @@ def render_auth_modal():
             _google_oauth = _linkedin_oauth = None
             _redirect_uri = "http://localhost:8501"
 
-        # Social Buttons
+        # Social Buttons — inject marker so CSS can target precisely these two buttons
+        st.markdown('<span id="oauth-btns-marker"></span>', unsafe_allow_html=True)
         s1, s2 = st.columns(2)
         with s1:
             if _google_oauth:
