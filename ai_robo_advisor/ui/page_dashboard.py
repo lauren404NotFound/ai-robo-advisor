@@ -260,7 +260,24 @@ def _render_portfolio():
     sim   = port["simulated_growth"]
     color = PROFILE_COLORS.get(f"Profile {port['profile_score']}", ACCENT2)
 
-    # ── Profile hero ──────────────────────────────────────────────────────────
+    # ── Page Header ────────────────────────────────────────────────────────────
+    name = st.session_state.get("user_name", "Investor").split()[0]
+    st.markdown(f"""
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:4px 0 20px;">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Portfolio Dashboard</div>
+        <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Welcome back, {name}</div>
+        <div style="font-size:13px;color:#8BA6D3;margin-top:4px;">Your AI-optimised portfolio · {cat}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="background:rgba(155,114,242,0.12);border:1px solid rgba(155,114,242,0.35);border-radius:20px;padding:8px 20px;font-size:13px;font-weight:700;color:{ACCENT2};">
+          {cat}
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Profile Hero ─────────────────────────────────────────────────────────
     st.markdown(f"""
     <div class="profile-hero">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -277,154 +294,22 @@ def _render_portfolio():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── KPIs ──────────────────────────────────────────────────────────────────
-    kpi_html = '<div class="kpi-grid">'
-    for label, val, hint, vc, tooltip in [
-        ("Expected Return",  f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate", POS, "The average percentage your portfolio is expected to grow each year based on long-term data."),
-        ("Learned Volatility",f"{stats['expected_volatility']:.1f}%",   "Predicted Pfolio Vol", "#ffffff", "How much your portfolio\\'s value is likely to bounce up and down. A lower number means a smoother, less stressful ride."),
-        ("Sharpe Ratio",     f"{stats['sharpe_ratio']:.2f}",             "Risk-Adjusted Learner", POS, "A score showing how much return you are getting for the risk you are taking. A higher score means smarter investing!"),
-        ("P90 Growth",       f"{get_currency_symbol()}{sim['p90']:,.0f}",                      f"Optimistic Projection",color, "The \\'best-case\\' scenario (top 10% of possibilities) of what your portfolio could be worth at the end of your timeframe."),
+    # ── KPIs — inline-styled columns for reliability ─────────────────────────
+    k1, k2, k3, k4 = st.columns(4)
+    for col, label, val, hint, vc, tooltip in [
+        (k1, "Expected Return",  f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate",  POS,     "Average % your portfolio is expected to grow each year."),
+        (k2, "Learned Volatility",f"{stats['expected_volatility']:.1f}%",   "Predicted Portfolio Vol","#ffffff","How much your portfolio value is likely to fluctuate."),
+        (k3, "Sharpe Ratio",     f"{stats['sharpe_ratio']:.2f}",             "Risk-Adjusted Learner",  POS,     "Return per unit of risk — higher is smarter."),
+        (k4, "P90 Growth",       f"{get_currency_symbol()}{sim['p90']:,.0f}",f"Optimistic Projection",  color,   "Top 10% optimistic scenario over your time horizon."),
     ]:
-        kpi_html += (f'<div class="kpi" title="{tooltip}"><div class="kpi-label">{label}</div>'
-                     f'<div class="kpi-value" style="color:{vc};">{val}</div>'
-                     f'<div class="kpi-hint">{hint}</div></div>')
-    kpi_html += "</div>"
-    st.markdown(kpi_html, unsafe_allow_html=True)
-
-    # ── ACTIONABLE ADVICE ─────────────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:24px 0 4px;display:flex;align-items:center;gap:10px;">
-      {get_svg("cart", 24, "#ffffff")} Portfolio Implementation Guide
-    </div>
-    <div style="font-size:13px;color:{MUTED};margin-bottom:14px;">
-      Enter your numbers below to get a personalised shopping list for your brokerage account.
-    </div>
-    """, unsafe_allow_html=True)
-
-    ai_col1, ai_col2, _ = st.columns([1, 1, 1])
-    with ai_col1:
-        lump_sum = st.number_input(
-            "How much can you invest right now? (£)",
-            min_value=0, max_value=10_000_000,
-            value=st.session_state.get("_lump_sum", 10000),
-            step=500, key="_lump_sum",
-            help="Your one-off starting investment"
-        )
-    with ai_col2:
-        monthly_contrib = st.number_input(
-            "How much can you add each month? (£)",
-            min_value=0, max_value=100_000,
-            value=st.session_state.get("_monthly_contrib", 500),
-            step=50, key="_monthly_contrib",
-            help="Regular monthly investment top-up"
-        )
-
-    st.markdown(render_actionable_advice(port, lump_sum, monthly_contrib), unsafe_allow_html=True)
-
-    # ── AI EXPLANATION SECTION (Assessment Engine Pattern) ──────────────────
-    st.markdown("---")
-    col_toggle, col_spacer = st.columns([1, 3])
-    with col_toggle:
-        mode = st.session_state.explanation_mode
-        new_mode = st.toggle(
-            ":material/analytics: Advanced mode (for investors who understand market terms)",
-            value=(mode == "advanced"),
-            help="Switch to advanced mode to see technical details."
-        )
-        if (st.session_state.explanation_mode == "advanced" and not new_mode) or \
-           (st.session_state.explanation_mode == "simple" and new_mode):
-            st.session_state.explanation_mode = "advanced" if new_mode else "simple"
-            if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
-            st.rerun()
-
-    st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Neural AI Strategy Interpretation</h3>', unsafe_allow_html=True)
-    
-    # Connection Status
-    anthropic_client, claude_status = _get_claude()
-    if not anthropic_client:
-        with st.sidebar:
-            st.error("🤖 **AI Engine Offline**")
-            if "anthropic" not in globals():
-                st.info("Missing library: `anthropic` (Try: pip install anthropic)")
-            elif "anthropic_api_key" not in st.secrets:
-                st.info("Missing Secret: `anthropic_api_key` in secrets.toml")
-            else:
-                st.info("Unknown initialization error. Check logs.")
-
-    # Use session_state to prevent re-triggering the expensive API call on every click
-    if "ai_insight_text_v2" not in st.session_state:
-        # Show a high-end loading state matching your TypeScript pattern
-        with st.status("Analyzing your profile via DeepIQ Neural Manifold...", expanded=True) as status:
-            # The actual "Backend" call
-            insight, source = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
-            st.session_state.ai_insight_text_v2 = insight
-            st.session_state.ai_insight_source_v2 = source
-            status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
-            
-            # Connection to Database: Save the narrative to MongoDB result
-            st.session_state.result["ai_narrative"] = insight
-            database.save_assessment(st.session_state.get("user_email", "guest"), st.session_state.survey_answers, st.session_state.result)
-
-    # Display the result in a styled box matching your dark theme
-    st.markdown(f"""
-        <div style="background: rgba(155, 114, 242, 0.1); 
-                    border: 1px solid rgba(155, 114, 242, 0.3); 
-                    padding: 24px; border-radius: 16px; color: white;
-                    line-height: 1.8; margin-bottom: 30px;">
-            <div style="font-size: 11px; font-weight: 800; color: {ACCENT2}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;">
-                Neural Assessment Narrative 
-                <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
-                <span style="font-size:9px; background:rgba(0,255,200,0.1); color:#00FFC8; padding:2px 8px; border-radius:20px; border: 1px solid rgba(0,255,200,0.2);">
-                    {st.session_state.get('ai_insight_source_v2', 'CHECKING...')}
-                </span>
+        with col:
+            st.markdown(f"""
+            <div title="{tooltip}" style="background:rgba(10,10,22,0.6);border:1px solid rgba(155,114,242,0.22);border-radius:14px;padding:18px 14px;">
+              <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.10em;color:rgba(237,237,243,0.55);margin-bottom:7px;">{label}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:{vc};">{val}</div>
+              <div style="font-size:9px;color:rgba(230,213,255,0.35);margin-top:7px;">{hint}</div>
             </div>
-            <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
-                {st.session_state.ai_insight_text_v2}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # ── THE LOGIC VALIDATOR (Technical Verification Suite) ──────────────────────
-    with st.expander("🛠️ TECHNICAL LOGIC VALIDATOR (Examiner View)", expanded=False):
-        st.markdown("### `System Internals Audit`")
-        
-        t_col1, t_col2 = st.columns(2)
-        with t_col1:
-            st.write("**ML Input Vector (User Surveys)**")
-            st.json(st.session_state.get("survey_answers", {}))
-            
-            st.write("**Math Engine Stats (Markowitz)**")
-            st.dataframe(pd.DataFrame([port['stats']]).T.rename(columns={0: "Value"}))
-            
-        with t_col2:
-            st.write("**Claude AI Integration Bridge**")
-            diag_payload = {
-                "Role": "DeepAtomicIQ Neural Investment Officer",
-                "Model": "Claude 3.5 Sonnet",
-                "Context Mapping": port['risk_category'],
-                "API Health": claude_status,
-                "Last Query Type": st.session_state.explanation_mode.upper()
-            }
-            st.json(diag_payload)
-            
-        st.write("**MongoDB Persistence Audit**")
-        st.code(f"INSERT INTO assessments (user_email, answers, result) VALUES ('{st.session_state.get('user_email', 'guest')}', ...)", language="sql")
-        st.info("💡 **Examiner Insight**: This confirms that the logic is 'data-consistent'. Every survey answer is verified, mathematically processed via the Markowitz engine, explained by Claude, and then committed to the MongoDB backend.")
-
-    # UI Bridge for buttons
-    btn_col1, btn_col2, _ = st.columns([1, 1, 2])
-    with btn_col1:
-        if st.button("Refresh AI Narrative", icon=":material/refresh:", use_container_width=True):
-            if "ai_insight_text_v2" in st.session_state: del st.session_state.ai_insight_text_v2
-            st.rerun()
-    with btn_col2:
-        if st.session_state.get("user_email") != "guest":
-            if st.button("Email Results", icon=":material/mail:", use_container_width=True):
-                with st.spinner("Delivering report..."):
-                    sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], st.session_state.ai_insight_text)
-                    if sent: st.success("Sent!")
-                    else: st.error("Failed")
-
+            """, unsafe_allow_html=True)
 
     # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
     col1, col2 = st.columns([1, 1.4], gap="large")
@@ -607,6 +492,88 @@ def _render_portfolio():
             st.info("Logs are archived in MongoDB Atlas.")
         st.markdown("</div>", unsafe_allow_html=True)
 
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ── NEURAL AI STRATEGY INTERPRETATION ────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    st.markdown("---")
+    col_toggle, col_spacer = st.columns([1, 3])
+    with col_toggle:
+        mode = st.session_state.explanation_mode
+        new_mode = st.toggle(
+            ":material/analytics: Advanced mode (for investors who understand market terms)",
+            value=(mode == "advanced"),
+            help="Switch to advanced mode to see technical details."
+        )
+        if (st.session_state.explanation_mode == "advanced" and not new_mode) or \
+           (st.session_state.explanation_mode == "simple" and new_mode):
+            st.session_state.explanation_mode = "advanced" if new_mode else "simple"
+            if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
+            st.rerun()
+
+    st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Neural AI Strategy Interpretation</h3>', unsafe_allow_html=True)
+
+    anthropic_client, claude_status = _get_claude()
+    if not anthropic_client:
+        with st.sidebar:
+            st.error("🤖 **AI Engine Offline**")
+
+    if "ai_insight_text_v2" not in st.session_state:
+        with st.status("Analyzing your profile via DeepIQ Neural Manifold...", expanded=True) as status:
+            insight, source = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
+            st.session_state.ai_insight_text_v2 = insight
+            st.session_state.ai_insight_source_v2 = source
+            status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
+            st.session_state.result["ai_narrative"] = insight
+            database.save_assessment(st.session_state.get("user_email", "guest"), st.session_state.survey_answers, st.session_state.result)
+
+    st.markdown(f"""
+        <div style="background: rgba(155, 114, 242, 0.1);
+                    border: 1px solid rgba(155, 114, 242, 0.3);
+                    padding: 24px; border-radius: 16px; color: white;
+                    line-height: 1.8; margin-bottom: 24px;">
+            <div style="font-size: 11px; font-weight: 800; color: {ACCENT2}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;">
+                Neural Assessment Narrative
+                <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
+                <span style="font-size:9px; background:rgba(0,255,200,0.1); color:#00FFC8; padding:2px 8px; border-radius:20px; border: 1px solid rgba(0,255,200,0.2);">
+                    {st.session_state.get('ai_insight_source_v2', 'CHECKING...')}
+                </span>
+            </div>
+            <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
+                {st.session_state.get('ai_insight_text_v2', '...')}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    btn_col1, btn_col2, _ = st.columns([1, 1, 2])
+    with btn_col1:
+        if st.button("Refresh AI Narrative", icon=":material/refresh:", use_container_width=True):
+            if "ai_insight_text_v2" in st.session_state: del st.session_state.ai_insight_text_v2
+            st.rerun()
+    with btn_col2:
+        if st.session_state.get("user_email") != "guest":
+            if st.button("Email Results", icon=":material/mail:", use_container_width=True):
+                with st.spinner("Delivering report..."):
+                    sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], st.session_state.get("ai_insight_text_v2", ""))
+                    if sent: st.success("Sent!")
+                    else: st.error("Failed")
+
+    with st.expander("🛠️ TECHNICAL LOGIC VALIDATOR (Examiner View)", expanded=False):
+        st.markdown("### `System Internals Audit`")
+        t_col1, t_col2 = st.columns(2)
+        with t_col1:
+            st.write("**ML Input Vector (User Surveys)**")
+            st.json(st.session_state.get("survey_answers", {}))
+            st.write("**Math Engine Stats (Markowitz)**")
+            st.dataframe(pd.DataFrame([port['stats']]).T.rename(columns={0: "Value"}))
+        with t_col2:
+            st.write("**Claude AI Integration Bridge**")
+            st.json({"Role": "DeepAtomicIQ Neural Investment Officer", "Model": "Claude 3.5 Sonnet",
+                     "Context Mapping": port['risk_category'], "API Health": claude_status,
+                     "Last Query Type": st.session_state.explanation_mode.upper()})
+        st.write("**MongoDB Persistence Audit**")
+        st.code(f"INSERT INTO assessments (user_email, answers, result) VALUES ('{st.session_state.get('user_email', 'guest')}', ...)", language="sql")
+        st.info("💡 **Examiner Insight**: Every survey answer is verified, mathematically processed via the Markowitz engine, explained by Claude, and committed to MongoDB Atlas.")
 
     # ══════════════════════════════════════════════════════════════════════
     # ── INVESTMENT PLANNER ────────────────────────────────────────────────
