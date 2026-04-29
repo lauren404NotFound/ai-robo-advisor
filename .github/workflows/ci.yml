@@ -122,7 +122,10 @@ jobs:
 
       - name: Run unit tests (excluding MongoDB-dependent tests)
         working-directory: ${{ env.WORKING_DIR }}
+        env:
+          PYTHONPATH: ..
         run: |
+          pip install pytest-cov
           python -m pytest tests/ \
             -v \
             --tb=short \
@@ -132,27 +135,14 @@ jobs:
             --junit-xml=test-results.xml \
             --cov=. \
             --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-omit="app_monolith_backup.py,tests/*" \
-        env:
-          PYTHONPATH: ..   # repo root on path so ai_robo_advisor package resolves
+            --cov-omit="app_monolith_backup.py,tests/*"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: |
-            ai_robo_advisor/test-results.xml
-            ai_robo_advisor/coverage.xml
-
-      - name: Upload coverage to summary
-        if: always()
-        working-directory: ${{ env.WORKING_DIR }}
-        run: |
-          pip install coverage
-          python -m coverage report --fail-under=60 || \
-            echo "::warning::Coverage below 60% — aim to increase test coverage"
+          path: ai_robo_advisor/test-results.xml
 
   # ────────────────────────────────────────────────────────────
   # Job 3: Dependency audit
