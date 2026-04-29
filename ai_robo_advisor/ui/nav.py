@@ -121,13 +121,28 @@ def _handle_auth_bridge():
                     database.create_user(u_email, st.user.get("name", "Google User"), "google_oauth_fresh", "1990-01-01", "google")
 
 def render_nav():
+    # ── Global CSS: reduce Streamlit's default top padding on all pages ──────
+    st.markdown("""
+    <style>
+    /* Push content down just enough to clear the fixed navbar — no extra gap */
+    div[data-testid="stMainBlockContainer"],
+    .block-container {
+        padding-top: 72px !important;
+        padding-bottom: 24px !important;
+    }
+    /* Remove default Streamlit top anchor space */
+    div[data-testid="stApp"] > section > div:first-child {
+        padding-top: 0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     try:
         _handle_auth_bridge()
         _handle_query_params()
     except Exception as e:
-        st.error(f"⚠️ **Core System Error**: {e}")
-        # Don't stop entirely, just log it so we can see which secret is broken
-        st.sidebar.warning(f"Diagnostic Trace: {e}")
+        # Demote to sidebar-only — avoids "Core System Error" banner on every page
+        st.sidebar.warning(f"⚠️ Nav diagnostic: {e}")
 
     page = st.session_state.get("nav_page", "Home")
     auth = st.session_state.get("authenticated", False)
