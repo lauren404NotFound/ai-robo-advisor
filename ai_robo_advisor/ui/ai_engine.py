@@ -100,6 +100,89 @@ QUESTIONS = [
 ]
 
 
+def render_actionable_advice(port: dict, lump_sum: float, monthly_contrib: float) -> str:
+    """Return styled HTML shopping-list card for the given portfolio and investment amounts."""
+    alloc = port.get("allocation_pct", {})
+    sorted_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)
+    stats = port.get("stats", {})
+    exp_r = stats.get("expected_annual_return", 0) / 100
+
+    ETF_TICKERS = {
+        "US Equities": "VOO", "Global Equities": "VWRA",
+        "Technology": "QQQ", "Core Fixed Income": "AGG",
+        "Gold": "GLD", "Commodities": "PDBC",
+        "Real Estate": "VNQ", "ESG Equities": "ESGU",
+    }
+
+    rows_lump = ""
+    rows_monthly = ""
+    for asset, pct in sorted_alloc:
+        ticker = ETF_TICKERS.get(asset, asset)
+        lump_amt = lump_sum * (pct / 100)
+        month_amt = monthly_contrib * (pct / 100)
+        rows_lump += (
+            f'<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">'
+            f'<td style="padding:9px 10px;font-weight:700;color:#fff;">{ticker}</td>'
+            f'<td style="padding:9px 10px;color:#8BA6D3;text-align:center;">{pct:.1f}%</td>'
+            f'<td style="padding:9px 10px;text-align:right;font-weight:800;color:#8EF6D1;'
+            f'font-family:JetBrains Mono,monospace;">£{lump_amt:,.0f}</td></tr>'
+        )
+        rows_monthly += (
+            f'<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">'
+            f'<td style="padding:9px 10px;font-weight:700;color:#fff;">{ticker}</td>'
+            f'<td style="padding:9px 10px;color:#8BA6D3;text-align:center;">{pct:.1f}%</td>'
+            f'<td style="padding:9px 10px;text-align:right;font-weight:800;color:#B18AFF;'
+            f'font-family:JetBrains Mono,monospace;">£{month_amt:,.0f}/mo</td></tr>'
+        )
+
+    est_gain_1y = lump_sum * exp_r
+    ts = "width:100%;border-collapse:collapse;font-size:13px;"
+    hs = "background:rgba(109,94,252,0.12);border-bottom:1px solid rgba(255,255,255,0.08);"
+    th = "padding:8px 10px;font-size:10px;color:#8BA6D3;font-weight:700;letter-spacing:.06em;"
+
+    return f"""
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;">
+    <div style="padding:12px 14px;background:rgba(142,246,209,0.07);border-bottom:1px solid rgba(142,246,209,0.15);">
+      <span style="font-size:11px;font-weight:800;color:#8EF6D1;letter-spacing:.06em;text-transform:uppercase;">
+        💰 Lump Sum — £{lump_sum:,.0f}
+      </span>
+      <div style="font-size:10px;color:#8BA6D3;margin-top:2px;">
+        Est. gain yr 1: £{est_gain_1y:,.0f} ({exp_r*100:.1f}% p.a.)
+      </div>
+    </div>
+    <table style="{ts}">
+      <thead><tr style="{hs}">
+        <th style="{th}text-align:left;">ETF</th>
+        <th style="{th}text-align:center;">WEIGHT</th>
+        <th style="{th}text-align:right;">BUY NOW</th>
+      </tr></thead>
+      <tbody>{rows_lump}</tbody>
+    </table>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;">
+    <div style="padding:12px 14px;background:rgba(177,138,255,0.07);border-bottom:1px solid rgba(177,138,255,0.15);">
+      <span style="font-size:11px;font-weight:800;color:#B18AFF;letter-spacing:.06em;text-transform:uppercase;">
+        📅 Monthly — £{monthly_contrib:,.0f}/mo
+      </span>
+      <div style="font-size:10px;color:#8BA6D3;margin-top:2px;">Set up a standing order for each ETF</div>
+    </div>
+    <table style="{ts}">
+      <thead><tr style="{hs}">
+        <th style="{th}text-align:left;">ETF</th>
+        <th style="{th}text-align:center;">WEIGHT</th>
+        <th style="{th}text-align:right;">MONTHLY</th>
+      </tr></thead>
+      <tbody>{rows_monthly}</tbody>
+    </table>
+  </div>
+</div>
+<div style="font-size:11px;color:rgba(237,237,243,0.35);margin-top:8px;padding-left:4px;">
+  ⚠️ Simulated projections only — past performance does not guarantee future results.
+</div>"""
+
+
+
 def generate_advanced_explanation(port: dict, inputs: dict, answers: dict) -> list[str]:
     """Technical explanation with Sharpe ratio, volatility, SHAP‑like factors."""
     cat = port["risk_category"]
