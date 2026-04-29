@@ -8,7 +8,7 @@
 streamlit>=1.40.0
 plotly>=5.20.0
 streamlit-oauth>=0.1.5
-streamlit-cookies-controller>=0.1.0
+streamlit-cookies-controller>=0.0.4
 
 # ── Data & ML ───────────────────────────────────────────────
 pandas>=2.0.0

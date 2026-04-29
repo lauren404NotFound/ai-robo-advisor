@@ -10,7 +10,7 @@
 streamlit>=1.40.0
 plotly>=5.20.0
 streamlit-oauth>=0.1.5
-streamlit-cookies-controller>=0.1.0   # server-side session cookie bridge
+streamlit-cookies-controller>=0.0.4   # server-side session cookie bridge
 
 # ── Data & ML ───────────────────────────────────────────────
 pandas>=2.0.0
