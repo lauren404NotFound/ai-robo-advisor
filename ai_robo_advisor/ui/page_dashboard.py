@@ -29,6 +29,28 @@ import database
 from portfolio_engine import build_portfolio
 from explainer import DeepIQInterpreter
 
+ETF_ROLES = {
+    "VOO":  ("S&P 500 — US Large Cap Growth", "Core growth engine. Tracks America's 500 largest companies for broad market exposure."),
+    "QQQ":  ("Nasdaq 100 — Tech & Innovation", "High-growth technology exposure. Amplifies returns in bull markets via top tech firms."),
+    "VWRA": ("Global Equities — Diversification", "International diversification. Reduces single-country risk across 3,700+ global stocks."),
+    "AGG":  ("US Bonds — Capital Protection", "Defensive anchor. Bonds cushion losses during stock market downturns."),
+    "GLD":  ("Gold — Inflation Hedge", "Store of value. Gold rises when inflation or geopolitical uncertainty increases."),
+    "VNQ":  ("Real Estate — Income & Stability", "Property exposure without buying bricks. Regular dividends and inflation protection."),
+    "ESGU": ("ESG S&P 500 — Ethical Growth", "Socially responsible investing. Same broad US exposure but excludes ethical concerns."),
+    "PDBC": ("Commodities — Real Asset Exposure", "Raw materials like oil & metals. Diversifies away from financial asset risk."),
+}
+
+ASSET_DETAIL = {
+    "VOO":  {"icon": get_svg("chart", 14, "#3BA4FF"), "colour": "#3BA4FF", "why": "VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
+    "QQQ":  {"icon": get_svg("zap", 14, "#6D5EFC"), "colour": "#6D5EFC", "why": "QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
+    "VWRA": {"icon": get_svg("globe", 14, "#8EF6D1"), "colour": "#8EF6D1", "why": "VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
+    "AGG":  {"icon": get_svg("shield", 14, "#8BA6D3"), "colour": "#8BA6D3", "why": "AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
+    "GLD":  {"icon": get_svg("shield", 14, "#FFD700"), "colour": "#FFD700", "why": "Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
+    "VNQ":  {"icon": get_svg("layers", 14, "#FF9B6B"), "colour": "#FF9B6B", "why": "VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
+    "ESGU": {"icon": get_svg("shield-check", 14, "#4CAF50"), "colour": "#4CAF50", "why": "ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
+    "PDBC": {"icon": get_svg("risk", 14, "#FF6B6B"), "colour": "#FF6B6B", "why": "PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
+}
+
 def _get_model_objects():
     import app as _app
     return _app.MODEL_PATH
@@ -39,6 +61,70 @@ def _get_claude():
         return _app.anthropic_client, _app.claude_status
     except Exception:
         return None, "Key Missing"
+
+
+def _render_section_intro(title: str, subtitle: str, icon_svg: str | None = None, margin_top: int = 10):
+    icon_html = f"{icon_svg} " if icon_svg else ""
+    st.markdown(
+        f"""
+        <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:{margin_top}px 0 4px; display:flex; align-items:center; gap:10px;">
+          {icon_html}{title}
+        </div>
+        <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
+          {subtitle}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_feed_items(notifs, compact: bool = False):
+    if not notifs:
+        padding = "40px 20px" if compact else "60px 20px"
+        title_size = "12px" if compact else "13px"
+        body_size = "10px" if compact else "11px"
+        st.markdown(
+            f"""
+            <div style="text-align:center;padding:{padding};background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1);">
+                <div style="font-size:32px;margin-bottom:10px;color:rgba(155,114,242,0.4);display:flex;justify-content:center;">{get_svg("risk", 40)}</div>
+                <div style="font-size:{title_size};color:#8BA6D3;font-weight:700;">Radar Scan Active</div>
+                <div style="font-size:{body_size};color:{MUTED};">No recent events detected on this manifold.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    for n in notifs:
+        icon_color = "#3BA4FF" if n["level"] == "success" else "#8BA6D3"
+        icon_svg = get_svg("shield-check", 14, icon_color) if n["level"] == "success" else get_svg("more", 14, icon_color)
+        time_str = n["created_at"].strftime("%H:%M")
+        st.markdown(
+            f"""
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;gap:8px;">
+                    <span style="font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;">{icon_svg} {n['title']}</span>
+                    <span style="font-size:9px;color:{MUTED};">{time_str}</span>
+                </div>
+                <div style="font-size:10px;color:#8BA6D3;line-height:1.4;">{n['message']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def _render_feed_card(notifs, include_archive: bool = False, compact: bool = False):
+    st.markdown(f'<div class="card"><div class="panel-title">{get_svg("zap", 14, ACCENT)} &nbsp; Intelligence Feed</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="font-size:11px;color:{MUTED};margin-bottom:20px;">Real-time feed of neural diagnostic events and profile changes.</div>',
+        unsafe_allow_html=True,
+    )
+    _render_feed_items(notifs, compact=compact)
+    if include_archive:
+        st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+        if st.button("Archive Event Log", use_container_width=True):
+            st.info("Logs are archived in MongoDB Atlas.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def page_dashboard():
     # Authentication check
@@ -259,6 +345,9 @@ def _render_portfolio():
     stats = port["stats"]
     sim   = port["simulated_growth"]
     color = PROFILE_COLORS.get(f"Profile {port['profile_score']}", ACCENT2)
+    sorted_weights = dict(sorted(port["allocation_pct"].items(), key=lambda x: x[1], reverse=True))
+    sorted_alloc = list(sorted_weights.items())
+    compact_notifs = database.get_notifications(email, limit=4)
 
     # ── Page Header ────────────────────────────────────────────────────────────
     name = st.session_state.get("user_name", "Investor").split()[0]
@@ -311,46 +400,16 @@ def _render_portfolio():
             </div>
             """, unsafe_allow_html=True)
 
-    # ── Row 1: allocation | IQ Diagnostics ─────────────────────────────────────────---
+    # ── Row 1: allocation | diagnostics ───────────────────────────────────────
     col1, col2 = st.columns([1, 1.4], gap="large")
     with col1:
         st.markdown(f'<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Asset Allocation</div>This chart shows how your money is divided across asset classes. Spreading across different areas reduces the risk of losing money if one area performs poorly — this is the core of Markowitz portfolio theory.</span></div></div>', unsafe_allow_html=True)
-        # Sort weights for cleaner display
-        sorted_weights = dict(sorted(port["allocation_pct"].items(), key=lambda x: x[1], reverse=True))
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
         etf_html = '<div style="margin-top:10px;">'
         for asset, pct_v in sorted_weights.items():
             etf_html += (f'<div class="etf-row"><span class="etf-name">{asset}</span>'
                          f'<span style="color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
         st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
-
-    # ── Methodology Section ──────────────────────────────────────────────
-    st.markdown("---")
-    with st.expander("Data Source & Methodology — Where do these numbers come from?", icon=":material/info:"):
-        st.markdown(f"""
-        <div style="font-size:14px; color:{MUTED}; line-height:1.7;">
-          <h4 style="color:#ffffff; margin-top:0;">1. Data Foundation</h4>
-          We use <b>20 years of historical market data</b> (2004–present) for the major asset classes (S&P 500, Bonds, Gold, etc.), 
-          synced via Yahoo Finance for real-world accuracy.
-          
-          <h4 style="color:#ffffff; margin-top:16px;">2. Performance Metrics</h4>
-          Wealth is projected based on historical averages (Geometric Mean) and current market regimes:
-          <ul>
-            <li><b>Expected Growth:</b> Calculated using a weighted average of long-term asset returns, adjusted by the current <b>Market Regime</b> detected by our Neural Network.</li>
-            <li><b>Learned Volatility:</b> Derived from the asset covariance matrix. It represents the intensity of price swings.</li>
-            <li><b>Efficiency (Sharpe):</b> A measure of return per unit of risk. Higher is smarter.</li>
-          </ul>
-          
-          <h4 style="color:#ffffff; margin-top:16px;">3. Forward-Looking Projections</h4>
-          The <b>Monte Carlo Growth</b> chart uses 2,000 independent simulations (Geometric Brownian Motion) to model the range of 
-          possible futures for your money.
-          <ul>
-            <li><b>P90 (Optimistic):</b> The top 10% of outcomes where markets perform exceptionally well.</li>
-            <li><b>P50 (Median):</b> The most likely, average long-term path for your portfolio.</li>
-            <li><b>P10 (Conservative):</b> A 'stress-test' scenario where assets perform poorly but remain within historical norms.</li>
-          </ul>
-        </div>
-        """, unsafe_allow_html=True)
 
     with col2:
         if st.session_state.explanation_mode == "advanced":
@@ -418,38 +477,56 @@ def _render_portfolio():
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
         else:
-            # Simple Mode Placeholder or just the Intelligence Feed
-            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("zap", 14, ACCENT)} &nbsp; Intelligence Feed</div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:20px;">Real-time feed of neural diagnostic events and profile changes.</div>', unsafe_allow_html=True)
-            
-            # Load from MongoDB
-            notifs = database.get_notifications(st.session_state.get("user_email", "guest"), limit=6)
-            
-            if not notifs:
+            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("chart", 14, ACCENT)} &nbsp; Portfolio Snapshot</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:18px;">A simpler summary of your current portfolio characteristics and expected behaviour.</div>', unsafe_allow_html=True)
+            snapshot_col1, snapshot_col2 = st.columns(2)
+            with snapshot_col1:
                 st.markdown(f"""
-                <div style="text-align:center;padding:60px 20px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1);">
-                    <div style="font-size:32px;margin-bottom:10px;color:rgba(155,114,242,0.4);display:flex;justify-content:center;">{get_svg("risk", 40)}</div>
-                    <div style="font-size:13px;color:#8BA6D3;font-weight:700;">Radar Scan Active</div>
-                    <div style="font-size:11px;color:{MUTED};">No recent events detected on this manifold.</div>
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                    <div style="font-size:10px; color:{MUTED};">Risk Score</div>
+                    <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{res.get('score', 5):.1f}/10</div>
+                    <div style="font-size:9px; color:{MUTED};">Survey-derived profile</div>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
-                for n in notifs:
-                    icon_color = "#3BA4FF" if n['level'] == "success" else "#8BA6D3"
-                    icon_svg = get_svg("shield-check", 14, icon_color) if n['level'] == "success" else get_svg("more", 14, icon_color)
-                    time_str = n['created_at'].strftime("%H:%M")
-                    st.markdown(f"""
-                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;gap:8px;">
-                            <span style="font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;">{icon_svg} {n['title']}</span>
-                            <span style="font-size:9px;color:{MUTED};">{time_str}</span>
-                        </div>
-                        <div style="font-size:10px;color:#8BA6D3;line-height:1.4;">{n['message']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            with snapshot_col2:
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                    <div style="font-size:10px; color:{MUTED};">Diversification</div>
+                    <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{len(sorted_alloc)}</div>
+                    <div style="font-size:9px; color:{MUTED};">Asset sleeves selected</div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown(f'<div style="margin-top:16px;font-size:12px;color:#8BA6D3;line-height:1.6;">Your portfolio is built around <b style="color:#ffffff;">{cat}</b> with an expected annual return of <b style="color:#ffffff;">{stats["expected_annual_return"]:.1f}%</b> and expected volatility of <b style="color:#ffffff;">{stats["expected_volatility"]:.1f}%</b>.</div>', unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── Row 2: Performance | Intelligence Feed ────────────────────────────
+    st.markdown("---")
+    with st.expander("Data Source & Methodology — Where do these numbers come from?", icon=":material/info:"):
+        st.markdown(f"""
+        <div style="font-size:14px; color:{MUTED}; line-height:1.7;">
+          <h4 style="color:#ffffff; margin-top:0;">1. Data Foundation</h4>
+          We use <b>20 years of historical market data</b> (2004–present) for the major asset classes (S&P 500, Bonds, Gold, etc.),
+          synced via Yahoo Finance for real-world accuracy.
+
+          <h4 style="color:#ffffff; margin-top:16px;">2. Performance Metrics</h4>
+          Wealth is projected based on historical averages (Geometric Mean) and current market regimes:
+          <ul>
+            <li><b>Expected Growth:</b> Calculated using a weighted average of long-term asset returns, adjusted by the current <b>Market Regime</b> detected by our Neural Network.</li>
+            <li><b>Learned Volatility:</b> Derived from the asset covariance matrix. It represents the intensity of price swings.</li>
+            <li><b>Efficiency (Sharpe):</b> A measure of return per unit of risk. Higher is smarter.</li>
+          </ul>
+
+          <h4 style="color:#ffffff; margin-top:16px;">3. Forward-Looking Projections</h4>
+          The <b>Monte Carlo Growth</b> chart uses 2,000 independent simulations (Geometric Brownian Motion) to model the range of
+          possible futures for your money.
+          <ul>
+            <li><b>P90 (Optimistic):</b> The top 10% of outcomes where markets perform exceptionally well.</li>
+            <li><b>P50 (Median):</b> The most likely, average long-term path for your portfolio.</li>
+            <li><b>P10 (Conservative):</b> A stress-test scenario where assets perform poorly but remain within historical norms.</li>
+          </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── Row 2: performance | intelligence feed ───────────────────────────
     c1, c2 = st.columns([1.3, 1.0], gap="large")
     with c1:
         st.markdown(f'<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Monte Carlo Simulation</div>We ran 2,000 different simulated futures for your portfolio based on historical data. This shows the range of possible outcomes over time — giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
@@ -457,40 +534,7 @@ def _render_portfolio():
         st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
-        st.markdown(f'<div class="card"><div class="panel-title">{get_svg("zap", 14, ACCENT)} &nbsp; Intelligence Feed</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:20px;">Real-time feed of neural diagnostic events and profile changes.</div>', unsafe_allow_html=True)
-        
-        # Load from MongoDB
-        notifs = database.get_notifications(email, limit=4)
-        
-        if not notifs:
-            st.markdown(f"""
-            <div style="text-align:center;padding:40px 20px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1);">
-                <div style="font-size:32px;margin-bottom:10px;color:rgba(155,114,242,0.4);display:flex;justify-content:center;">{get_svg("risk", 40)}</div>
-                <div style="font-size:12px;color:#8BA6D3;font-weight:700;">Radar Scan Active</div>
-                <div style="font-size:10px;color:{MUTED};">No recent events detected on this manifold.</div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            for n in notifs:
-                icon_color = "#3BA4FF" if n['level'] == "success" else "#8BA6D3"
-                icon_svg = get_svg("shield-check", 14, icon_color) if n['level'] == "success" else get_svg("more", 14, icon_color)
-                time_str = n['created_at'].strftime("%H:%M")
-                st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;gap:8px;">
-                        <span style="font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;">{icon_svg} {n['title']}</span>
-                        <span style="font-size:9px;color:{MUTED};">{time_str}</span>
-                    </div>
-                    <div style="font-size:10px;color:#8BA6D3;line-height:1.4;">{n['message']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-        
-        st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
-        if st.button("Archive Event Log", use_container_width=True):
-            st.info("Logs are archived in MongoDB Atlas.")
-        st.markdown("</div>", unsafe_allow_html=True)
+        _render_feed_card(compact_notifs, include_archive=True, compact=True)
 
 
     # ══════════════════════════════════════════════════════════════════════
@@ -579,14 +623,11 @@ def _render_portfolio():
     # ── INVESTMENT PLANNER ────────────────────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown(f"""
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:10px 0 4px;">
-      💷 Investment Planner
-    </div>
-    <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
-      Enter how much you want to invest — we'll show you exactly where to put it and what to expect back.
-    </div>
-    """, unsafe_allow_html=True)
+    _render_section_intro(
+        "Investment Planner",
+        "Enter how much you want to invest — we'll show you exactly where to put it and what to expect back.",
+        margin_top=10,
+    )
 
     inv_col, _ = st.columns([1, 1])
     with inv_col:
@@ -598,24 +639,7 @@ def _render_portfolio():
             help="Enter your total investment amount in pounds"
         )
 
-    currency = get_currency_symbol()
     exp_r  = stats.get("expected_annual_return", 0) / 100
-    vol_r  = stats.get("expected_volatility", 0) / 100
-    sharpe = stats.get("sharpe_ratio", 0)
-    alloc  = port.get("allocation_pct", {})
-    sorted_alloc = sorted(alloc.items(), key=lambda x: x[1], reverse=True)
-
-    # ETF role descriptions
-    ETF_ROLES = {
-        "VOO":  ("S&P 500 — US Large Cap Growth",  "Core growth engine. Tracks America's 500 largest companies for broad market exposure."),
-        "QQQ":  ("Nasdaq 100 — Tech & Innovation",  "High-growth technology exposure. Amplifies returns in bull markets via top tech firms."),
-        "VWRA": ("Global Equities — Diversification", "International diversification. Reduces single-country risk across 3,700+ global stocks."),
-        "AGG":  ("US Bonds — Capital Protection",    "Defensive anchor. Bonds cushion losses during stock market downturns."),
-        "GLD":  ("Gold — Inflation Hedge",           "Store of value. Gold rises when inflation or geopolitical uncertainty increases."),
-        "VNQ":  ("Real Estate — Income & Stability", "Property exposure without buying bricks. Regular dividends and inflation protection."),
-        "ESGU": ("ESG S&P 500 — Ethical Growth",     "Socially responsible investing. Same broad US exposure but excludes ethical concerns."),
-        "PDBC": ("Commodities — Real Asset Exposure","Raw materials like oil & metals. Diversifies away from financial asset risk."),
-    }
 
     # Build planner table
     planner_rows = ""
@@ -639,8 +663,6 @@ def _render_portfolio():
             f'<td style="padding:12px 10px;font-size:12px;color:#8BA6D3;max-width:200px;">{role_desc}</td>'
             '</tr>'
         )
-
-
 
     total_gain_1y = invest_amt * exp_r
     total_arrow = "&#9650;" if total_gain_1y >= 0 else "&#9660;"
@@ -672,14 +694,12 @@ def _render_portfolio():
     # ══════════════════════════════════════════════════════════════════════
     # ── PROJECTED RETURNS TIMELINE ────────────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
-    st.markdown(f"""
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:28px 0 4px;">
-      📅 Projected Returns Timeline
-    </div>
-    <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
-      If you invest <b style="color:#ffffff;">£{invest_amt:,.0f}</b> today and reinvest all returns (compound growth at {exp_r*100:.1f}% p.a.):
-    </div>
-    """, unsafe_allow_html=True)
+    _render_section_intro(
+        "Projected Returns Timeline",
+        f'If you invest <b style="color:#ffffff;">£{invest_amt:,.0f}</b> today and reinvest all returns (compound growth at {exp_r*100:.1f}% p.a.):',
+        icon_svg="📅",
+        margin_top=28,
+    )
 
     horizons = [1, 3, 5, 10, 20]
     projected = [invest_amt * ((1 + exp_r) ** yr) for yr in horizons]
@@ -736,25 +756,12 @@ def _render_portfolio():
     # ══════════════════════════════════════════════════════════════════════
     # ── WHY EACH ASSET ────────────────────────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
-    st.markdown(f"""
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;margin:28px 0 4px; display:flex; align-items:center; gap:10px;">
-      {get_svg("puzzle", 24, ACCENT)} Why Each Asset Was Chosen
-    </div>
-    <div style="font-size:13px;color:{MUTED};margin-bottom:18px;">
-      The MINN selected these specific ETFs based on your risk score of <b style="color:#ffffff;">{res.get('score',5):.0f}/10</b> and how they interact in the co-movement model.
-    </div>
-    """, unsafe_allow_html=True)
-
-    ASSET_DETAIL = {
-        "VOO":  {"icon":get_svg("chart", 14, "#3BA4FF"),"colour":"#3BA4FF","why":"VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
-        "QQQ":  {"icon":get_svg("zap", 14, "#6D5EFC"),"colour":"#6D5EFC","why":"QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
-        "VWRA": {"icon":get_svg("globe", 14, "#8EF6D1"),"colour":"#8EF6D1","why":"VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
-        "AGG":  {"icon":get_svg("shield", 14, "#8BA6D3"),"colour":"#8BA6D3","why":"AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
-        "GLD":  {"icon":get_svg("shield", 14, "#FFD700"),"colour":"#FFD700","why":"Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
-        "VNQ":  {"icon":get_svg("layers", 14, "#FF9B6B"),"colour":"#FF9B6B","why":"VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
-        "ESGU": {"icon":get_svg("shield-check", 14, "#4CAF50"),"colour":"#4CAF50","why":"ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
-        "PDBC": {"icon":get_svg("risk", 14, "#FF6B6B"),"colour":"#FF6B6B","why":"PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
-    }
+    _render_section_intro(
+        "Why Each Asset Was Chosen",
+        f'The MINN selected these specific ETFs based on your risk score of <b style="color:#ffffff;">{res.get("score", 5):.0f}/10</b> and how they interact in the co-movement model.',
+        icon_svg=get_svg("puzzle", 24, ACCENT),
+        margin_top=28,
+    )
 
     why_cols = st.columns(2)
     for i, (asset, pct) in enumerate(sorted_alloc):
@@ -787,7 +794,7 @@ def _render_portfolio():
 
     # ── HISTORICAL STRESS TEST ──
     st.markdown("---")
-    st.markdown(f"""<div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.01em;margin:12px 0 16px; display:flex; align-items:center; gap:10px;">{get_svg("shield", 24, ACCENT)} Resilience Stress Test</div>""", unsafe_allow_html=True)
+    _render_section_intro("Resilience Stress Test", "", icon_svg=get_svg("shield", 24, ACCENT), margin_top=12)
     c1, c2, c3 = st.columns(3)
     stress_scenarios = [
         ("2008 Financial Crisis", "-18.2%", "Capital preservation focus enabled."),
@@ -821,5 +828,3 @@ Past performance does not guarantee future results.</div>
             st.session_state.survey_answers = {}
             st.session_state.result         = None
             st.rerun()
-
-
