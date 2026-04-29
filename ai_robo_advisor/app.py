@@ -90,22 +90,30 @@ try:
 except Exception:
     GOOGLE_CLIENT_ID = GOOGLE_CLIENT_SECRET = ""
 
-google_oauth = OAuth2Component(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    "https://accounts.google.com/o/oauth2/v2/auth",
-    "https://oauth2.googleapis.com/token",
-    "https://www.googleapis.com/oauth2/v3/userinfo",
-    "https://www.googleapis.com/oauth2/v3/userinfo",
-)
+# Only create OAuth components when credentials are present — empty strings
+# cause OAuth2Component to throw, making both buttons show "not configured".
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    google_oauth = OAuth2Component(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        "https://accounts.google.com/o/oauth2/v2/auth",
+        "https://oauth2.googleapis.com/token",
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+    )
+else:
+    google_oauth = None
 
-linkedin_oauth = OAuth2Component(
-    LINKEDIN_CLIENT_ID,
-    LINKEDIN_CLIENT_SECRET,
-    "https://www.linkedin.com/oauth/v2/authorization",
-    "https://www.linkedin.com/oauth/v2/accessToken",
-    "https://api.linkedin.com/v2/userinfo",
-)
+if LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET:
+    linkedin_oauth = OAuth2Component(
+        LINKEDIN_CLIENT_ID,
+        LINKEDIN_CLIENT_SECRET,
+        "https://www.linkedin.com/oauth/v2/authorization",
+        "https://www.linkedin.com/oauth/v2/accessToken",
+        "https://api.linkedin.com/v2/userinfo",
+    )
+else:
+    linkedin_oauth = None
 
 # ── ML model path (shared with portfolio pages) ───────────────────────────────
 MODEL_PATH = os.path.join(_PKG_DIR, "model.pkl")
