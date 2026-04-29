@@ -403,17 +403,18 @@ def _render_portfolio():
     # ── Row 1: allocation | diagnostics ───────────────────────────────────────
     col1, col2 = st.columns([1, 1.4], gap="large")
     with col1:
-        st.markdown(f'<div class="card"><div class="panel-title"><div class="rich-tooltip">Asset Allocation <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Asset Allocation</div>This chart shows how your money is divided across asset classes. Spreading across different areas reduces the risk of losing money if one area performs poorly — this is the core of Markowitz portfolio theory.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px;">Asset Allocation</p>', unsafe_allow_html=True)
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
-        etf_html = '<div style="margin-top:10px;">'
+        etf_html = '<div style="margin-top:4px;">'
         for asset, pct_v in sorted_weights.items():
-            etf_html += (f'<div class="etf-row"><span class="etf-name">{asset}</span>'
-                         f'<span style="color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
-        st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
+            etf_html += (f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+                         f'<span style="font-size:12px;color:#C5D3EC;">{asset}</span>'
+                         f'<span style="font-size:12px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
+        st.markdown(etf_html + "</div>", unsafe_allow_html=True)
 
     with col2:
         if st.session_state.explanation_mode == "advanced":
-            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("brain", 14, ACCENT)} &nbsp; <div class="rich-tooltip">Markowitz MINN Architecture Diagnostics <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("brain", 14)} Markowitz MINN</div>Behind the scenes, the Markowitz-Informed Neural Network calculates parameters to balance your portfolio. Threshold (δ) controls how much co-movement risk is allowed, while Decay (γ) determines how much weight is given to recent market changes versus long-term trends.</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 12px;">MINN Architecture Diagnostics</p>', unsafe_allow_html=True)
             
             ic1, ic2 = st.columns(2)
             with ic1:
@@ -455,11 +456,9 @@ def _render_portfolio():
             fig_r.update_traces(hovertemplate="<b>%{y} Regime</b><br>Probability: %{x:.1%}<br><i>%{customdata[0]}</i><extra></extra>")
             fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None, height=180, margin=dict(l=0,r=20,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_r, use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
 
-            # ── Strategic Tuning Panel (Persistent) ───────────────────────────────
-            st.markdown(f'<div class="card" style="margin-top:20px;"><div class="panel-title">{get_svg("settings", 14, ACCENT)} &nbsp; Strategic AI Tuning</div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:15px;">Manually override the neural manifold parameters to tune your risk exposure.</div>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 6px;">Strategic AI Tuning</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:12px;">Manually override the neural manifold parameters to tune your risk exposure.</p>', unsafe_allow_html=True)
             
             # Load existing config from DB if available
             saved_config = database.get_portfolio_config(st.session_state.get("user_email", "guest"))
@@ -475,10 +474,9 @@ def _render_portfolio():
                 database.add_notification(st.session_state.get("user_email", "guest"), "Strategic Sync Successful", f"Your MINN parameters have been synchronized with the LEM StratIQ cloud.", "success")
                 st.success("Configuration Pushed to MongoDB Atlas!")
                 st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="card"><div class="panel-title">{get_svg("chart", 14, ACCENT)} &nbsp; Portfolio Snapshot</div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="font-size:11px;color:{MUTED};margin-bottom:18px;">A simpler summary of your current portfolio characteristics and expected behaviour.</div>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Portfolio Snapshot</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A simpler summary of your current portfolio characteristics and expected behaviour.</p>', unsafe_allow_html=True)
             snapshot_col1, snapshot_col2 = st.columns(2)
             with snapshot_col1:
                 st.markdown(f"""
@@ -496,8 +494,7 @@ def _render_portfolio():
                     <div style="font-size:9px; color:{MUTED};">Asset sleeves selected</div>
                 </div>
                 """, unsafe_allow_html=True)
-            st.markdown(f'<div style="margin-top:16px;font-size:12px;color:#8BA6D3;line-height:1.6;">Your portfolio is built around <b style="color:#ffffff;">{cat}</b> with an expected annual return of <b style="color:#ffffff;">{stats["expected_annual_return"]:.1f}%</b> and expected volatility of <b style="color:#ffffff;">{stats["expected_volatility"]:.1f}%</b>.</div>', unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:12px;">Built around <b style="color:#fff;">{cat}</b> · Expected return <b style="color:#fff;">{stats["expected_annual_return"]:.1f}%</b> · Volatility <b style="color:#fff;">{stats["expected_volatility"]:.1f}%</b></p>', unsafe_allow_html=True)
 
     st.markdown("---")
     with st.expander("Data Source & Methodology — Where do these numbers come from?", icon=":material/info:"):
@@ -529,9 +526,9 @@ def _render_portfolio():
     # ── Row 2: performance | intelligence feed ───────────────────────────
     c1, c2 = st.columns([1.3, 1.0], gap="large")
     with c1:
-        st.markdown(f'<div class="card"><div class="panel-title"><div class="rich-tooltip">Monte Carlo Growth Simulation <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Monte Carlo Simulation</div>We ran 2,000 different simulated futures for your portfolio based on historical data. This shows the range of possible outcomes over time — giving you a realistic picture of both potential growth and potential downturns.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px;">Monte Carlo Growth Simulation</p>', unsafe_allow_html=True)
+        st.caption("2,000 simulated futures — showing P10 (conservative), P50 (median) and P90 (optimistic) paths.")
         st.plotly_chart(monte_chart(sim, color), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
@@ -571,23 +568,19 @@ def _render_portfolio():
             st.session_state.result["ai_narrative"] = insight
             database.save_assessment(st.session_state.get("user_email", "guest"), st.session_state.survey_answers, st.session_state.result)
 
+    import html as _html
+    _ai_text = _html.escape(str(st.session_state.get('ai_insight_text_v2', '...')))
+    _ai_src  = _html.escape(str(st.session_state.get('ai_insight_source_v2', 'CHECKING...')))
     st.markdown(f"""
-        <div style="background: rgba(155, 114, 242, 0.1);
-                    border: 1px solid rgba(155, 114, 242, 0.3);
-                    padding: 24px; border-radius: 16px; color: white;
-                    line-height: 1.8; margin-bottom: 24px;">
-            <div style="font-size: 11px; font-weight: 800; color: {ACCENT2}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;">
-                Neural Assessment Narrative
-                <span style="font-size:9px; background:rgba(155,114,242,0.2); padding:2px 8px; border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
-                <span style="font-size:9px; background:rgba(0,255,200,0.1); color:#00FFC8; padding:2px 8px; border-radius:20px; border: 1px solid rgba(0,255,200,0.2);">
-                    {st.session_state.get('ai_insight_source_v2', 'CHECKING...')}
-                </span>
-            </div>
-            <div style="font-size: 15px; opacity: 0.95; white-space: pre-line;">
-                {st.session_state.get('ai_insight_text_v2', '...')}
-            </div>
-        </div>
+    <div style="background:rgba(155,114,242,0.08);border:1px solid rgba(155,114,242,0.25);padding:20px 24px 8px;border-radius:16px;margin-bottom:0;">
+      <div style="font-size:11px;font-weight:800;color:{ACCENT2};text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        Neural Assessment Narrative
+        <span style="font-size:9px;background:rgba(155,114,242,0.2);padding:2px 8px;border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
+        <span style="font-size:9px;background:rgba(0,255,200,0.1);color:#00FFC8;padding:2px 8px;border-radius:20px;border:1px solid rgba(0,255,200,0.2);">{_ai_src}</span>
+      </div>
+    </div>
     """, unsafe_allow_html=True)
+    st.markdown(_ai_text.replace('\\n', '  \n'))
 
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
