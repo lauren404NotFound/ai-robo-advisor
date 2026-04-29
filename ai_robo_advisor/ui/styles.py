@@ -8,8 +8,7 @@ from __future__ import annotations
 import streamlit as st
 
 
-from explainer import DeepIQInterpreter, explain as local_explain
-import database
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # THEME - "Cyber Lilac" (Inspired by modern fintech UI)
@@ -36,7 +35,7 @@ PROFILE_COLORS = {
     "Profile 6": "#9B72F2",
 }
 
-MODEL_PATH = os.path.join(_PKG_DIR, "model.pkl")
+
 
 GLOBAL_CURRENCIES = [
     "AED (د.إ)", "AFN (؋)", "ALL (L)", "AMD (֏)", "ANG (ƒ)", "AOA (Kz)", "ARS ($)", "AUD (A$)", "AWG (ƒ)", "AZN (₼)", "BAM (KM)", "BBD ($)", 
@@ -129,16 +128,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Render Claude connection status in sidebar
-st.sidebar.markdown("### Systems Status")
-if claude_status == "Connected":
-    st.sidebar.success(f"● Claude: {claude_status}")
-elif "Key Missing" in claude_status:
-    st.sidebar.warning(f"● Claude: {claude_status}")
-    if st.sidebar.button("🔍 Debug Secrets"):
-        st.sidebar.write("App Path:", __file__)
-        st.sidebar.write("Available Keys:", list(st.secrets.keys()))
-        st.sidebar.info(f"Total keys found: {len(st.secrets.keys())}")
+
 
 st.markdown("""
 <style>
