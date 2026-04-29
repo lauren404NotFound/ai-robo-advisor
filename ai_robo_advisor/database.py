@@ -271,30 +271,73 @@ def update_password(email: str, new_password: str) -> bool:
 
 # ── Verification Codes ───────────────────────────────────────────────────────
 def save_verification_code(identifier: str, code: str, minutes_valid: int = 15):
+    """
+    Persist a new OTP code for ``identifier``, replacing any existing one.
+    ``expires_at`` is stored explicitly so verify_code() can enforce expiry
+    at the application layer — independent of MongoDB TTL sweep timing.
+    """
+    now = datetime.utcnow()
     _verification_codes().update_one(
         {"identifier": identifier},
         {
             "$set": {
-                "code": code,
-                "expires_at": datetime.utcnow() + timedelta(minutes=minutes_valid)
+                "code":       code,
+                "created_at": now,
+                "expires_at": now + timedelta(minutes=minutes_valid),
+                "attempts":   0,   # reset brute-force counter on new code
             }
         },
-        upsert=True
+        upsert=True,
     )
 
 def verify_code(identifier: str, code: str) -> bool:
     """
-    Verify an OTP code using constant-time comparison to prevent timing attacks.
-    Retrieves the stored code first, then compares using hmac.compare_digest
-    so the response time does not leak information about partial matches.
+    Verify an OTP code with all three security checks:
+
+    1. Existence   — document must be present in MongoDB.
+    2. Expiry      — ``expires_at`` is checked in Python, NOT delegated to
+                     the MongoDB TTL index.  The TTL sweep runs on a ~60-second
+                     background task; relying on it alone means a code could
+                     remain valid for up to 60 seconds past its stated expiry.
+    3. Value       — constant-time ``hmac.compare_digest`` prevents timing
+                     side-channel attacks that could leak partial-match info.
+
+    Additionally:
+    - A failed attempt increments ``attempts`` on the document.  After
+      ``MAX_ATTEMPTS`` failures the document is deleted, forcing the user
+      to request a new code (brute-force mitigation).
+    - A successful verification deletes the document immediately (single-use).
     """
+    MAX_ATTEMPTS = 5
+
     doc = _verification_codes().find_one({"identifier": identifier})
     if not doc:
         return False
-    # Constant-time comparison prevents timing side-channel attacks
+
+    # --- 1. Application-level expiry (do not trust TTL timing alone) ----------
+    expires_at = doc.get("expires_at")
+    if expires_at is None or datetime.utcnow() > expires_at:
+        # Code has expired — delete it now so TTL is never the safety net
+        _verification_codes().delete_one({"_id": doc["_id"]})
+        return False
+
+    # --- 2. Brute-force guard --------------------------------------------------
+    attempts = doc.get("attempts", 0)
+    if attempts >= MAX_ATTEMPTS:
+        _verification_codes().delete_one({"_id": doc["_id"]})
+        return False
+
+    # --- 3. Constant-time value comparison ------------------------------------
     if hmac.compare_digest(str(doc.get("code", "")), str(code)):
+        # Correct code — delete immediately (single-use)
         _verification_codes().delete_one({"_id": doc["_id"]})
         return True
+
+    # Wrong code — increment attempt counter
+    _verification_codes().update_one(
+        {"_id": doc["_id"]},
+        {"$inc": {"attempts": 1}},
+    )
     return False
 
 
