@@ -283,62 +283,27 @@ def get_real_claude_insight(port_data, user_answers, mode="simple"):
     """
 
     try:
-        # Calling Claude 3.5 Sonnet
         message = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20240620",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=800,
             temperature=0.5,
             messages=[{"role": "user", "content": prompt}]
         )
         return message.content[0].text
     except Exception as e:
-        return f"⚠️ **Claude Connection Failed**: {str(e)}"
-
-    # We send the RAW DATA to Claude, not a pre-written sentence
-    try:
-        first_asset = list(port_data['allocation_pct'].keys())[0] if port_data.get('allocation_pct') else "Core Assets"
-    except:
-        first_asset = "Core Assets"
-
-    prompt = f"""
-    Analyze this investor data and write a unique, personal narrative:
-    - Profile: {port_data['risk_category']}
-    - Sharpe Ratio: {port_data['stats']['sharpe_ratio']}
-    - User Age: {user_answers.get('q2_age')}
-    - User Horizon: {user_answers.get('q3_horizon')}
-    - Their Panic Reaction: {user_answers.get('q10_reaction')}
-
-    TASK: Write a 3-paragraph explanation explaining why this portfolio fits their specific psychology. 
-    Mention how their panic reaction influenced the choice of {first_asset}. 
-    Be professional yet encouraging.
-    """
-
-    try:
-        # Call Claude 3.5 Sonnet
-        message = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20240620",
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return message.content[0].text
-    except Exception as e:
-        err_msg = str(e)
-        if "credit balance is too low" in err_msg.lower():
-            return f"⚠️ **Claude API reached but out of credits**: {err_msg}"
-        return f"⚠️ **Claude API Error**: {err_msg}"
+        return None  # Signal failure cleanly — caller will use local fallback
 
 def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tuple[str, str]:
-    """Return (explanation_text, source_tag)."""
-    # Try Real AI first (Claude)
+    """Return (explanation_text, source_tag). Always returns clean text — never raw error strings."""
+    # 1. Try live Claude
     claude_insight = get_real_claude_insight(port, answers, mode)
-    if claude_insight and "⚠️" not in claude_insight:
+    if claude_insight:
         return claude_insight, "LIVE CLAUDE 3.5 SONNET"
 
-    # If Claude failed, fall back to local heuristic explainer
+    # 2. Fall back to local heuristic (clean, no error concatenation)
     try:
         local_explain = _get_local_explain()
         heuristic_insight = local_explain(port, answers)
-        full_text = f"{claude_insight}\n\n---\n\n### 🤖 Local Redundant Interpretation\n{heuristic_insight}" if claude_insight else heuristic_insight
-        return full_text, "DEEPIQ HEURISTIC + CLAUDE STATUS"
+        return heuristic_insight, "LOCAL HEURISTIC"
     except Exception as e:
-        return f"⚠️ **AI Narrative Error**: {str(e)}", "ERROR"
+        return f"Unable to generate insight: {str(e)}", "ERROR"
