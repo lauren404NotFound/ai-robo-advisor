@@ -1,23 +1,21 @@
 """
 ui/chatbot.py
 =============
-Floating Claude AI chatbot widget — investment-aware assistant.
+Floating Claude AI chatbot widget — fixed bottom-right on every page.
 Call render_chatbot() at the bottom of app.py after main_router().
 """
 from __future__ import annotations
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def _get_system_prompt() -> str:
-    """Build a context-aware system prompt from the user's current portfolio."""
-    base = """You are DeepAtomicIQ Assistant, an expert AI investment adviser for LEM StratIQ. 
+    base = """You are DeepAtomicIQ Assistant, an expert AI investment adviser for LEM StratIQ.
 You help users understand their portfolio, investment concepts, and financial planning.
-You are warm, professional, and speak plain English. UK English spelling.
-Never say "as an AI" or "I cannot provide financial advice" — you ARE the adviser.
-Keep responses concise — 2-4 sentences unless more detail is needed.
-Never use emojis."""
+You are warm, professional, and speak in plain English. UK English spelling.
+Keep responses concise — 2-4 sentences unless more detail is truly needed.
+Never use emojis. Never say "as an AI"."""
 
-    # Enrich with user's portfolio context if available
     result = st.session_state.get("result")
     if result:
         port  = result.get("portfolio", {})
@@ -27,234 +25,364 @@ Never use emojis."""
         score = result.get("score", 5)
         base += f"""
 
-Current user portfolio context:
-- Risk profile: {cat} (score: {score:.1f}/10)
+User's current portfolio:
+- Risk profile: {cat} (score {score:.1f}/10)
 - Expected annual return: {stats.get('expected_annual_return', 0):.1f}%
-- Expected volatility: {stats.get('expected_volatility', 0):.1f}%
+- Volatility: {stats.get('expected_volatility', 0):.1f}%
 - Sharpe ratio: {stats.get('sharpe_ratio', 0):.2f}
-- Asset allocation: {alloc}
+- Allocation: {alloc}
 
-Use this context to give personalised answers about their specific portfolio."""
-
+Reference this when answering questions about their portfolio."""
     return base
 
 
 def _call_claude(messages: list) -> str:
-    """Call Claude API and return response text."""
     try:
         import anthropic
-        api_key = (
+        key = (
             st.secrets.get("anthropic_api_key")
             or st.secrets.get("ANTHROPIC_API_KEY")
             or st.secrets.get("anthropic", {}).get("api_key")
         )
-        if not api_key:
-            return "I'm unable to connect right now — the API key is not configured."
-
-        client  = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
+        if not key:
+            return "API key not configured — please check your Streamlit secrets."
+        client = anthropic.Anthropic(api_key=key)
+        resp   = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=400,
+            max_tokens=350,
             system=_get_system_prompt(),
             messages=messages,
         )
-        return response.content[0].text.strip()
+        return resp.content[0].text.strip()
     except Exception as e:
         return f"Connection error — please try again. ({type(e).__name__})"
 
 
 def render_chatbot():
-    """Render the floating chatbot widget."""
+    """Inject the floating chatbot. Call once per page at the bottom of app.py."""
 
-    # ── Session state init ────────────────────────────────────────────────────
-    if "chatbot_open" not in st.session_state:
-        st.session_state.chatbot_open = False
-    if "chatbot_messages" not in st.session_state:
-        st.session_state.chatbot_messages = []
-    if "chatbot_input_key" not in st.session_state:
-        st.session_state.chatbot_input_key = 0
+    # ── Session init ──────────────────────────────────────────────────────────
+    if "cb_open"     not in st.session_state: st.session_state.cb_open     = False
+    if "cb_messages" not in st.session_state: st.session_state.cb_messages = []
+    if "cb_key"      not in st.session_state: st.session_state.cb_key      = 0
 
-    # ── Toggle button (fixed bottom-right) ───────────────────────────────────
-    st.markdown("""
-    <style>
-    #chatbot-fab-marker + div {
-        position: fixed !important;
-        bottom: 28px !important;
-        right: 28px !important;
-        z-index: 10000 !important;
-        width: auto !important;
-    }
-    #chatbot-fab-marker + div button {
-        width: 56px !important;
-        height: 56px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #6D5EFC, #3BA4FF) !important;
-        border: none !important;
-        box-shadow: 0 8px 32px rgba(109,94,252,0.5) !important;
-        font-size: 22px !important;
-        padding: 0 !important;
-        color: white !important;
-        transition: all 0.3s ease !important;
-    }
-    #chatbot-fab-marker + div button:hover {
-        transform: scale(1.1) !important;
-        box-shadow: 0 12px 40px rgba(109,94,252,0.7) !important;
-    }
-    </style>
-    <div id="chatbot-fab-marker"></div>
-    """, unsafe_allow_html=True)
+    # ── Inject persistent floating HTML/CSS (always present) ─────────────────
+    name = ""
+    if st.session_state.get("user_name"):
+        name = st.session_state.user_name.strip().split()[0]
 
-    fab_label = "✕" if st.session_state.chatbot_open else "💬"
-    if st.button(fab_label, key="chatbot_fab"):
-        st.session_state.chatbot_open = not st.session_state.chatbot_open
-        st.rerun()
+    has_portfolio = bool(st.session_state.get("result"))
+    if has_portfolio:
+        welcome = f"Hi{' ' + name if name else ''}! I can see your portfolio is set up. Ask me anything about your investments or financial planning."
+    else:
+        welcome = f"Hi{' ' + name if name else ''}! I'm your AI investment assistant. Ask me anything about investing or how LEM StratIQ works."
 
-    if not st.session_state.chatbot_open:
-        return
+    # Build message HTML
+    msgs_html = ""
+    for m in st.session_state.cb_messages[-30:]:
+        if m["role"] == "user":
+            msgs_html += f'<div class="cb-bubble cb-user">{m["content"]}</div>'
+        else:
+            msgs_html += f'<div class="cb-bubble cb-bot">{m["content"]}</div>'
 
-    # ── Chat panel (fixed bottom-right above FAB) ─────────────────────────────
-    st.markdown("""
-    <style>
-    #chatbot-panel-marker + div[data-testid="stVerticalBlock"] {
-        position: fixed !important;
-        bottom: 96px !important;
-        right: 28px !important;
-        width: 380px !important;
-        max-height: 520px !important;
-        z-index: 9999 !important;
-        background: rgba(8, 10, 26, 0.98) !important;
-        border: 1px solid rgba(109,94,252,0.4) !important;
-        border-radius: 20px !important;
-        padding: 0 !important;
-        box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(109,94,252,0.2) !important;
-        backdrop-filter: blur(24px) !important;
-        overflow: hidden !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    </style>
-    <div id="chatbot-panel-marker"></div>
-    """, unsafe_allow_html=True)
+    open_class = "cb-open" if st.session_state.cb_open else ""
+
+    components.html(f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }}
+
+  /* FAB button */
+  #cb-fab {{
+    position: fixed;
+    bottom: 28px; right: 28px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%);
+    box-shadow: 0 6px 28px rgba(109,94,252,0.55);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 99999;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+  }}
+  #cb-fab:hover {{
+    transform: scale(1.08);
+    box-shadow: 0 10px 36px rgba(109,94,252,0.7);
+  }}
+  #cb-fab svg {{ transition: transform 0.3s ease; }}
+
+  /* Chat panel */
+  #cb-panel {{
+    position: fixed;
+    bottom: 96px; right: 28px;
+    width: 360px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 12px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    z-index: 99998;
+    transform: scale(0.92) translateY(16px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease;
+    max-height: 520px;
+  }}
+  #cb-panel.cb-open {{
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }}
+
+  /* Header */
+  .cb-header {{
+    background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }}
+  .cb-avatar {{
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.4);
+  }}
+  .cb-header-text {{ flex: 1; }}
+  .cb-header-name {{ font-size: 14px; font-weight: 700; color: #fff; }}
+  .cb-header-sub  {{ font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; }}
+  .cb-online {{
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #4AE3A0;
+    box-shadow: 0 0 8px #4AE3A0;
+    flex-shrink: 0;
+  }}
+  .cb-close {{
+    background: rgba(255,255,255,0.15); border: none;
+    width: 26px; height: 26px; border-radius: 50%;
+    cursor: pointer; color: #fff; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }}
+  .cb-close:hover {{ background: rgba(255,255,255,0.3); }}
+
+  /* Messages */
+  .cb-messages {{
+    flex: 1; overflow-y: auto; padding: 16px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    background: #f8f9fc;
+    min-height: 200px; max-height: 320px;
+  }}
+  .cb-messages::-webkit-scrollbar {{ width: 4px; }}
+  .cb-messages::-webkit-scrollbar-track {{ background: transparent; }}
+  .cb-messages::-webkit-scrollbar-thumb {{ background: #d1d5db; border-radius: 4px; }}
+
+  .cb-bubble {{
+    max-width: 82%; padding: 10px 14px;
+    font-size: 13px; line-height: 1.55;
+    border-radius: 18px; word-break: break-word;
+  }}
+  .cb-bot {{
+    background: #ffffff; color: #1a1a2e;
+    border-radius: 4px 18px 18px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    align-self: flex-start;
+  }}
+  .cb-user {{
+    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+    color: #ffffff;
+    border-radius: 18px 18px 4px 18px;
+    align-self: flex-end;
+    box-shadow: 0 2px 8px rgba(109,94,252,0.3);
+  }}
+
+  /* Quick replies */
+  .cb-quick {{
+    padding: 10px 14px 4px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: #f8f9fc;
+  }}
+  .cb-qbtn {{
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 11.5px; color: #6D5EFC; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+    font-weight: 600;
+  }}
+  .cb-qbtn:hover {{
+    background: #6D5EFC; color: #fff; border-color: #6D5EFC;
+  }}
+
+  /* Input */
+  .cb-input-wrap {{
+    padding: 12px 14px;
+    background: #fff;
+    border-top: 1px solid #f0f0f5;
+    display: flex; gap: 8px; align-items: center;
+  }}
+  .cb-input {{
+    flex: 1; border: 1.5px solid #e5e7eb; border-radius: 24px;
+    padding: 9px 16px; font-size: 13px; color: #1a1a2e;
+    outline: none; transition: border-color 0.2s;
+    background: #f8f9fc;
+  }}
+  .cb-input:focus {{ border-color: #6D5EFC; background: #fff; }}
+  .cb-input::placeholder {{ color: #9ca3af; }}
+  .cb-send {{
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+    border: none; cursor: pointer; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 3px 12px rgba(109,94,252,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }}
+  .cb-send:hover {{ transform: scale(1.08); box-shadow: 0 5px 16px rgba(109,94,252,0.55); }}
+</style>
+</head>
+<body>
+
+<!-- FAB -->
+<button id="cb-fab" onclick="toggleChat()">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+</button>
+
+<!-- Chat panel -->
+<div id="cb-panel" class="{open_class}">
+  <!-- Header -->
+  <div class="cb-header">
+    <div class="cb-avatar">✦</div>
+    <div class="cb-header-text">
+      <div class="cb-header-name">DeepAtomicIQ Assistant</div>
+      <div class="cb-header-sub">Powered by Claude AI</div>
+    </div>
+    <div class="cb-online"></div>
+    <button class="cb-close" onclick="toggleChat()">✕</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="cb-messages" id="cb-msgs">
+    {'<div class="cb-bubble cb-bot">' + welcome + '</div>' if not msgs_html else msgs_html}
+  </div>
+
+  <!-- Quick replies (only show when no messages) -->
+  {'<div class="cb-quick"><button class="cb-qbtn" onclick="sendQuick(this)">What is my Sharpe ratio?</button><button class="cb-qbtn" onclick="sendQuick(this)">Explain my allocation</button><button class="cb-qbtn" onclick="sendQuick(this)">What is volatility?</button><button class="cb-qbtn" onclick="sendQuick(this)">How does rebalancing work?</button></div>' if not msgs_html else ''}
+
+  <!-- Input -->
+  <div class="cb-input-wrap">
+    <input class="cb-input" id="cb-input" type="text"
+      placeholder="Write your message..."
+      onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="cb-send" onclick="sendMsg()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+function toggleChat() {{
+  var panel = document.getElementById('cb-panel');
+  panel.classList.toggle('cb-open');
+}}
+
+function scrollToBottom() {{
+  var msgs = document.getElementById('cb-msgs');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}}
+scrollToBottom();
+
+function sendQuick(btn) {{
+  document.getElementById('cb-input').value = btn.textContent;
+  sendMsg();
+}}
+
+function sendMsg() {{
+  var input = document.getElementById('cb-input');
+  var text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  // Send to Streamlit via URL param trick
+  window.parent.postMessage({{type: 'streamlit:setComponentValue', value: text}}, '*');
+}}
+</script>
+</body>
+</html>
+""", height=0, scrolling=False)
+
+    # ── Streamlit-side: hidden input + send button ────────────────────────────
+    # The FAB and panel are pure HTML injected via components.html above.
+    # For actual message sending we use a hidden Streamlit form.
 
     with st.container():
-        # Header
         st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, rgba(109,94,252,0.3), rgba(59,164,255,0.15));
-            padding: 16px 20px;
-            border-bottom: 1px solid rgba(109,94,252,0.2);
-            display: flex; align-items: center; gap: 12px;
-        ">
-            <div style="
-                width: 36px; height: 36px; border-radius: 10px;
-                background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
-                display: flex; align-items: center; justify-content: center;
-                font-size: 18px; flex-shrink: 0;
-            ">✦</div>
-            <div>
-                <div style="font-size: 14px; font-weight: 800; color: #fff;">DeepAtomicIQ Assistant</div>
-                <div style="font-size: 11px; color: rgba(255,255,255,0.45);">Powered by Claude AI · Always available</div>
-            </div>
-            <div style="margin-left:auto; width:8px; height:8px; border-radius:50%; background:#4AE3A0; box-shadow: 0 0 8px #4AE3A0;"></div>
-        </div>
+        <style>
+        /* Hide the Streamlit chatbot form — interaction happens via the HTML widget */
+        div[data-testid="stForm"]:has(#cb-hidden-marker) {
+            position: fixed !important;
+            bottom: 160px !important;
+            right: 28px !important;
+            width: 360px !important;
+            z-index: 100000 !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+        div[data-testid="stForm"]:has(#cb-hidden-marker) > div {
+            display: flex !important;
+            gap: 8px !important;
+            align-items: center !important;
+            background: #fff !important;
+            border-radius: 28px !important;
+            padding: 8px 8px 8px 16px !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1) !important;
+            border: 1.5px solid #e5e7eb !important;
+        }
+        div[data-testid="stForm"]:has(#cb-hidden-marker) input {
+            border: none !important;
+            background: transparent !important;
+            font-size: 13px !important;
+            color: #1a1a2e !important;
+            box-shadow: none !important;
+        }
+        div[data-testid="stForm"]:has(#cb-hidden-marker) button[kind="primaryFormSubmit"] {
+            width: 36px !important; height: 36px !important;
+            border-radius: 50% !important;
+            background: linear-gradient(135deg, #6D5EFC, #3BA4FF) !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: 0 3px 10px rgba(109,94,252,0.4) !important;
+            min-width: 0 !important;
+        }
+        </style>
+        <div id="cb-hidden-marker"></div>
         """, unsafe_allow_html=True)
 
-        # Messages area
-        messages = st.session_state.chatbot_messages
+        if st.session_state.cb_open:
+            with st.form(key=f"cb_form_{st.session_state.cb_key}", clear_on_submit=True):
+                cols = st.columns([6, 1])
+                with cols[0]:
+                    user_input = st.text_input(
+                        "", placeholder="Write your message...",
+                        label_visibility="collapsed",
+                        key=f"cb_text_{st.session_state.cb_key}"
+                    )
+                with cols[1]:
+                    submitted = st.form_submit_button("→")
 
-        if not messages:
-            # Welcome message
-            name = st.session_state.get("user_name", "").split()[0] if st.session_state.get("user_name") else ""
-            greeting = f"Hi {name}! " if name else "Hi! "
-            has_portfolio = bool(st.session_state.get("result"))
-            if has_portfolio:
-                welcome = f"{greeting}I can see your portfolio is set up. Ask me anything about your investments, risk profile, or financial planning."
-            else:
-                welcome = f"{greeting}I'm your AI investment assistant. Ask me anything about investing, portfolio strategy, or how LEM StratIQ works."
-
-            st.markdown(f"""
-            <div style="padding: 16px 20px;">
-                <div style="
-                    background: rgba(109,94,252,0.08);
-                    border: 1px solid rgba(109,94,252,0.15);
-                    border-radius: 14px 14px 14px 4px;
-                    padding: 12px 16px;
-                    font-size: 13px; color: #C5D3EC; line-height: 1.6;
-                    margin-bottom: 12px;
-                ">{welcome}</div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:5px 12px;font-size:11px;color:#8BA6D3;cursor:pointer;">What is my Sharpe ratio?</div>
-                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:5px 12px;font-size:11px;color:#8BA6D3;cursor:pointer;">Explain my allocation</div>
-                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:5px 12px;font-size:11px;color:#8BA6D3;cursor:pointer;">What is a Sharpe ratio?</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            # Render message history
-            msgs_html = '<div style="padding: 12px 20px; max-height: 300px; overflow-y: auto;">'
-            for msg in messages[-20:]:  # last 20 messages
-                if msg["role"] == "user":
-                    msgs_html += f"""
-                    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-                        <div style="
-                            background: linear-gradient(135deg, rgba(109,94,252,0.4), rgba(59,164,255,0.2));
-                            border: 1px solid rgba(109,94,252,0.3);
-                            border-radius: 14px 14px 4px 14px;
-                            padding: 10px 14px; max-width: 80%;
-                            font-size: 13px; color: #fff; line-height: 1.5;
-                        ">{msg['content']}</div>
-                    </div>"""
-                else:
-                    msgs_html += f"""
-                    <div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
-                        <div style="
-                            background: rgba(255,255,255,0.04);
-                            border: 1px solid rgba(255,255,255,0.08);
-                            border-radius: 14px 14px 14px 4px;
-                            padding: 10px 14px; max-width: 85%;
-                            font-size: 13px; color: #C5D3EC; line-height: 1.6;
-                        ">{msg['content']}</div>
-                    </div>"""
-            msgs_html += '</div>'
-            st.markdown(msgs_html, unsafe_allow_html=True)
-
-        # Input area
-        st.markdown('<div style="padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.06);">', unsafe_allow_html=True)
-
-        col_input, col_send = st.columns([5, 1])
-        with col_input:
-            user_input = st.text_input(
-                "",
-                placeholder="Ask anything about your portfolio...",
-                key=f"chatbot_input_{st.session_state.chatbot_input_key}",
-                label_visibility="collapsed",
-            )
-        with col_send:
-            send = st.button("→", key="chatbot_send", use_container_width=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Process message
-        if (send or user_input) and user_input and user_input.strip():
-            user_msg = user_input.strip()
-            st.session_state.chatbot_messages.append({"role": "user", "content": user_msg})
-
-            # Build messages for Claude (last 10 for context)
-            claude_messages = [
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.chatbot_messages[-10:]
-            ]
-
-            with st.spinner(""):
-                reply = _call_claude(claude_messages)
-
-            st.session_state.chatbot_messages.append({"role": "assistant", "content": reply})
-            st.session_state.chatbot_input_key += 1
-            st.rerun()
-
-        # Clear button
-        if messages:
-            if st.button("Clear conversation", key="chatbot_clear"):
-                st.session_state.chatbot_messages = []
-                st.session_state.chatbot_input_key += 1
+            if submitted and user_input and user_input.strip():
+                msg = user_input.strip()
+                st.session_state.cb_messages.append({"role": "user", "content": msg})
+                claude_msgs = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.cb_messages[-12:]
+                ]
+                with st.spinner(""):
+                    reply = _call_claude(claude_msgs)
+                st.session_state.cb_messages.append({"role": "assistant", "content": reply})
+                st.session_state.cb_key += 1
                 st.rerun()
