@@ -287,7 +287,7 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   content: ''; position: absolute; top: -15px; left: 0; width: 100%; height: 15px;
 }}
 @keyframes ddFade {{ from{{opacity:0;transform:translateY(-6px)}} to{{opacity:1;transform:translateY(0)}} }}
-.nav-profile-wrap:hover .nav-dropdown {{ display: block; }}
+.nav-profile-wrap:hover .nav-dropdown, .nav-bell-wrap:hover .nav-dropdown {{ display: block; }}
 .nav-dd-header {{ display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; }}
 .nav-dd-av {{ flex-shrink: 0; }}
 .nav-dd-name {{ font-size: 13px; font-weight: 700; color: #fff; }}
@@ -360,6 +360,26 @@ header[data-testid="stHeader"] {{ display: none !important; }}
     <div class="nav-bell-wrap" title="Notifications">
       <svg class="nav-bell-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span class="nav-bell-dot"></span>
+      <div class="nav-dropdown" style="right:-80px;width:290px;padding:16px;">
+        <div style="font-size:11px;font-weight:800;color:#6D5EFC;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.1em;padding:0 4px;">Notifications</div>
+        <div style="display:flex;gap:12px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="color:#8EF6D1;margin-top:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <div>
+            <div style="font-size:13px;color:#fff;font-weight:600;margin-bottom:3px;">Strategy Regenerated</div>
+            <div style="font-size:12px;color:#8BA6D3;line-height:1.4;">Your AI investment strategy was successfully refreshed.</div>
+            <div style="font-size:10px;color:rgba(139,166,211,0.5);margin-top:6px;font-weight:600;">JUST NOW</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;padding-bottom:8px;">
+          <div style="color:#3BA4FF;margin-top:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-9 5 18 2-9h5"></path></svg></div>
+          <div>
+            <div style="font-size:13px;color:#fff;font-weight:600;margin-bottom:3px;">Market Update</div>
+            <div style="font-size:12px;color:#8BA6D3;line-height:1.4;">S&P 500 up 1.2% today. Tech sector leads the rally.</div>
+            <div style="font-size:10px;color:rgba(139,166,211,0.5);margin-top:6px;font-weight:600;">2 HOURS AGO</div>
+          </div>
+        </div>
+        <a href="?page=dashboard{tp}" class="nav-dd-item" style="margin-top:12px;justify-content:center;font-size:12px;color:#fff;font-weight:700;border:none;background:linear-gradient(135deg,rgba(109,94,252,0.15),rgba(109,94,252,0.05));border-radius:10px;box-shadow:inset 0 0 0 1px rgba(109,94,252,0.3);">View Dashboard</a>
+      </div>
     </div>
     <div class="nav-sep"></div>
     {auth_html.strip()}

@@ -751,13 +751,13 @@ def _render_portfolio():
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
-        if st.button("Regenerate Strategy", icon=":material/refresh:", use_container_width=True):
+        if st.button("Regenerate Strategy", icon=":material/refresh:", key="regen_strat_dash", use_container_width=True):
             if "ai_insight_text_v2" in st.session_state:
                 del st.session_state["ai_insight_text_v2"]
             st.rerun()
     with btn_col2:
         if st.session_state.get("user_email") != "guest":
-            if st.button("Email Report", icon=":material/mail:", use_container_width=True):
+            if st.button("Email Report", icon=":material/mail:", key="email_rep_dash", use_container_width=True):
                 with st.spinner("Delivering report..."):
                     sent = send_portfolio_report(
                         st.session_state.user_email,
