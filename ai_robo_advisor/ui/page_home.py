@@ -4,6 +4,7 @@ ui/page_home.py
 Landing page renderer.
 """
 from __future__ import annotations
+import re as _re
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
@@ -11,10 +12,63 @@ import numpy as np
 from ui.styles import ACCENT, ACCENT2, MUTED, get_svg
 from ui.auth import _do_logout
 
+
+def _get_claude_insight(cat: str, stats: dict, port: dict, ans: dict) -> str:
+    """Call Claude and return a personalised investment strategy string."""
+    try:
+        import anthropic as _anthropic
+        _ant_key = (
+            st.secrets.get("anthropic_api_key")
+            or st.secrets.get("ANTHROPIC_API_KEY")
+            or st.secrets.get("anthropic", {}).get("api_key")
+        )
+        if not _ant_key:
+            return _fallback_insight(cat, stats)
+
+        _client = _anthropic.Anthropic(api_key=_ant_key)
+        _prompt = f"""You are DeepAtomicIQ, an expert AI investment strategist for LEM StratIQ.
+
+A user has been assigned the following portfolio:
+- Risk category: {cat}
+- Expected annual return: {stats.get('expected_annual_return', 0):.1f}%
+- Expected volatility: {stats.get('expected_volatility', 0):.1f}%
+- Sharpe ratio: {stats.get('sharpe_ratio', 0):.2f}
+- Asset allocation: {port.get('allocation_pct', {})}
+
+Their survey answers: {ans}
+
+Write a concise, personalised 3-paragraph explanation of why this portfolio suits them.
+Paragraph 1: What their answers reveal about them as an investor.
+Paragraph 2: Why this specific allocation matches their profile.
+Paragraph 3: What they can realistically expect and one actionable tip.
+Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
+
+        _msg = _client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=500,
+            messages=[{"role": "user", "content": _prompt}],
+        )
+        return _msg.content[0].text.strip()
+    except Exception:
+        return _fallback_insight(cat, stats)
+
+
+def _fallback_insight(cat: str, stats: dict) -> str:
+    return (
+        f"Your survey responses indicate a {cat} investor profile. "
+        f"Based on your risk tolerance and investment horizon, our neural engine has constructed "
+        f"a portfolio targeting {stats.get('expected_annual_return', 0):.1f}% annual returns "
+        f"with a Sharpe ratio of {stats.get('sharpe_ratio', 0):.2f}.\n\n"
+        f"The asset allocation has been optimised to balance growth and protection across "
+        f"multiple market regimes, ensuring your capital is positioned for long-term compounding.\n\n"
+        f"We recommend reviewing your portfolio annually or after any significant life event. "
+        f"Consider setting up a regular monthly contribution to benefit from pound-cost averaging."
+    )
+
+
 def page_home():
     st.markdown("""
     <style>
-      
       .hero-section {
         display: flex; align-items: center; justify-content: space-between;
         margin-top: 100px; margin-bottom: 140px; gap: 80px;
@@ -29,7 +83,6 @@ def page_home():
         font-size: 1.25rem; color: #8BA6D3; line-height: 1.6; margin-bottom: 40px;
         max-width: 95%;
       }
-
       #hero-btn-marker + div [data-testid="stButton"] > button {
           background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%) !important;
           color: white !important;
@@ -49,7 +102,6 @@ def page_home():
           font-size: 22px !important;
           font-weight: 800 !important;
       }
-      
       .hero-right { flex: 1; }
       .glass-card-hero {
         background: rgba(255,255,255,0.02); backdrop-filter: blur(24px);
@@ -62,15 +114,11 @@ def page_home():
         width: 150px; height: 150px; background: radial-gradient(circle, rgba(142,246,209,0.2) 0%, transparent 70%);
         border-radius: 50%; pointer-events: none;
       }
-      
       .hero-metric-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
       .hero-metric { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; border: 1px solid rgba(255,255,255,0.03); }
       .hm-title { font-size: 11px; color: #8BA6D3; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
       .hm-val { font-size: 24px; font-weight: 800; color: #ffffff; }
       .hm-trend { font-size: 12px; color: #8EF6D1; margin-left: 8px; }
-      
-      /* Features */
-      
       .feature-section { margin-top: 140px; }
       .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 50px; }
       .feature-card {
@@ -78,7 +126,6 @@ def page_home():
         border-radius: 20px; padding: 40px; transition: all 0.3s ease;
         backdrop-filter: blur(12px); position: relative; overflow: hidden;
       }
-
       .feature-card:hover {
         background: rgba(255,255,255,0.04); border-color: rgba(109, 94, 252, 0.4);
         transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.3);
@@ -91,10 +138,7 @@ def page_home():
       }
       .feature-title { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 10px; }
       .feature-desc { font-size: 14px; color: #8BA6D3; line-height: 1.6; }
-      
-      /* Explainer */
       .explain-section { margin-top: 100px; margin-bottom: 60px; text-align: center; }
-      .explain-title { font-size: 32px; font-weight: 800; color: #ffffff; margin-bottom: 16px; }
       .chat-box {
         background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
         border-radius: 20px; padding: 30px; text-align: left; max-width: 800px; margin: 0 auto;
@@ -104,9 +148,8 @@ def page_home():
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns([1.1, 1], gap="large")
-    
+
     with col1:
-        # Build the welcome string based on login state
         user_name = st.session_state.get("user_name", "")
         if user_name:
             first_name = user_name.strip().split()[0]
@@ -116,7 +159,6 @@ def page_home():
 
         st.markdown(f"""
         <style>
-        /* Frame 1: visible 0→42%, fade out 42→48%, hidden 48→92%, fade in 92→100% */
         @keyframes heroShow {{
           0%   {{ opacity: 1; transform: translateY(0); }}
           42%  {{ opacity: 1; transform: translateY(0); }}
@@ -124,7 +166,6 @@ def page_home():
           92%  {{ opacity: 0; transform: translateY(10px); }}
           100% {{ opacity: 1; transform: translateY(0); }}
         }}
-        /* Frame 2: hidden 0→42%, fade in 48→54%, visible 54→92%, fade out 92→100% */
         @keyframes heroHide {{
           0%   {{ opacity: 0; transform: translateY(10px); }}
           42%  {{ opacity: 0; transform: translateY(10px); }}
@@ -133,17 +174,11 @@ def page_home():
           92%  {{ opacity: 1; transform: translateY(0); }}
           100% {{ opacity: 0; transform: translateY(-10px); }}
         }}
-        .hero-slot {{
-          position: relative;
-          height: 300px;
-          overflow: hidden;
-        }}
+        .hero-slot {{ position: relative; height: 300px; overflow: hidden; }}
         .hero-frame {{
           position: absolute; top: 0; left: 0; width: 100%;
-          animation-duration: 7s;
-          animation-timing-function: ease-in-out;
-          animation-iteration-count: infinite;
-          will-change: opacity, transform;
+          animation-duration: 7s; animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite; will-change: opacity, transform;
         }}
         .hero-frame-1 {{ animation-name: heroShow; }}
         .hero-frame-2 {{ animation-name: heroHide; }}
@@ -173,8 +208,7 @@ def page_home():
           </div>
         </div>
         """, unsafe_allow_html=True)
-        
-        # ── Premium Streamlit button custom-scaled using CSS
+
         st.markdown('<div id="hero-btn-marker"></div>', unsafe_allow_html=True)
         btn_col, btn_col2 = st.columns([1, 1])
         is_auth = st.session_state.get("authenticated", False)
@@ -190,7 +224,7 @@ def page_home():
                     st.session_state.survey_step = 0
                     st.session_state.survey_answers = {}
                 st.rerun()
-        
+
         with btn_col2:
             if not is_auth:
                 if st.button("Sign In / Join Now", key="hero_join", use_container_width=True):
@@ -201,13 +235,11 @@ def page_home():
                 if st.button("Log Out", key="hero_logout", use_container_width=True):
                     _do_logout()
                     st.rerun()
-        
+
         if not is_auth:
             st.markdown('<div style="font-size:11px; color:#8BA6D3; text-align:center; margin-top:8px; opacity:0.8;">✦ Identity verification required before Neural IQ analysis</div>', unsafe_allow_html=True)
-            
-    # ── Final Page Logic: Results & Interpretation ──
-    # Ensure consistency between Hero and Bottom sections
-    res_final = st.session_state.get("result")
+
+    res_final  = st.session_state.get("result")
     auth_final = st.session_state.get("authenticated", False)
 
     with col2:
@@ -215,32 +247,37 @@ def page_home():
             port   = res_final.get("portfolio", {})
             stats  = port.get("stats", {})
             alloc  = port.get("allocation_pct", {})
-            score  = res_final.get("score", 5)
             cat    = port.get("risk_category", "Balanced")
             exp_r  = stats.get("expected_annual_return", 0)
             vol    = stats.get("expected_volatility", 0)
             sharpe = stats.get("sharpe_ratio", 0)
             conf   = int(min(99, max(60, sharpe * 30 + 60)))
-            trend_sign = "▲" if exp_r >= 0 else "▼"
+            trend_sign  = "▲" if exp_r >= 0 else "▼"
             trend_color = "#8EF6D1" if exp_r >= 0 else "#FF6B6B"
 
             top3 = sorted(alloc.items(), key=lambda x: x[1], reverse=True)[:3]
-            bars_html = ""
+            bars_html  = ""
             bar_colors = ["#6D5EFC", "#3BA4FF", "#8EF6D1"]
             for i, (asset, pct) in enumerate(top3):
                 short = asset.split()[0]
-                bars_html += f'<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:11px;color:#8BA6D3;margin-bottom:3px;"><span>{short}</span><span>{pct:.0f}%</span></div><div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;"><div style="width:{pct}%;background:{bar_colors[i]};border-radius:4px;height:6px;transition:width 1s ease;"></div></div></div>'
+                bars_html += (
+                    f'<div style="margin-bottom:8px;">'
+                    f'<div style="display:flex;justify-content:space-between;font-size:11px;color:#8BA6D3;margin-bottom:3px;">'
+                    f'<span>{short}</span><span>{pct:.0f}%</span></div>'
+                    f'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;">'
+                    f'<div style="width:{pct}%;background:{bar_colors[i]};border-radius:4px;height:6px;"></div>'
+                    f'</div></div>'
+                )
 
-            guest_badge_html = '<div style="background:rgba(255,255,255,0.05); color:#fff; padding:4px 10px; border-radius:12px; font-size:10px; border:1px solid rgba(255,255,255,0.1);">Demo</div>'
             st.markdown(f"""
             <div class="glass-card-hero">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
                 <div style="font-size:14px; color:#ffffff; font-weight:700;">Your Strategic Portfolio</div>
                 <div style="display:flex; gap:8px;">
-                   {guest_badge_html}
+                   <div style="background:rgba(255,255,255,0.05); color:#fff; padding:4px 10px; border-radius:12px; font-size:10px; border:1px solid rgba(255,255,255,0.1);">Live</div>
                    <div style="background:rgba(142,246,209,0.12); color:#8EF6D1; padding:4px 12px;
                                 border-radius:20px; font-size:11px; font-weight:700;">
-                     Profile: {cat}
+                     {cat}
                    </div>
                 </div>
               </div>
@@ -279,7 +316,7 @@ def page_home():
                             border-radius:20px; font-size:11px; font-weight:700;">● Awaiting Profile</div>
               </div>
               <div style="padding:20px 0;">
-                <div style="font-size:11px; color:#8BA6D3; margin-bottom:10px;">PORTFOLIO PREVIEW CONTENT</div>
+                <div style="font-size:11px; color:#8BA6D3; margin-bottom:10px;">PORTFOLIO PREVIEW</div>
                 <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:8px; width:100%;"></div>
                 <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:8px; width:80%;"></div>
                 <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:20px; width:60%;"></div>
@@ -290,102 +327,70 @@ def page_home():
             </div>
             """, unsafe_allow_html=True)
 
-    # ── Section 2: AI Strategic Analysis ──
+    # ── Section 2: Claude AI Strategic Analysis ───────────────────────────────
     if auth_final and res_final:
-        # Clear any stale cached insight that came from the old fallback
-        port = res_final.get("portfolio", {})
-        _insight_key = f"home_ai_insight_{port.get('risk_category','')}"
+        port  = res_final.get("portfolio", {})
+        stats = port.get("stats", {})
+        ans   = st.session_state.get("survey_answers", {})
+        cat   = port.get("risk_category", "Balanced")
+
+        # Cache key tied to portfolio category — one Claude call per profile
+        _insight_key = f"home_ai_insight_{cat}"
+
+        # Clear any stale cached content (old fallback text, SVG leakage, etc.)
         stale = st.session_state.get(_insight_key, "")
-        if "DeepIQ Profile" in stale or "DeepAtomicIQ Profile" in stale or "What our AI sees" in stale:
+        if stale and any(x in stale for x in [
+            "DeepIQ Profile", "DeepAtomicIQ Profile", "What our AI sees",
+            "<svg", "Strategic weighting", "details_html",
+        ]):
             del st.session_state[_insight_key]
 
-        summary = res_final.get("ai_summary", "")
-        paragraphs = [p.strip() for p in summary.split("\n\n") if p.strip()]
-        verdict_para = paragraphs[0] if paragraphs else "Analysis complete."
-        details_text = "\n\n".join(paragraphs[1:]) if len(paragraphs) > 1 else "Strategic weighting confirmed."
-        import re
-        details_html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', details_text).replace("\n\n", "<br><br>").replace("\n", "<br>")
+        # Generate Claude insight if not already cached
+        if _insight_key not in st.session_state:
+            with st.spinner("Generating your personalised AI strategy..."):
+                st.session_state[_insight_key] = _get_claude_insight(cat, stats, port, ans)
+
+        raw_insight   = st.session_state[_insight_key]
+        insight_html  = _re.sub(r'\*\*(.+?)\*\*', r'<b style="color:#fff;">\1</b>', raw_insight)
+        insight_html  = insight_html.replace("\n\n", "<br><br>").replace("\n", "<br>")
 
         key_drivers = [
-            {"icon": "◷", "title": "Time Horizon", "desc": "Portfolio tuned for your optimal duration."},
-            {"icon": "◈", "title": "Risk Profile", "desc": "Calibrated to your volatility tolerance."},
-            {"icon": "△", "title": "Growth Focus", "desc": "Prioritising capital appreciation."},
+            {"icon": "◷", "title": "Time Horizon",  "desc": "Portfolio tuned for your optimal duration."},
+            {"icon": "◈", "title": "Risk Profile",   "desc": "Calibrated to your volatility tolerance."},
+            {"icon": "△", "title": "Growth Focus",   "desc": "Prioritising capital appreciation."},
         ]
         drivers_html = "".join([
-            f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(109,94,252,0.15);padding:20px 16px;border-radius:15px;text-align:center;">'
+            f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(109,94,252,0.15);'
+            f'padding:20px 16px;border-radius:15px;text-align:center;">'
             f'<div style="font-size:26px;font-weight:200;color:#6D5EFC;margin-bottom:8px;line-height:1;">{d["icon"]}</div>'
             f'<div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:4px;">{d["title"]}</div>'
             f'<div style="font-size:11px;color:#8BA6D3;line-height:1.4;">{d["desc"]}</div></div>'
             for d in key_drivers
         ])
 
-        # Generate Claude AI insight for this section
-        _insight_key = f"home_ai_insight_{port.get('risk_category','')}"
-        if _insight_key not in st.session_state:
-            try:
-                import anthropic as _anthropic
-                _ant_key = (
-                    st.secrets.get("anthropic_api_key")
-                    or st.secrets.get("ANTHROPIC_API_KEY")
-                    or st.secrets.get("anthropic", {}).get("api_key")
-                )
-                port = res_final.get("portfolio", {})
-                stats = port.get("stats", {})
-                ans = st.session_state.get("survey_answers", {})
-                cat = port.get("risk_category", "Balanced")
-
-                if _ant_key:
-                    _client = _anthropic.Anthropic(api_key=_ant_key)
-                    _prompt = f"""You are DeepAtomicIQ, an expert AI investment strategist for LEM StratIQ.
-
-A user has been assigned the following portfolio:
-- Risk category: {cat}
-- Expected annual return: {stats.get('expected_annual_return', 0):.1f}%
-- Expected volatility: {stats.get('expected_volatility', 0):.1f}%
-- Sharpe ratio: {stats.get('sharpe_ratio', 0):.2f}
-- Asset allocation: {port.get('allocation_pct', {})}
-
-Their survey answers: {ans}
-
-Write a concise, personalised 3-paragraph explanation of why this portfolio suits them.
-Paragraph 1: What their answers reveal about them as an investor.
-Paragraph 2: Why this specific allocation matches their profile.
-Paragraph 3: What they can realistically expect and one actionable tip.
-Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
-                    _msg = _client.messages.create(
-                        model="claude-sonnet-4-20250514",
-                        max_tokens=500,
-                        messages=[{"role": "user", "content": _prompt}],
-                    )
-                    st.session_state[_insight_key] = _msg.content[0].text.strip()
-                else:
-                    st.session_state[_insight_key] = details_html
-            except Exception:
-                st.session_state[_insight_key] = details_html
-
-        insight_text = st.session_state.get(_insight_key, details_html)
-        import re as _re
-        insight_html = _re.sub(r'\*\*(.+?)\*\*', r'<b style="color:#fff;">\1</b>', insight_text).replace("\n\n", "<br><br>").replace("\n", "<br>")
-
         st.markdown(f"""
 <div class="explain-section" style="margin-top:20px;text-align:left;">
 <h2 style="font-size:32px;font-weight:800;color:#ffffff;margin-bottom:30px;text-align:center;">Why This Portfolio Fits You</h2>
 <div style="border-left:4px solid #6D5EFC;background:rgba(109,94,252,0.04);border-radius:24px;padding:40px;border:1px solid rgba(255,255,255,0.06);">
-<div style="display:flex;align-items:center;margin-bottom:30px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:20px;">
-<div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF);width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-right:16px;font-size:20px;font-weight:200;color:#fff;">&#x2726;</div>
-<div>
-  <div style="font-weight:800;color:#fff;font-size:18px;letter-spacing:-0.01em;">Strategic Investment Verdict</div>
-  <div style="font-size:11px;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-top:3px;">Claude AI · DeepAtomicIQ Interpretation</div>
-</div></div>
-<div style="background:rgba(255,255,255,0.03);padding:24px;border-radius:18px;border:1px solid rgba(109,94,252,0.12);margin-bottom:28px;">
-<div style="font-size:10px;font-weight:800;color:#6D5EFC;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.1em;">Core Decision Drivers</div>
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">{drivers_html}</div></div>
-<div style="font-size:10px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.1em;">AI Strategy Analysis</div>
-<div style="color:#C5D3EC;line-height:1.85;font-size:14px;background:rgba(0,0,0,0.15);padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,0.04);">{insight_html}</div>
+  <div style="display:flex;align-items:center;margin-bottom:30px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:20px;">
+    <div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF);width:44px;height:44px;border-radius:10px;
+                display:flex;align-items:center;justify-content:center;margin-right:16px;
+                font-size:18px;color:#fff;font-weight:700;">✦</div>
+    <div>
+      <div style="font-weight:800;color:#fff;font-size:18px;letter-spacing:-0.01em;">Strategic Investment Verdict</div>
+      <div style="font-size:11px;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-top:3px;">Claude AI · DeepAtomicIQ Interpretation</div>
+    </div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);padding:24px;border-radius:18px;border:1px solid rgba(109,94,252,0.12);margin-bottom:28px;">
+    <div style="font-size:10px;font-weight:800;color:#6D5EFC;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.1em;">Core Decision Drivers</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">{drivers_html}</div>
+  </div>
+  <div style="font-size:10px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.1em;">AI Strategy Analysis</div>
+  <div style="color:#C5D3EC;line-height:1.85;font-size:14px;background:rgba(0,0,0,0.15);padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,0.04);">{insight_html}</div>
 </div></div>
 """, unsafe_allow_html=True)
 
-    # ── Section 3: Feature Grid ──
+    # ── Section 3: Feature Grid ───────────────────────────────────────────────
     st.markdown(f"""
 <div class="feature-section" style="margin-top:80px;text-align:center;">
 <h2 style="font-size:32px;font-weight:800;color:#ffffff;margin-bottom:10px;">Platform Capabilities</h2>
@@ -400,7 +405,7 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
 </div></div>
 """, unsafe_allow_html=True)
 
-    # ── "3 Simple Steps" Section (inspired by Moneyfarm) ──────────────────────
+    # ── Section 4: 3 Simple Steps ─────────────────────────────────────────────
     st.markdown("""
 <style>
 .steps-section { margin: 80px 0; text-align: center; }
@@ -417,12 +422,11 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
     margin-bottom: 22px; position: relative;
 }
 .step-circle::after {
-    content: ''; position: absolute; inset: -8px;
-    border-radius: 50%;
+    content: ''; position: absolute; inset: -8px; border-radius: 50%;
     background: radial-gradient(circle, rgba(109,94,252,0.15), transparent 70%);
 }
 .step-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-.step-desc { font-size: 13px; color: #8BA6D3; line-height: 1.6; }
+.step-desc  { font-size: 13px; color: #8BA6D3; line-height: 1.6; }
 </style>
 <div class="steps-section">
   <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;">How It Works</div>
@@ -455,7 +459,6 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
     border-radius: 50px !important; border: none !important;
     font-size: 16px !important; font-weight: 700 !important;
     box-shadow: 0 12px 36px rgba(109,94,252,0.35) !important;
-    display: block; margin: 0 auto;
 }
 </style>""", unsafe_allow_html=True)
     _, ctr, _ = st.columns([1, 1, 1])
@@ -464,7 +467,7 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
             st.session_state.nav_page = "dashboard"
             st.rerun()
 
-    # ── Savings vs Investing Comparison (inspired by InvestEngine) ───────────
+    # ── Section 5: Savings vs Investing ──────────────────────────────────────
     st.markdown("""
 <div style="margin:80px 0 20px; text-align:center;">
   <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;">The Power of Investing</div>
@@ -472,19 +475,20 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
   <p style="color:#8BA6D3;font-size:15px;margin-top:8px;">See what a £10,000 investment looks like over 20 years.</p>
 </div>
 """, unsafe_allow_html=True)
-    years = list(range(0, 21))
-    savings = [10000 * (1.045 ** y) for y in years]         # 4.5% savings rate
-    minn    = [10000 * (1.092 ** y) for y in years]         # ~9.2% MINN expected
+
+    years   = list(range(0, 21))
+    savings = [10000 * (1.045 ** y) for y in years]
+    minn    = [10000 * (1.092 ** y) for y in years]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=years, y=savings, name="Cash Savings (4.5% p.a.)",
         line=dict(color="#8BA6D3", width=2, dash="dot"),
-        fill="tozeroy", fillcolor="rgba(139,166,211,0.05)"
+        fill="tozeroy", fillcolor="rgba(139,166,211,0.05)",
     ))
     fig.add_trace(go.Scatter(
         x=years, y=minn, name="DeepAtomicIQ MINN (9.2% p.a.)",
         line=dict(color="#6D5EFC", width=3),
-        fill="tozeroy", fillcolor="rgba(109,94,252,0.1)"
+        fill="tozeroy", fillcolor="rgba(109,94,252,0.1)",
     ))
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -494,10 +498,10 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
         xaxis=dict(title="Years", color="#8BA6D3", gridcolor="rgba(255,255,255,0.04)", ticksuffix="yr"),
         yaxis=dict(title="Portfolio Value (£)", color="#8BA6D3", gridcolor="rgba(255,255,255,0.04)",
                    tickprefix="£", tickformat=",.0f"),
-        hovermode="x unified"
+        hovermode="x unified",
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    # Stat callouts below chart
+
     ca, cb, cc = st.columns(3)
     with ca:
         st.markdown('<div style="text-align:center;padding:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:16px;"><div style="font-size:11px;color:#8BA6D3;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Savings after 20yr</div><div style="font-size:26px;font-weight:900;color:#8BA6D3;">£24,117</div></div>', unsafe_allow_html=True)
@@ -506,4 +510,3 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
     with cc:
         st.markdown('<div style="text-align:center;padding:20px;background:rgba(142,246,209,0.05);border:1px solid rgba(142,246,209,0.2);border-radius:16px;"><div style="font-size:11px;color:#8EF6D1;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Extra Gain</div><div style="font-size:26px;font-weight:900;color:#8EF6D1;">+£35,353</div></div>', unsafe_allow_html=True)
     st.markdown('<p style="text-align:center;font-size:11px;color:rgba(139,166,211,0.5);margin-top:12px;">For illustrative purposes only. Past performance does not guarantee future results. Figures assume no fees.</p>', unsafe_allow_html=True)
-
