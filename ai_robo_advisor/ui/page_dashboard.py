@@ -467,12 +467,17 @@ def _render_portfolio():
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
         etf_html = '<div style="margin-top:4px;">'
         for asset, pct_v in sorted_weights.items():
-            short = asset.replace(".L", "")
-            role_title = ETF_ROLES.get(short, (short, ""))[0]
-            etf_html += (f'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
-                         f'<div><div style="font-size:12px;color:#fff;font-weight:600;">{short}</div>'
-                         f'<div style="font-size:10px;color:#8BA6D3;">{role_title}</div></div>'
-                         f'<span style="font-size:13px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
+            # Handle both short tickers ("VOO") and full names ("S&P 500 (VOO)")
+            import re as _re
+            _m = _re.search(r'\(([A-Z0-9.]+)\)', asset)
+            ticker = _m.group(1) if _m else asset.replace(".L", "")
+            display_name = asset.replace(".L", "")
+            role_title, _ = ETF_ROLES.get(ticker, (None, ""))
+            subtitle = role_title if role_title and role_title != display_name else ""
+            etf_html += (f'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+                         f'<div><div style="font-size:12px;color:#fff;font-weight:600;">{display_name}</div>'
+                         + (f'<div style="font-size:10px;color:#8BA6D3;">{subtitle}</div>' if subtitle else '')
+                         + f'</div><span style="font-size:13px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
         st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns([2.2, 1], gap="large")
@@ -497,82 +502,68 @@ def _render_portfolio():
 
 
         if st.session_state.get("explanation_mode", "simple") == "advanced":
-            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 12px;">MINN Architecture Diagnostics</p>', unsafe_allow_html=True)
+            with st.container():
+                st.markdown(f'<div class="card" style="padding:20px;margin-top:16px;">', unsafe_allow_html=True)
+                st.markdown(f'<p style="font-size:11px;font-weight:800;color:{ACCENT};text-transform:uppercase;letter-spacing:0.1em;margin:0 0 10px;">Advanced — MINN Diagnostics</p>', unsafe_allow_html=True)
 
-            ic1, ic2 = st.columns(2)
-            with ic1:
-                st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:10px; color:{MUTED};">THRESHOLD (δ)</div>
-                    <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{iq.get('delta',0):.2f}</div>
-                    <div style="font-size:9px; color:{MUTED};">Manifold Boundary</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with ic2:
-                st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:10px; color:{MUTED};">DECAY (γ)</div>
-                    <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{iq.get('gamma',0):.3f}</div>
-                    <div style="font-size:9px; color:{MUTED};">Temporal Discount</div>
-                </div>
-                """, unsafe_allow_html=True)
+                ic1, ic2 = st.columns(2)
+                with ic1:
+                    st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                        <div style="font-size:10px; color:{MUTED};">THRESHOLD (δ)</div>
+                        <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{iq.get('delta',0):.2f}</div>
+                        <div style="font-size:9px; color:{MUTED};">Manifold Boundary</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with ic2:
+                    st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
+                        <div style="font-size:10px; color:{MUTED};">DECAY (γ)</div>
+                        <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{iq.get('gamma',0):.3f}</div>
+                        <div style="font-size:9px; color:{MUTED};">Temporal Discount</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
-            r_names = list(regimes.keys())
-            r_vals  = list(regimes.values())
-            r_exps  = []
-            for r in r_names:
-                if r == "Body": r_exps.append("Normal, calm market conditions.")
-                elif r == "Tail": r_exps.append("Severe market crashes or extreme events.")
-                elif r == "Wing": r_exps.append("Moderate turbulence and volatility.")
-                else: r_exps.append("Baseline mathematical smoothing (Identity matrix).")
+                saved_config = database.get_portfolio_config(st.session_state.get("user_email", "guest"))
+                new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(saved_config.get("delta", iq.get("delta", 0.5))), 0.1)
+                new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(saved_config.get("gamma", iq.get("gamma", 0.1))), 0.001, format="%.3f")
 
-            fig_r = px.bar(x=r_vals, y=r_names, orientation='h', color=r_names,
-                           color_discrete_map={"Body":ACCENT,"Wing":ACCENT2,"Tail":NEG,"Identity":MUTED},
-                           custom_data=[r_exps])
-            fig_r.update_traces(hovertemplate="<b>%{y} Regime</b><br>Probability: %{x:.1%}<br><i>%{customdata[0]}</i><extra></extra>")
-            fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None,
-                                height=180, margin=dict(l=0,r=20,t=0,b=0),
-                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_r, use_container_width=True)
-
-            saved_config = database.get_portfolio_config(st.session_state.get("user_email", "guest"))
-            def_delta = saved_config.get("delta", iq.get("delta", 0.5))
-            def_gamma = saved_config.get("gamma", iq.get("gamma", 0.1))
-
-            new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(def_delta), 0.1)
-            new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(def_gamma), 0.001, format="%.3f")
-
-            if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
-                database.save_portfolio_config(st.session_state.get("user_email","guest"), {"delta":new_delta,"gamma":new_gamma})
-                database.add_notification(st.session_state.get("user_email","guest"), "Strategic Sync Successful",
-                                          "Your MINN parameters have been synchronized with the LEM StratIQ cloud.", "success")
-                st.success("Configuration Pushed to MongoDB Atlas!")
-                st.rerun()
+                if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
+                    database.save_portfolio_config(st.session_state.get("user_email","guest"), {"delta":new_delta,"gamma":new_gamma})
+                    st.success("Configuration saved!")
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Your Portfolio at a Glance</p>', unsafe_allow_html=True)
-            st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A plain-English summary of what your portfolio is designed to do.</p>', unsafe_allow_html=True)
-
+            # Build the snapshot as a single self-contained HTML card
+            snap_rows = ""
             snap_items = [
                 ("Assets in your portfolio", f"{len(sorted_alloc)} investment types", "Spreading across multiple assets reduces the risk of any one falling."),
                 ("Target annual growth",      f"{stats['expected_annual_return']:.1f}% per year", "This is the average return the model expects over time."),
-                ("Expected ups & downs",      f"±{stats['expected_volatility']:.1f}% per year",  "Your portfolio may swing by this amount in a given year — that's normal."),
-                ("Risk-to-reward score",      f"{stats['sharpe_ratio']:.2f} (higher = better)",  "Measures whether the returns justify the risk taken."),
+                ("Expected ups & downs",      f"±{stats['expected_volatility']:.1f}% per year",   "Your portfolio may swing by this amount in a given year — that's normal."),
+                ("Risk-to-reward score",      f"{stats['sharpe_ratio']:.2f} (higher = better)",   "Measures whether the returns justify the risk taken."),
             ]
             for s_label, s_val, s_desc in snap_items:
-                st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                snap_rows += f"""
+                <div style="display:flex;justify-content:space-between;align-items:baseline;
+                            padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <div>
                     <div style="font-size:11px;font-weight:700;color:#C5D3EC;">{s_label}</div>
-                    <div style="font-size:13px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;">{s_val}</div>
+                    <div style="font-size:10px;color:{MUTED};margin-top:2px;">{s_desc}</div>
                   </div>
-                  <div style="font-size:10px;color:{MUTED};line-height:1.4;">{s_desc}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                  <div style="font-size:13px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;
+                              white-space:nowrap;margin-left:12px;">{s_val}</div>
+                </div>"""
+            st.markdown(f"""
+            <div class="card" style="padding:20px;margin-top:16px;">
+              <div style="font-size:12px;font-weight:800;color:{ACCENT};text-transform:uppercase;
+                          letter-spacing:.1em;margin-bottom:12px;">Your Portfolio at a Glance</div>
+              {snap_rows}
+            </div>
+            """, unsafe_allow_html=True)
 
 
     with c2:
-        st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
+        st.markdown(f'<div id="section-allocation" class="card" style="padding:24px;">', unsafe_allow_html=True)
         st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Recent Activity</p>', unsafe_allow_html=True)
         st.markdown(f'<p style="font-size:11px;color:{MUTED};margin:0 0 12px;">Notifications about your portfolio and AI model updates.</p>', unsafe_allow_html=True)
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
