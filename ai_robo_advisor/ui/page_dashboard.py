@@ -536,7 +536,7 @@ def _render_portfolio():
 
     if "ai_insight_text_v2" not in st.session_state:
         with st.status("Analyzing your profile via Claude 3.5 Sonnet...", expanded=True) as status:
-            insight, source = get_ai_explanation("simple", port, {}, ans)
+            insight, source = get_ai_explanation(ans, port, {})
             st.session_state.ai_insight_text_v2 = insight
             st.session_state.ai_insight_source_v2 = source
             status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
