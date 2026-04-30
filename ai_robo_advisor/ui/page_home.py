@@ -292,6 +292,13 @@ def page_home():
 
     # ── Section 2: AI Strategic Analysis ──
     if auth_final and res_final:
+        # Clear any stale cached insight that came from the old fallback
+        port = res_final.get("portfolio", {})
+        _insight_key = f"home_ai_insight_{port.get('risk_category','')}"
+        stale = st.session_state.get(_insight_key, "")
+        if "DeepIQ Profile" in stale or "DeepAtomicIQ Profile" in stale or "What our AI sees" in stale:
+            del st.session_state[_insight_key]
+
         summary = res_final.get("ai_summary", "")
         paragraphs = [p.strip() for p in summary.split("\n\n") if p.strip()]
         verdict_para = paragraphs[0] if paragraphs else "Analysis complete."
