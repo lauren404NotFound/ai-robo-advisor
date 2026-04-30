@@ -432,10 +432,10 @@ def _render_portfolio():
 
     k1, k2, k3, k4 = st.columns(4)
     for col, label, val, hint, vc, icon_name in [
-        (k1, "Ann. Return",    f"{stats['expected_annual_return']:.1f}%",  "Expected p.a.",     POS,        "chart"),
-        (k2, "Volatility",    f"{stats['expected_volatility']:.1f}%",    "Predicted std dev",  "#C5D3EC",  "risk"),
-        (k3, "Sharpe Ratio",  f"{stats['sharpe_ratio']:.2f}",             "Risk-adj. return",   POS,        "zap"),
-        (k4, "P90 Scenario",  f"{get_currency_symbol()}{sim['p90']:,.0f}","Optimistic 10%ile",  color,      "layers"),
+        (k1, "Yearly Growth",    f"{stats['expected_annual_return']:.1f}%",  "How much your money could grow each year on average.", POS,       "chart"),
+        (k2, "Risk Level",       f"{stats['expected_volatility']:.1f}%",     "How much the value might go up or down year to year.",  "#C5D3EC", "risk"),
+        (k3, "Reward vs. Risk",  f"{stats['sharpe_ratio']:.2f}",              "Higher = better return for the amount of risk taken.",  POS,       "zap"),
+        (k4, "Best-Case Value",  f"{get_currency_symbol()}{sim['p90']:,.0f}","Your portfolio in the top 10% best scenario.",         color,     "layers"),
     ]:
         with col:
             st.markdown(f"""
@@ -445,7 +445,7 @@ def _render_portfolio():
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(237,237,243,0.5);">{label}</div>
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;color:{vc};letter-spacing:-0.02em;">{val}</div>
-              <div style="font-size:10px;color:rgba(230,213,255,0.3);margin-top:8px;">{hint}</div>
+              <div style="font-size:10px;color:rgba(230,213,255,0.35);margin-top:8px;line-height:1.4;">{hint}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -453,20 +453,24 @@ def _render_portfolio():
 
     with col1:
         st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
-        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Monte Carlo Growth Simulation</p>', unsafe_allow_html=True)
-        st.caption("2,000 simulated futures — showing P10, P50, and P90 paths.")
+        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Projected Portfolio Growth</p>', unsafe_allow_html=True)
+        st.markdown(f'<p style="font-size:12px;color:#8BA6D3;margin:0 0 12px;line-height:1.5;">This chart shows 2,000 computer-simulated futures for your portfolio. The <b style="color:#8EF6D1;">top line</b> is the optimistic path, the <b style="color:#fff;">middle</b> is most likely, and the <b style="color:#FF6B6B;">bottom line</b> is a cautious scenario.</p>', unsafe_allow_html=True)
         st.plotly_chart(monte_chart(sim, color), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
         st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
-        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Asset Allocation</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Where Your Money Goes</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:11px;color:#8BA6D3;margin:0 0 8px;">Your investment is spread across these assets to balance growth and safety.</p>', unsafe_allow_html=True)
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
         etf_html = '<div style="margin-top:4px;">'
         for asset, pct_v in sorted_weights.items():
-            etf_html += (f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
-                         f'<span style="font-size:12px;color:#C5D3EC;">{asset}</span>'
-                         f'<span style="font-size:12px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
+            short = asset.replace(".L", "")
+            role_title = ETF_ROLES.get(short, (short, ""))[0]
+            etf_html += (f'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+                         f'<div><div style="font-size:12px;color:#fff;font-weight:600;">{short}</div>'
+                         f'<div style="font-size:10px;color:#8BA6D3;">{role_title}</div></div>'
+                         f'<span style="font-size:13px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
         st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns([2.2, 1], gap="large")
@@ -474,15 +478,17 @@ def _render_portfolio():
         st.markdown(f"""
         <div class="card" style="padding: 24px; margin-bottom: 20px;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-            <div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("zap", 24, "#fff")}</div>
-            <div style="font-size: 20px; font-weight: 800; color: #ffffff; margin-bottom:0;">Markowitz-Informed Neural Network (MINN)</div>
+            <div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("zap", 20, "#fff")}</div>
+            <div>
+              <div style="font-size:15px;font-weight:800;color:#ffffff;">How your portfolio was built</div>
+              <div style="font-size:11px;color:{MUTED};margin-top:2px;">Powered by the LEM StratIQ AI model</div>
+            </div>
           </div>
-          <div style="font-size: 14px; color: {MUTED}; line-height: 1.6;">Neural state optimization completed. Models tuned to maximize Sharpe Ratio under current co-movement regimes.</div>
-          <div class="tag-row" style="margin-top: 16px;">
-            <span class="tag">AI Inference Validated</span>
-            <span class="tag">δ={iq.get('delta',0):.2f}</span>
-            <span class="tag">γ={iq.get('gamma',0):.3f}</span>
-            <span class="tag">ε={iq.get('epsilon',0):.1f}</span>
+          <div style="font-size:13px;color:{MUTED};line-height:1.7;">Your answers were analysed by our AI to find the right balance between growth and safety. It then selected assets that work well together — so when some fall in value, others tend to hold steady.</div>
+          <div class="tag-row" style="margin-top:16px;">
+            <span class="tag">Portfolio Optimised</span>
+            <span class="tag">Risk Score: {res.get('score', 5):.1f} / 10</span>
+            <span class="tag">{len(sorted_alloc)} Asset Classes</span>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -542,21 +548,31 @@ def _render_portfolio():
                 st.success("Configuration Pushed to MongoDB Atlas!")
                 st.rerun()
         else:
-            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Portfolio Snapshot</p>', unsafe_allow_html=True)
-            st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A simpler summary of your current portfolio characteristics and expected behaviour.</p>', unsafe_allow_html=True)
-            st.markdown(f"""
-            <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:14px; text-align:center; margin-bottom:10px;">
-                <div style="font-size:11px; color:{MUTED}; font-weight:700; letter-spacing:0.05em; margin-bottom:8px;">AI-GENERATED ASSET SPREAD</div>
-                <div style="font-size:32px; color:{ACCENT2}; font-weight:900;">{len(sorted_alloc)}</div>
-                <div style="font-size:10px; color:{MUTED}; margin-top:4px;">Asset sleeves selected for your unique profile</div>
-            </div>
-            """, unsafe_allow_html=True)
-            st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:16px;"><b>Expected return:</b> <span style="color:#fff;">{stats["expected_annual_return"]:.1f}%</span> &nbsp;·&nbsp; <b>Expected volatility:</b> <span style="color:#fff;">{stats["expected_volatility"]:.1f}%</span></p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Your Portfolio at a Glance</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A plain-English summary of what your portfolio is designed to do.</p>', unsafe_allow_html=True)
+
+            snap_items = [
+                ("Assets in your portfolio", f"{len(sorted_alloc)} investment types", "Spreading across multiple assets reduces the risk of any one falling."),
+                ("Target annual growth",      f"{stats['expected_annual_return']:.1f}% per year", "This is the average return the model expects over time."),
+                ("Expected ups & downs",      f"±{stats['expected_volatility']:.1f}% per year",  "Your portfolio may swing by this amount in a given year — that's normal."),
+                ("Risk-to-reward score",      f"{stats['sharpe_ratio']:.2f} (higher = better)",  "Measures whether the returns justify the risk taken."),
+            ]
+            for s_label, s_val, s_desc in snap_items:
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                    <div style="font-size:11px;font-weight:700;color:#C5D3EC;">{s_label}</div>
+                    <div style="font-size:13px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;">{s_val}</div>
+                  </div>
+                  <div style="font-size:10px;color:{MUTED};line-height:1.4;">{s_desc}</div>
+                </div>
+                """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c2:
         st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
-        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 12px;">Recent Activity</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Recent Activity</p>', unsafe_allow_html=True)
+        st.markdown(f'<p style="font-size:11px;color:{MUTED};margin:0 0 12px;">Notifications about your portfolio and AI model updates.</p>', unsafe_allow_html=True)
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -660,14 +676,26 @@ def _render_portfolio():
         margin_top=0,
     )
 
-    inv_col, _ = st.columns([1, 1])
-    with inv_col:
+    inv_col1, inv_col2 = st.columns(2)
+    with inv_col1:
         invest_amt = st.number_input(
-            "How much would you like to invest? (£)",
-            min_value=100, max_value=10_000_000,
+            "Lump sum to invest (£)",
+            min_value=0, max_value=10_000_000,
             value=st.session_state.get("invest_amount", 10000),
             step=500, key="invest_amount",
+            help="One-off amount you plan to invest today.",
         )
+    with inv_col2:
+        monthly_contrib = st.number_input(
+            "Monthly contribution (£)",
+            min_value=0, max_value=100_000,
+            value=st.session_state.get("monthly_contrib", 250),
+            step=50, key="monthly_contrib",
+            help="Regular monthly top-up via direct debit or standing order.",
+        )
+
+    # Combined first-year deployed capital (lump sum + 12 months of contributions)
+    total_deployed = invest_amt + (monthly_contrib * 12)
 
     exp_r = stats.get("expected_annual_return", 0) / 100
 
@@ -693,9 +721,10 @@ def _render_portfolio():
             '</tr>'
         )
 
-    total_gain_1y = invest_amt * exp_r
+    total_gain_1y = total_deployed * exp_r
     total_arrow = "&#9650;" if total_gain_1y >= 0 else "&#9660;"
 
+    monthly_note = f" + £{monthly_contrib:,.0f}/mo" if monthly_contrib > 0 else ""
     table_html = (
         '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);'
         'border-radius:16px;overflow:hidden;margin-bottom:10px;">'
@@ -709,9 +738,9 @@ def _render_portfolio():
         '</tr></thead>'
         '<tbody>' + planner_rows + '</tbody>'
         '<tfoot><tr style="background:rgba(109,94,252,0.08);border-top:1px solid rgba(109,94,252,0.3);">'
-        '<td colspan="2" style="padding:12px 10px;font-weight:800;color:#ffffff;">TOTAL PORTFOLIO</td>'
+        '<td colspan="2" style="padding:12px 10px;font-weight:800;color:#ffffff;">TOTAL DEPLOYED</td>'
         '<td style="padding:12px 10px;text-align:right;font-size:18px;font-weight:900;color:#ffffff;">'
-        + f'&pound;{invest_amt:,.0f}' +
+        + f'&pound;{invest_amt:,.0f}{monthly_note}' +
         '</td><td style="padding:12px 10px;text-align:right;font-size:16px;font-weight:800;color:#8EF6D1;">'
         + f'{total_arrow} &pound;{abs(total_gain_1y):,.0f}/yr' +
         '</td><td style="padding:12px 10px;font-size:12px;color:#8BA6D3;">'
@@ -721,10 +750,11 @@ def _render_portfolio():
     st.markdown(table_html, unsafe_allow_html=True)
 
     # ── PROJECTED RETURNS TIMELINE ────────────────────────────────────────────
+    monthly_note_str = f" + £{monthly_contrib:,.0f}/mo contributions" if monthly_contrib > 0 else ""
     _render_section_intro(
         "Projected Returns Timeline",
-        f'If you invest <b style="color:#ffffff;">£{invest_amt:,.0f}</b> today and reinvest all returns (compound growth at {exp_r*100:.1f}% p.a.):',
-        icon_svg="📅",
+        f'Starting with <b style="color:#ffffff;">£{invest_amt:,.0f}</b>{monthly_note_str} at {exp_r*100:.1f}% p.a. (compound growth, reinvested):',
+        icon_svg=get_svg("chart", 24, ACCENT),
         margin_top=28,
     )
 
