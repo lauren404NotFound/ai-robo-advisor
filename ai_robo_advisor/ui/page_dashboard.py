@@ -449,17 +449,42 @@ def _render_portfolio():
             </div>
             """, unsafe_allow_html=True)
 
+    # ── Quick-navigation pill bar ────────────────────────────────────────
+    _nav_sections = [
+        ("section-growth",    "Projected Growth",    get_svg("chart",  12, "#8BA6D3")),
+        ("section-allocation","Asset Allocation",     get_svg("layers", 12, "#8BA6D3")),
+        ("section-ai",        "AI Strategy",          get_svg("brain",  12, "#8BA6D3")),
+        ("section-planner",   "Investment Planner",   get_svg("zap",    12, "#8BA6D3")),
+        ("section-why",       "Why Each Asset",       get_svg("puzzle", 12, "#8BA6D3")),
+        ("section-stress",    "Stress Test",          get_svg("shield", 12, "#8BA6D3")),
+    ]
+    _pill_style = (
+        "display:flex;align-items:center;gap:7px;"
+        "background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);"
+        "border-radius:20px;padding:7px 16px;"
+        "font-size:11px;font-weight:600;color:#C5D3EC;"
+        "white-space:nowrap;transition:background 0.2s,border-color 0.2s;"
+    )
+    _pills_html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 28px;">'
+    for _sid, _label, _icon in _nav_sections:
+        _pills_html += (
+            f'<a href="#{_sid}" style="text-decoration:none;">'
+            f'<div style="{_pill_style}">{_icon}{_label}</div></a>'
+        )
+    _pills_html += "</div>"
+    st.markdown(_pills_html, unsafe_allow_html=True)
+
     col1, col2 = st.columns([2.2, 1], gap="large")
 
     with col1:
-        st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<div id="section-growth" class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
         st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Projected Portfolio Growth</p>', unsafe_allow_html=True)
         st.markdown(f'<p style="font-size:12px;color:#8BA6D3;margin:0 0 12px;line-height:1.5;">This chart shows 2,000 computer-simulated futures for your portfolio. The <b style="color:#8EF6D1;">top line</b> is the optimistic path, the <b style="color:#fff;">middle</b> is most likely, and the <b style="color:#FF6B6B;">bottom line</b> is a cautious scenario.</p>', unsafe_allow_html=True)
         st.plotly_chart(monte_chart(sim, color), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<div id="section-allocation" class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
         st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Where Your Money Goes</p>', unsafe_allow_html=True)
         st.markdown('<p style="font-size:11px;color:#8BA6D3;margin:0 0 8px;">Your investment is spread across these assets to balance growth and safety.</p>', unsafe_allow_html=True)
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
@@ -599,9 +624,9 @@ def _render_portfolio():
     _ai_text  = str(st.session_state.get("ai_insight_text_v2", "..."))
     _ai_source = st.session_state.get("ai_insight_source_v2", "Claude AI")
 
-    # Section header
+    # Section header with anchor
     st.markdown(
-        f'<div style="display:flex;align-items:center;gap:14px;margin:32px 0 16px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
+        f'<div id="section-ai" style="display:flex;align-items:center;gap:14px;margin:32px 0 16px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
         f'<div style="background:linear-gradient(135deg,{ACCENT},{ACCENT2});border-radius:12px;padding:10px;display:flex;">{get_svg("brain", 22, "#fff")}</div>'
         f'<div><div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px;">AI-Generated</div>'
         f'<h3 style="margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.01em;">Investment Strategy</h3></div>'
