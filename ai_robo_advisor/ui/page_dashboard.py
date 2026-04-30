@@ -366,24 +366,9 @@ def _render_portfolio():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Profile Hero ─────────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div class="profile-hero">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-        <div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("zap", 24, "#fff")}</div>
-        <div class="profile-name" style="margin-bottom:0;">Markowitz-Informed Neural Network (MINN)</div>
-      </div>
-      <div class="profile-desc">Neural state optimization completed. Models tuned to maximize Sharpe Ratio under current co-movement regimes.</div>
-      <div class="tag-row">
-        <span class="tag">AI Inference Validated</span>
-        <span class="tag">δ={iq.get('delta',0):.2f}</span>
-        <span class="tag">γ={iq.get('gamma',0):.3f}</span>
-        <span class="tag">ε={iq.get('epsilon',0):.1f}</span>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
 
-    # ── KPIs — inline-styled columns for reliability ─────────────────────────
+
+    # ── KPIs — Top Row ───────────────────────────────────────────────────────
     k1, k2, k3, k4 = st.columns(4)
     for col, label, val, hint, vc, tooltip in [
         (k1, "Expected Return",  f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate",  POS,     "Average % your portfolio is expected to grow each year."),
@@ -393,26 +378,55 @@ def _render_portfolio():
     ]:
         with col:
             st.markdown(f"""
-            <div title="{tooltip}" style="background:rgba(10,10,22,0.6);border:1px solid rgba(155,114,242,0.22);border-radius:14px;padding:18px 14px;">
+            <div class="card" title="{tooltip}" style="padding:18px 14px; margin-bottom: 20px;">
               <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.10em;color:rgba(237,237,243,0.55);margin-bottom:7px;">{label}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:{vc};">{val}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:800;color:{vc};">{val}</div>
               <div style="font-size:9px;color:rgba(230,213,255,0.35);margin-top:7px;">{hint}</div>
             </div>
             """, unsafe_allow_html=True)
 
-    # ── Row 1: allocation | diagnostics ───────────────────────────────────────
-    col1, col2 = st.columns([1, 1.4], gap="large")
+    # ── Row 1: Chart | Allocation ───────────────────────────────────────
+    col1, col2 = st.columns([2.2, 1], gap="large")
+    
     with col1:
-        st.markdown('<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px;">Asset Allocation</p>', unsafe_allow_html=True)
+        st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Monte Carlo Growth Simulation</p>', unsafe_allow_html=True)
+        st.caption("2,000 simulated futures — showing P10, P50, and P90 paths.")
+        st.plotly_chart(monte_chart(sim, color), use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Asset Allocation</p>', unsafe_allow_html=True)
         st.plotly_chart(donut_chart(sorted_weights), use_container_width=True)
         etf_html = '<div style="margin-top:4px;">'
         for asset, pct_v in sorted_weights.items():
             etf_html += (f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
                          f'<span style="font-size:12px;color:#C5D3EC;">{asset}</span>'
                          f'<span style="font-size:12px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
-        st.markdown(etf_html + "</div>", unsafe_allow_html=True)
+        st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
 
-    with col2:
+    # ── Row 2: Diagnostics & Hero | Intelligence Feed ───────────────────────────
+    c1, c2 = st.columns([2.2, 1], gap="large")
+    with c1:
+        # Profile Hero inside a card
+        st.markdown(f"""
+        <div class="card" style="padding: 24px; margin-bottom: 20px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("zap", 24, "#fff")}</div>
+            <div style="font-size: 20px; font-weight: 800; color: #ffffff; margin-bottom:0;">Markowitz-Informed Neural Network (MINN)</div>
+          </div>
+          <div style="font-size: 14px; color: {MUTED}; line-height: 1.6;">Neural state optimization completed. Models tuned to maximize Sharpe Ratio under current co-movement regimes.</div>
+          <div class="tag-row" style="margin-top: 16px;">
+            <span class="tag">AI Inference Validated</span>
+            <span class="tag">δ={iq.get('delta',0):.2f}</span>
+            <span class="tag">γ={iq.get('gamma',0):.3f}</span>
+            <span class="tag">ε={iq.get('epsilon',0):.1f}</span>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="card" style="padding: 24px;">', unsafe_allow_html=True)
         if st.session_state.explanation_mode == "advanced":
             st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 12px;">MINN Architecture Diagnostics</p>', unsafe_allow_html=True)
             
@@ -478,6 +492,7 @@ def _render_portfolio():
                 database.add_notification(st.session_state.get("user_email", "guest"), "Strategic Sync Successful", f"Your MINN parameters have been synchronized with the LEM StratIQ cloud.", "success")
                 st.success("Configuration Pushed to MongoDB Atlas!")
                 st.rerun()
+                st.rerun()
         else:
             st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Portfolio Snapshot</p>', unsafe_allow_html=True)
             st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A simpler summary of your current portfolio characteristics and expected behaviour.</p>', unsafe_allow_html=True)
@@ -491,43 +506,15 @@ def _render_portfolio():
             """, unsafe_allow_html=True)
             
             st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:16px;"><b>Expected return:</b> <span style="color:#fff;">{stats["expected_annual_return"]:.1f}%</span> &nbsp;·&nbsp; <b>Expected volatility:</b> <span style="color:#fff;">{stats["expected_volatility"]:.1f}%</span></p>', unsafe_allow_html=True)
-
-    st.divider()
-    with st.expander("ℹ️ Data Source & Methodology", icon=":material/info:"):
-        st.markdown(f"""
-        <div style="font-size:14px; color:{MUTED}; line-height:1.7;">
-          <h4 style="color:#ffffff; margin-top:0;">1. Data Foundation</h4>
-          We use <b>20 years of historical market data</b> (2004–present) for the major asset classes (S&P 500, Bonds, Gold, etc.),
-          synced via Yahoo Finance for real-world accuracy.
-
-          <h4 style="color:#ffffff; margin-top:16px;">2. Performance Metrics</h4>
-          Wealth is projected based on historical averages (Geometric Mean) and current market regimes:
-          <ul>
-            <li><b>Expected Growth:</b> Calculated using a weighted average of long-term asset returns, adjusted by the current <b>Market Regime</b> detected by our Neural Network.</li>
-            <li><b>Learned Volatility:</b> Derived from the asset covariance matrix. It represents the intensity of price swings.</li>
-            <li><b>Efficiency (Sharpe):</b> A measure of return per unit of risk. Higher is smarter.</li>
-          </ul>
-
-          <h4 style="color:#ffffff; margin-top:16px;">3. Forward-Looking Projections</h4>
-          The <b>Monte Carlo Growth</b> chart uses 2,000 independent simulations (Geometric Brownian Motion) to model the range of
-          possible futures for your money.
-          <ul>
-            <li><b>P90 (Optimistic):</b> The top 10% of outcomes where markets perform exceptionally well.</li>
-            <li><b>P50 (Median):</b> The most likely, average long-term path for your portfolio.</li>
-            <li><b>P10 (Conservative):</b> A stress-test scenario where assets perform poorly but remain within historical norms.</li>
-          </ul>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ── Row 2: performance | intelligence feed ───────────────────────────
-    c1, c2 = st.columns([1.3, 1.0], gap="large")
-    with c1:
-        st.markdown('<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px;">Monte Carlo Growth Simulation</p>', unsafe_allow_html=True)
-        st.caption("2,000 simulated futures — showing P10 (conservative), P50 (median) and P90 (optimistic) paths.")
-        st.plotly_chart(monte_chart(sim, color), use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     with c2:
+        st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 12px;">Recent Activity</p>', unsafe_allow_html=True)
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.divider()
 
 
     # ══════════════════════════════════════════════════════════════════════
