@@ -9,20 +9,20 @@ Fixed top navigation bar:
 from __future__ import annotations
 import streamlit as st
 
-from ui.styles import ACCENT, ACCENT2, BORDER, MUTED, get_svg
-from ui.auth import _do_logout, _handle_auth_bridge
+from ui.styles import ACCENT, ACCENT2, BORDER, MUTED
+from ui.auth import _do_logout
 from session_manager import SessionManager as _SM
 _sm = _SM()
 import database
 
 NAV_ITEMS = [
-    ("home",      "🏠 Home"),
-    ("dashboard", "📊 My Dashboard"),
-    ("news",      "📰 News"),
-    ("market",    "📈 Market"),
-    ("insights",  f"{get_svg('brain', 16)} AI Insights"),
-    ("more",      "••• More"),
+    ("home",      "Home"),
+    ("dashboard", "My Dashboard"),
+    ("market",    "Markets"),
+    ("insights",  "Why DeepAtomicIQ"),
+    ("more",      "Preferences"),
 ]
+
 
 def _handle_query_params():
     """Read URL query params set by the HTML nav and update session state."""
@@ -39,14 +39,13 @@ def _handle_query_params():
             st.session_state.user_provider  = session_doc.get("provider", "persistent")
             st.session_state.user_avatar    = session_doc.get("avatar")
             st.session_state.session_id     = sid
-            # Reload saved assessment
             saved = database.get_latest_assessment(session_doc["email"])
             if saved:
-                st.session_state.result = saved["result"]
+                st.session_state.result         = saved["result"]
                 st.session_state.survey_answers = saved["answers"]
-                st.session_state.survey_page = "portfolio"
+                st.session_state.survey_page    = "portfolio"
         else:
-            _sm.clear_cookie()  # stale/expired cookie
+            _sm.clear_cookie()
 
     if "page" in params:
         pg = params["page"]
@@ -57,40 +56,33 @@ def _handle_query_params():
     if "auth" in params:
         mode = params["auth"]
         if mode in ("login", "signup"):
-            st.session_state.show_auth = True
-            st.session_state.auth_mode = mode
+            st.session_state.show_auth  = True
+            st.session_state.auth_mode  = mode
         del st.query_params["auth"]
-        
+
     if "code" in params:
         code = params["code"]
         import asyncio, base64, json, httpx
         try:
-            # FORCE CLEAN REDIRECT URI for the exchange
             STRICT_URI = REDIRECT_URI.rstrip("/")
-            
-            # Exchange code for token
-            token = google_oauth.client.get_access_token(code=code, redirect_uri=STRICT_URI)
-            jwt = token["id_token"].split(".")[1]
-            jwt += "=" * ((4 - len(jwt) % 4) % 4)
-            user_info = json.loads(base64.urlsafe_b64decode(jwt).decode("utf-8"))
-            
+            token      = google_oauth.client.get_access_token(code=code, redirect_uri=STRICT_URI)
+            jwt        = token["id_token"].split(".")[1]
+            jwt       += "=" * ((4 - len(jwt) % 4) % 4)
+            user_info  = json.loads(base64.urlsafe_b64decode(jwt).decode("utf-8"))
             _do_login(user_info.get("email"), user_info.get("name", "Google User"), "google", user_info.get("picture"))
             if not database.get_user(user_info.get("email")):
                 database.create_user_oauth(user_info.get("email"), user_info.get("name", "Google User"), "google")
         except Exception as e:
             st.error(f"⚠️ **Token Exchange Failed**: {e}")
-            st.info("Check if your Google Client Secret is correct in the dashboard.")
             try:
-                # Fallback to LinkedIn API Endpoint
-                token = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
-                res = httpx.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"})
+                token     = asyncio.run(linkedin_oauth.client.get_access_token(code=code, redirect_uri=REDIRECT_URI))
+                res       = httpx.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"})
                 user_info = res.json()
                 _do_login(user_info.get("email"), user_info.get("name", "LinkedIn User"), "linkedin", user_info.get("picture"))
                 if not database.get_user(user_info.get("email")):
                     database.create_user_oauth(user_info.get("email"), user_info.get("name", "LinkedIn User"), "linkedin")
             except Exception:
                 pass
-                
         st.query_params.clear()
         st.session_state.show_auth = False
         st.rerun()
@@ -101,36 +93,29 @@ def _handle_query_params():
 
 
 def _handle_auth_bridge():
-    """
-    Bridge between built-in st.user (Google) and app's custom session_state.
-    """
+    """Bridge between built-in st.user (Google) and app's custom session_state."""
     if st.user.get("is_logged_in"):
         if not st.session_state.get("authenticated"):
-            # Auto-sync st.user to our state
-            st.session_state.authenticated = True
-            st.session_state.user_name = st.user.get("name", "Google User")
-            st.session_state.user_email = st.user.get("email")
-            st.session_state.user_avatar = st.user.get("picture", "")
-            st.session_state.auth_provider = "google"
-            
-            # Ensure user exists in DB
+            st.session_state.authenticated  = True
+            st.session_state.user_name      = st.user.get("name", "Google User")
+            st.session_state.user_email     = st.user.get("email")
+            st.session_state.user_avatar    = st.user.get("picture", "")
+            st.session_state.auth_provider  = "google"
             u_email = st.user.get("email")
             if u_email:
                 user = database.get_user(u_email)
                 if not user:
                     database.create_user(u_email, st.user.get("name", "Google User"), "google_oauth_fresh", "1990-01-01", "google")
 
+
 def render_nav():
-    # ── Global CSS: reduce Streamlit's default top padding on all pages ──────
     st.markdown("""
     <style>
-    /* Push content down just enough to clear the fixed navbar — no extra gap */
     div[data-testid="stMainBlockContainer"],
     .block-container {
         padding-top: 72px !important;
         padding-bottom: 24px !important;
     }
-    /* Remove default Streamlit top anchor space */
     div[data-testid="stApp"] > section > div:first-child {
         padding-top: 0 !important;
     }
@@ -141,28 +126,26 @@ def render_nav():
         _handle_auth_bridge()
         _handle_query_params()
     except Exception as e:
-        # Demote to sidebar-only — avoids "Core System Error" banner on every page
         st.sidebar.warning(f"⚠️ Nav diagnostic: {e}")
 
-    page = st.session_state.get("nav_page", "Home")
+    page = st.session_state.get("nav_page", "home")
     auth = st.session_state.get("authenticated", False)
     name = st.session_state.get("user_name", "")
     tok  = st.session_state.get("session_token", "")
-    tp   = f"&_tok={tok}" if tok else ""   # token query param suffix
+    tp   = f"&_tok={tok}" if tok else ""
 
     def _active(p):
         return "active" if page == p else ""
 
     if auth:
-        short_name = name.split()[0][:12] if name else "User"
-        initials = "".join(w[0].upper() for w in name.split()[:2]) if name else "U"
-        
-        avatar_url = st.session_state.get("user_avatar")
-        if avatar_url:
-            avatar_html = f'<img src="{avatar_url}" style="width:26px; height:26px; border-radius:50%; object-fit:cover;">'
-        else:
-            avatar_html = f'<div class="nav-avi">{initials}</div>'
-            
+        short_name  = name.split()[0][:12] if name else "User"
+        initials    = "".join(w[0].upper() for w in name.split()[:2]) if name else "U"
+        avatar_url  = st.session_state.get("user_avatar")
+        avatar_html = (
+            f'<img src="{avatar_url}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">'
+            if avatar_url else
+            f'<div class="nav-avi">{initials}</div>'
+        )
         auth_html = f"""
           <div class="nav-profile-wrap">
             <a href="?page=account{tp}" style="text-decoration:none;">
@@ -174,7 +157,6 @@ def render_nav():
                 </svg>
               </div>
             </a>
-            <!-- Hover dropdown -->
             <div class="nav-dropdown">
               <div class="nav-dd-header">
                 <div class="nav-dd-av">{avatar_html}</div>
@@ -193,7 +175,7 @@ def render_nav():
                 My Portfolio
               </a>
               <a class="nav-dd-item" href="?page=more{tp}" target="_self">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.72l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 Preferences
               </a>
               <div class="nav-dd-divider"></div>
@@ -206,9 +188,9 @@ def render_nav():
         """
     else:
         auth_html = f"""
-          <a class="nav-act-btn login-btn"  href="?auth=login{tp}" target="_self" rel="noopener noreferrer">Login</a>
-          <a class="nav-act-btn signup-btn" href="?auth=signup{tp}" target="_self" rel="noopener noreferrer">Sign Up</a>
-          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}" target="_self" rel="noopener noreferrer">Get Started <span style='margin-left:4px;font-size:11px;'>→</span></a>
+          <a class="nav-act-btn login-btn"  href="?auth=login{tp}"  target="_self">Login</a>
+          <a class="nav-act-btn signup-btn" href="?auth=signup{tp}" target="_self">Sign Up</a>
+          <a class="nav-act-btn cta-btn"    href="?auth=signup{tp}" target="_self">Get Started <span style="margin-left:4px;font-size:11px;">→</span></a>
         """
 
     st.markdown(f"""
@@ -239,21 +221,21 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
 }}
 .diq-lnk {{
-  font-size: 13.5px !important; font-weight: 600 !important; color: rgba(237,237,243,0.65) !important;
-  padding: 7px 14px !important; border-radius: 12px !important; white-space: nowrap !important;
-  transition: all 0.2s ease !important; cursor: pointer !important;
-  text-decoration: none !important; display: inline-flex !important;
-  align-items: center !important; gap: 6px !important;
-  border: 1px solid transparent !important;
+  font-size: 13.5px !important; font-weight: 600 !important;
+  color: rgba(237,237,243,0.65) !important;
+  padding: 7px 14px !important; border-radius: 12px !important;
+  white-space: nowrap !important; transition: all 0.2s ease !important;
+  cursor: pointer !important; text-decoration: none !important;
+  display: inline-flex !important; align-items: center !important;
+  gap: 6px !important; border: 1px solid transparent !important;
 }}
-.diq-lnk:hover {{ 
-  color: #fff !important; 
+.diq-lnk:hover {{
+  color: #fff !important;
   background: rgba(255,255,255,0.08) !important;
   transform: translateY(-1px) !important;
 }}
 .diq-lnk.active {{
-  color: #fff !important; 
-  font-weight: 800 !important; 
+  color: #fff !important; font-weight: 800 !important;
   background: linear-gradient(135deg, rgba(155,114,242,0.2), rgba(109,94,252,0.1)) !important;
   border-color: rgba(155,114,242,0.3) !important;
   box-shadow: 0 4px 20px rgba(109,94,252,0.15), inset 0 0 0 1px rgba(155,114,242,0.2) !important;
@@ -261,9 +243,7 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 .diq-auth {{
   display: flex; align-items: center; gap: 9px; min-width: 260px; justify-content: flex-end;
 }}
-.nav-profile-wrap {{
-  position: relative; display: flex; align-items: center;
-}}
+.nav-profile-wrap {{ position: relative; display: flex; align-items: center; }}
 .nav-user-pill {{
   display: flex; align-items: center; gap: 8px;
   background: rgba(155,114,242,0.1); border: 1px solid rgba(155,114,242,0.28);
@@ -294,7 +274,6 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   width: 7px; height: 7px; border-radius: 50%;
   background: #FF6B6B; border: 1.5px solid #060814;
 }}
-/* Hover dropdown */
 .nav-dropdown {{
   display: none; position: absolute; top: calc(100% + 10px); right: 0;
   width: 230px;
@@ -304,16 +283,12 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   box-shadow: 0 20px 60px rgba(0,0,0,0.7);
   animation: ddFade .15s ease;
 }}
-/* Invisible bridge to fix the hover 'dead zone' gap */
 .nav-dropdown::before {{
   content: ''; position: absolute; top: -15px; left: 0; width: 100%; height: 15px;
 }}
 @keyframes ddFade {{ from{{opacity:0;transform:translateY(-6px)}} to{{opacity:1;transform:translateY(0)}} }}
 .nav-profile-wrap:hover .nav-dropdown {{ display: block; }}
-.nav-dd-header {{
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 16px 12px;
-}}
+.nav-dd-header {{ display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; }}
 .nav-dd-av {{ flex-shrink: 0; }}
 .nav-dd-name {{ font-size: 13px; font-weight: 700; color: #fff; }}
 .nav-dd-sub  {{ font-size: 11px; color: #8BA6D3; margin-top: 1px; }}
@@ -324,9 +299,8 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   text-decoration: none; transition: all .15s ease;
   border-left: 3px solid transparent;
 }}
-.nav-dd-item:hover {{ 
-  background: rgba(109,94,252,0.12); 
-  color: #fff;
+.nav-dd-item:hover {{
+  background: rgba(109,94,252,0.12); color: #fff;
   border-left-color: #6D5EFC;
 }}
 .nav-dd-item svg {{ opacity: 0.7; transition: opacity .15s; flex-shrink: 0; }}
@@ -334,57 +308,55 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 .nav-dd-logout {{ color: rgba(255,107,107,0.85); }}
 .nav-dd-logout:hover {{ background: rgba(255,107,107,0.1); }}
 .nav-act-btn {{
-  font-size: 13.5px !important; font-weight: 600 !important; border-radius: 10px !important; border: none !important;
-  padding: 10px 20px !important; cursor: pointer !important; white-space: nowrap !important; font-family: inherit !important;
-  transition: all 0.2s ease !important; line-height: 1 !important; text-decoration: none !important; display: inline-block !important;
+  font-size: 13.5px !important; font-weight: 600 !important;
+  border-radius: 10px !important; border: none !important;
+  padding: 10px 20px !important; cursor: pointer !important;
+  white-space: nowrap !important; font-family: inherit !important;
+  transition: all 0.2s ease !important; line-height: 1 !important;
+  text-decoration: none !important; display: inline-block !important;
 }}
 .login-btn  {{ background: transparent !important; color: rgba(237,237,243,0.65) !important; }}
 .login-btn:hover  {{ color: #fff !important; background: rgba(255,255,255,0.08) !important; }}
-.signup-btn {{ 
-  background: rgba(155,114,242,0.05) !important; 
-  color: #9B72F2 !important; 
-  border: 1px solid rgba(155,114,242,0.4) !important; 
+.signup-btn {{
+  background: rgba(155,114,242,0.05) !important; color: #9B72F2 !important;
+  border: 1px solid rgba(155,114,242,0.4) !important;
 }}
 .signup-btn:hover {{ background: rgba(155,114,242,0.12) !important; border-color: #9B72F2 !important; }}
-.cta-btn    {{ 
-  background: linear-gradient(135deg, #6D5EFC, #B18AFF) !important; 
-  color: #fff !important;
-  box-shadow: 0 4px 15px rgba(109,94,252,0.4) !important; 
+.cta-btn {{
+  background: linear-gradient(135deg, #6D5EFC, #B18AFF) !important; color: #fff !important;
+  box-shadow: 0 4px 15px rgba(109,94,252,0.4) !important;
 }}
-.cta-btn:hover {{ 
-  box-shadow: 0 6px 24px rgba(109,94,252,0.6) !important; 
-  transform: translateY(-1px) !important; 
+.cta-btn:hover {{
+  box-shadow: 0 6px 24px rgba(109,94,252,0.6) !important;
+  transform: translateY(-1px) !important;
 }}
-.logout-btn {{ background: transparent; color: rgba(255,107,107,0.8);
-               border: 1px solid rgba(255,107,107,0.3); }}
-.logout-btn:hover {{ background: rgba(255,107,107,0.08); }}
 </style>
 
 <div id="diq-navbar">
   <div class="diq-brand"><div class="diq-dot"></div>LEM StratIQ</div>
   <div class="diq-links">
     <a class="diq-lnk {_active('home')}" href="?page=home{tp}" target="_self">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </a>
     <a class="diq-lnk {_active('dashboard')}" href="?page=dashboard{tp}" target="_self">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       My Dashboard
     </a>
     <a class="diq-lnk {_active('market')}" href="?page=market{tp}" target="_self">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
       Markets
     </a>
     <a class="diq-lnk {_active('insights')}" href="?page=insights{tp}" target="_self">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>
       Why DeepAtomicIQ
     </a>
     <a class="diq-lnk {_active('more')}" href="?page=more{tp}" target="_self">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
       Preferences
     </a>
   </div>
-  <div class="diq-auth" style="display:flex;align-items:center;gap:10px;">
+  <div class="diq-auth">
     <div class="nav-bell-wrap" title="Notifications">
       <svg class="nav-bell-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span class="nav-bell-dot"></span>
@@ -395,8 +367,7 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 </div>
 
 <script>
-// Force same-tab redirection for all nav links
-document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(link => {{
+document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(function(link) {{
     link.addEventListener('click', function(e) {{
         e.preventDefault();
         window.parent.location.href = this.getAttribute('href');
@@ -405,10 +376,8 @@ document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(link =
 </script>
 """, unsafe_allow_html=True)
 
-    # Spacer so content clears the fixed nav
     st.markdown('<div style="height:70px"></div>', unsafe_allow_html=True)
 
-    # Hidden proxy buttons for auth actions (login/signup/logout) still needed
     with st.expander("System Hooks", expanded=False):
         st.markdown("""
         <style>
@@ -421,17 +390,15 @@ document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(link =
             st.session_state.show_auth = True
             st.session_state.auth_mode = "login"
             st.rerun()
-            
+
         if st.button("auth_signup_proxy", key="proxy_auth_signup"):
             st.session_state.show_auth = True
             st.session_state.auth_mode = "signup"
             st.rerun()
-            
+
         if st.button("auth_logout_proxy", key="proxy_auth_logout"):
             if st.session_state.get("auth_provider") == "google":
                 st.logout()
             else:
                 _do_logout()
             st.rerun()
-
-
