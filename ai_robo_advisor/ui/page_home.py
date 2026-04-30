@@ -300,30 +300,81 @@ def page_home():
         details_html = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', details_text).replace("\n\n", "<br><br>").replace("\n", "<br>")
 
         key_drivers = [
-            {"icon": "⌛", "title": "Time Horizon", "desc": "Portfolio tuned for your optimal duration."},
-            {"icon": "🧘", "title": "Psychology", "desc": "Optimized for your volatility comfort."},
-            {"icon": "🚀", "title": "Growth Focus", "desc": "Prioritizing capital appreciation."}
+            {"icon": "◷", "title": "Time Horizon", "desc": "Portfolio tuned for your optimal duration."},
+            {"icon": "◈", "title": "Risk Profile", "desc": "Calibrated to your volatility tolerance."},
+            {"icon": "△", "title": "Growth Focus", "desc": "Prioritising capital appreciation."},
         ]
         drivers_html = "".join([
-            f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:16px;border-radius:15px;text-align:center;">'
-            f'<div style="font-size:20px;margin-bottom:6px;">{d["icon"]}</div>'
-            f'<div style="font-weight:700;color:#fff;font-size:14px;">{d["title"]}</div>'
-            f'<div style="font-size:11px;color:#8BA6D3;line-height:1.4;">{d["desc"]}</div></div>' for d in key_drivers
+            f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(109,94,252,0.15);padding:20px 16px;border-radius:15px;text-align:center;">'
+            f'<div style="font-size:26px;font-weight:200;color:#6D5EFC;margin-bottom:8px;line-height:1;">{d["icon"]}</div>'
+            f'<div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:4px;">{d["title"]}</div>'
+            f'<div style="font-size:11px;color:#8BA6D3;line-height:1.4;">{d["desc"]}</div></div>'
+            for d in key_drivers
         ])
+
+        # Generate Claude AI insight for this section
+        if "home_ai_insight" not in st.session_state:
+            try:
+                import anthropic as _anthropic
+                _ant_key = (
+                    st.secrets.get("anthropic_api_key")
+                    or st.secrets.get("ANTHROPIC_API_KEY")
+                    or st.secrets.get("anthropic", {}).get("api_key")
+                )
+                port = res_final.get("portfolio", {})
+                stats = port.get("stats", {})
+                ans = st.session_state.get("survey_answers", {})
+                cat = port.get("risk_category", "Balanced")
+
+                if _ant_key:
+                    _client = _anthropic.Anthropic(api_key=_ant_key)
+                    _prompt = f"""You are DeepAtomicIQ, an expert AI investment strategist for LEM StratIQ.
+
+A user has been assigned the following portfolio:
+- Risk category: {cat}
+- Expected annual return: {stats.get('expected_annual_return', 0):.1f}%
+- Expected volatility: {stats.get('expected_volatility', 0):.1f}%
+- Sharpe ratio: {stats.get('sharpe_ratio', 0):.2f}
+- Asset allocation: {port.get('allocation_pct', {})}
+
+Their survey answers: {ans}
+
+Write a concise, personalised 3-paragraph explanation of why this portfolio suits them.
+Paragraph 1: What their answers reveal about them as an investor.
+Paragraph 2: Why this specific allocation matches their profile.
+Paragraph 3: What they can realistically expect and one actionable tip.
+Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
+                    _msg = _client.messages.create(
+                        model="claude-sonnet-4-20250514",
+                        max_tokens=500,
+                        messages=[{"role": "user", "content": _prompt}],
+                    )
+                    st.session_state.home_ai_insight = _msg.content[0].text.strip()
+                else:
+                    st.session_state.home_ai_insight = details_html
+            except Exception:
+                st.session_state.home_ai_insight = details_html
+
+        insight_text = st.session_state.get("home_ai_insight", details_html)
+        import re as _re
+        insight_html = _re.sub(r'\*\*(.+?)\*\*', r'<b style="color:#fff;">\1</b>', insight_text).replace("\n\n", "<br><br>").replace("\n", "<br>")
 
         st.markdown(f"""
 <div class="explain-section" style="margin-top:20px;text-align:left;">
 <h2 style="font-size:32px;font-weight:800;color:#ffffff;margin-bottom:30px;text-align:center;">Why This Portfolio Fits You</h2>
-<div class="chat-box" style="border-left:4px solid #6D5EFC;background:rgba(109,94,252,0.04);border-radius:24px;padding:40px;border:1px solid rgba(255,255,255,0.06);">
-<div style="display:flex;align-items:center;margin-bottom:30px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:20px;">
-<div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:16px;font-size:22px;">🧠</div>
-<div><div style="font-weight:800;color:#fff;font-size:18px;letter-spacing:-0.01em;">Strategic Investment Verdict</div>
-<div style="font-size:12px;color:#8BA6D3;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;">Neural Diagnosis · DeepAtomicIQ Interpretation</div></div></div>
-<div style="background:rgba(255,255,255,0.05);padding:24px;border-radius:18px;border:1px solid rgba(138,43,226,0.15);margin-bottom:32px;">
-<div style="font-size:12px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;">Core Decision Drivers</div>
+<div style="border-left:4px solid #6D5EFC;background:rgba(109,94,252,0.04);border-radius:24px;padding:40px;border:1px solid rgba(255,255,255,0.06);">
+<div style="display:flex;align-items:center;margin-bottom:30px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:20px;">
+<div style="background:linear-gradient(135deg,#6D5EFC,#3BA4FF);width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-right:16px;font-size:20px;font-weight:200;color:#fff;">&#x2726;</div>
+<div>
+  <div style="font-weight:800;color:#fff;font-size:18px;letter-spacing:-0.01em;">Strategic Investment Verdict</div>
+  <div style="font-size:11px;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-top:3px;">Claude AI · DeepAtomicIQ Interpretation</div>
+</div></div>
+<div style="background:rgba(255,255,255,0.03);padding:24px;border-radius:18px;border:1px solid rgba(109,94,252,0.12);margin-bottom:28px;">
+<div style="font-size:10px;font-weight:800;color:#6D5EFC;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.1em;">Core Decision Drivers</div>
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">{drivers_html}</div></div>
-<div style="font-size:12px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;">Deep Analysis Details</div>
-<div style="color:#FFF;line-height:1.8;font-size:15px;background:rgba(255,255,255,0.02);padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,0.05);">{details_html}</div></div></div>
+<div style="font-size:10px;font-weight:800;color:#6D5EFC;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.1em;">AI Strategy Analysis</div>
+<div style="color:#C5D3EC;line-height:1.85;font-size:14px;background:rgba(0,0,0,0.15);padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,0.04);">{insight_html}</div>
+</div></div>
 """, unsafe_allow_html=True)
 
     # ── Section 3: Feature Grid ──
