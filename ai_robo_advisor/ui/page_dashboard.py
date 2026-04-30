@@ -521,23 +521,11 @@ def _render_portfolio():
     # ── NEURAL AI STRATEGY INTERPRETATION ────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
     st.divider()
-    col_toggle, col_spacer = st.columns([1, 3])
-    with col_toggle:
-        mode = st.session_state.explanation_mode
-        new_mode = st.toggle(
-            ":material/analytics: Advanced mode (for investors who understand market terms)",
-            value=(mode == "advanced"),
-            help="Switch to advanced mode to see technical details."
-        )
-        if (st.session_state.explanation_mode == "advanced" and not new_mode) or \
-           (st.session_state.explanation_mode == "simple" and new_mode):
-            st.session_state.explanation_mode = "advanced" if new_mode else "simple"
-            if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
-            st.rerun()
-
     st.markdown(
-        f'<h3 style="display:flex;align-items:center;gap:10px;margin:18px 0 14px;font-size:20px;font-weight:900;color:#fff;">'
-        f'{get_svg("brain",22,ACCENT)} Neural AI Strategy Interpretation</h3>',
+        f'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 16px;">'
+        f'<div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("brain", 24, "#fff")}</div>'
+        f'<h3 style="margin:0;font-size:20px;font-weight:900;color:#fff;">Claude AI Investment Strategy</h3>'
+        f'</div>',
         unsafe_allow_html=True,
     )
 
@@ -547,26 +535,15 @@ def _render_portfolio():
             st.error("🤖 **AI Engine Offline**")
 
     if "ai_insight_text_v2" not in st.session_state:
-        with st.status("Analyzing your profile via DeepIQ Neural Manifold...", expanded=True) as status:
-            insight, source = get_ai_explanation(st.session_state.explanation_mode, port, {}, ans)
+        with st.status("Analyzing your profile via Claude 3.5 Sonnet...", expanded=True) as status:
+            insight, source = get_ai_explanation("simple", port, {}, ans)
             st.session_state.ai_insight_text_v2 = insight
             st.session_state.ai_insight_source_v2 = source
             status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
             st.session_state.result["ai_narrative"] = insight
             database.save_assessment(st.session_state.get("user_email", "guest"), st.session_state.survey_answers, st.session_state.result)
 
-    import html as _html
-    _ai_text = _html.escape(str(st.session_state.get('ai_insight_text_v2', '...')))
-    _ai_src  = _html.escape(str(st.session_state.get('ai_insight_source_v2', 'CHECKING...')))
-    st.markdown(f"""
-    <div style="background:rgba(155,114,242,0.08);border:1px solid rgba(155,114,242,0.25);padding:20px 24px 8px;border-radius:16px;margin-bottom:0;">
-      <div style="font-size:11px;font-weight:800;color:{ACCENT2};text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        Neural Assessment Narrative
-        <span style="font-size:9px;background:rgba(155,114,242,0.2);padding:2px 8px;border-radius:20px;">{st.session_state.explanation_mode.upper()} MODE</span>
-        <span style="font-size:9px;background:rgba(0,255,200,0.1);color:#00FFC8;padding:2px 8px;border-radius:20px;border:1px solid rgba(0,255,200,0.2);">{_ai_src}</span>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    _ai_text = str(st.session_state.get('ai_insight_text_v2', '...'))
     st.markdown(_ai_text.replace('\\n', '  \n'))
 
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])

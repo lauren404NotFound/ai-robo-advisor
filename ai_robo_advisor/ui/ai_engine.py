@@ -298,12 +298,6 @@ def get_ai_explanation(mode: str, port: dict, inputs: dict, answers: dict) -> tu
     # 1. Try live Claude
     claude_insight = get_real_claude_insight(port, answers, mode)
     if claude_insight:
-        return claude_insight, "LIVE CLAUDE 3.5 SONNET"
-
-    # 2. Fall back to local heuristic (clean, no error concatenation)
-    try:
-        local_explain = _get_local_explain()
-        heuristic_insight = local_explain(port, answers)
-        return heuristic_insight, "LOCAL HEURISTIC"
-    except Exception as e:
-        return f"Unable to generate insight: {str(e)}", "ERROR"
+        return claude_insight, "Claude 3.5 Sonnet"
+    else:
+        return "⚠️ Unable to generate an AI strategy note. Please check your Anthropic API key configuration.", "ERROR"
