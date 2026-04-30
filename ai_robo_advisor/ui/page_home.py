@@ -313,7 +313,8 @@ def page_home():
         ])
 
         # Generate Claude AI insight for this section
-        if "home_ai_insight" not in st.session_state:
+        _insight_key = f"home_ai_insight_{port.get('risk_category','')}"
+        if _insight_key not in st.session_state:
             try:
                 import anthropic as _anthropic
                 _ant_key = (
@@ -349,13 +350,13 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
                         max_tokens=500,
                         messages=[{"role": "user", "content": _prompt}],
                     )
-                    st.session_state.home_ai_insight = _msg.content[0].text.strip()
+                    st.session_state[_insight_key] = _msg.content[0].text.strip()
                 else:
-                    st.session_state.home_ai_insight = details_html
+                    st.session_state[_insight_key] = details_html
             except Exception:
-                st.session_state.home_ai_insight = details_html
+                st.session_state[_insight_key] = details_html
 
-        insight_text = st.session_state.get("home_ai_insight", details_html)
+        insight_text = st.session_state.get(_insight_key, details_html)
         import re as _re
         insight_html = _re.sub(r'\*\*(.+?)\*\*', r'<b style="color:#fff;">\1</b>', insight_text).replace("\n\n", "<br><br>").replace("\n", "<br>")
 
