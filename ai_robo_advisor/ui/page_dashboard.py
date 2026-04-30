@@ -495,7 +495,7 @@ def _render_portfolio():
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="card" style="padding: 24px;">', unsafe_allow_html=True)
+
         if st.session_state.get("explanation_mode", "simple") == "advanced":
             st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 12px;">MINN Architecture Diagnostics</p>', unsafe_allow_html=True)
 
@@ -569,7 +569,7 @@ def _render_portfolio():
                   <div style="font-size:10px;color:{MUTED};line-height:1.4;">{s_desc}</div>
                 </div>
                 """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+
 
     with c2:
         st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
