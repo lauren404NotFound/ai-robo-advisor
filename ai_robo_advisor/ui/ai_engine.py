@@ -252,6 +252,14 @@ def get_ai_explanation(
     Tries Claude first; falls back to a rich rule-based note on any failure.
     Never surfaces raw error messages to the user.
     """
+    # Coerce profile_num to int (may arrive as string e.g. "P4" or "4")
+    try:
+        profile_num = int(str(profile_num).strip().replace("P", "").replace("p", ""))
+    except (ValueError, TypeError):
+        profile_num = 2
+    if profile_num not in PROFILE_META:
+        profile_num = 2
+
     # ── Try Claude ────────────────────────────────────────────────────────────
     api_key = (
         st.secrets.get("ANTHROPIC_API_KEY")
@@ -281,7 +289,13 @@ def get_ai_explanation(
 
 # ── Local fallback (no API key needed) ───────────────────────────────────────
 
-def _local_explanation(answers: dict, profile_num: int) -> str:
+def _local_explanation(answers: dict, profile_num) -> str:
+    try:
+        profile_num = int(str(profile_num).strip().replace("P", "").replace("p", ""))
+    except (ValueError, TypeError):
+        profile_num = 2
+    if profile_num not in PROFILE_META:
+        profile_num = 2
     meta = PROFILE_META.get(profile_num, PROFILE_META[2])
 
     risk_val   = answers.get("risk_tolerance", 2)
