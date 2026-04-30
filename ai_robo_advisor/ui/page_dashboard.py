@@ -584,15 +584,36 @@ def _render_portfolio():
     _ai_text = str(st.session_state.get("ai_insight_text_v2", "..."))
     st.markdown(_ai_text.replace("\\n", "  \n"))
 
+    st.markdown("""
+    <style>
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
+        background: rgba(109,94,252,0.12) !important;
+        border: 1px solid rgba(109,94,252,0.4) !important;
+        color: #fff !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        padding: 10px 20px !important;
+        transition: all 0.2s !important;
+    }
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover {
+        background: rgba(109,94,252,0.28) !important;
+        border-color: rgba(109,94,252,0.7) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 20px rgba(109,94,252,0.25) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
-        if st.button("Refresh AI Narrative", icon=":material/refresh:", use_container_width=True):
+        if st.button("↺  Refresh AI Narrative", use_container_width=True):
             if "ai_insight_text_v2" in st.session_state:
                 del st.session_state["ai_insight_text_v2"]
             st.rerun()
     with btn_col2:
         if st.session_state.get("user_email") != "guest":
-            if st.button("Email Results", icon=":material/mail:", use_container_width=True):
+            if st.button("✉  Email Results", use_container_width=True):
                 with st.spinner("Delivering report..."):
                     sent = send_portfolio_report(
                         st.session_state.user_email,
