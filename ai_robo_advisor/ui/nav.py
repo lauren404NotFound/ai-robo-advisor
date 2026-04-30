@@ -16,12 +16,11 @@ _sm = _SM()
 import database
 
 NAV_ITEMS = [
-    ("home",      "🏠 Home"),
-    ("dashboard", "📊 My Dashboard"),
-    ("news",      "📰 News"),
-    ("market",    "📈 Market"),
-    ("insights",  f"{get_svg('brain', 16)} AI Insights"),
-    ("more",      "••• More"),
+    ("home",      "Home"),
+    ("dashboard", "My Dashboard"),
+    ("market",    "Markets"),
+    ("insights",  "Why DeepAtomicIQ"),
+    ("more",      "Preferences"),
 ]
 
 def _handle_query_params():
@@ -153,6 +152,26 @@ def render_nav():
     def _active(p):
         return "active" if page == p else ""
 
+    # ── Professional Nav Icons Mapping ───────────────────────────────────────
+    NAV_ICONS = {
+        "home":      "⊞",
+        "dashboard": "⊟",
+        "market":    "⌇",
+        "insights":  "◎",
+        "more":      "≡",
+    }
+
+    links_html = ""
+    for pg_id, label in NAV_ITEMS:
+        icon = NAV_ICONS.get(pg_id, "·")
+        links_html += f"""
+        <div class="nav-link-wrap {_active(pg_id)}">
+          <a class="nav-link" href="?page={pg_id}{tp}" target="_self">
+            <span class="nav-icon">{icon}</span>{label}
+          </a>
+        </div>
+        """
+
     if auth:
         short_name = name.split()[0][:12] if name else "User"
         initials = "".join(w[0].upper() for w in name.split()[:2]) if name else "U"
@@ -216,49 +235,59 @@ def render_nav():
 header[data-testid="stHeader"] {{ display: none !important; }}
 #diq-navbar {{
   position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-  height: 62px;
-  background: rgba(6, 8, 20, 0.95);
+  height: 56px;
+  background: rgba(8, 10, 26, 0.97);
   backdrop-filter: blur(24px) saturate(180%);
-  border-bottom: 1px solid rgba(155, 114, 242, 0.18);
-  box-shadow: 0 2px 32px rgba(0,0,0,0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.4);
   display: flex; align-items: center;
-  padding: 0 36px; gap: 0;
+  padding: 0 40px; gap: 0;
   font-family: 'Inter', system-ui, sans-serif;
 }}
 .diq-brand {{
-  font-size: 16px; font-weight: 900; letter-spacing: -0.03em; color: #fff;
-  display: flex; align-items: center; gap: 9px; min-width: 190px; white-space: nowrap;
+  font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: #fff;
+  display: flex; align-items: center; gap: 9px; min-width: 180px; white-space: nowrap;
   text-decoration: none;
 }}
 .diq-dot {{
-  width: 9px; height: 9px; border-radius: 50%;
-  background: linear-gradient(135deg, #9B72F2, #4AE3A0);
-  box-shadow: 0 0 8px rgba(155,114,242,0.8); flex-shrink: 0;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: linear-gradient(135deg, #6D5EFC, #4AE3A0);
+  box-shadow: 0 0 8px rgba(109,94,252,0.6); flex-shrink: 0;
 }}
 .diq-links {{
-  display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
+  display: flex; align-items: center; gap: 0; flex: 1; justify-content: center;
+  height: 100%;
 }}
-.diq-lnk {{
-  font-size: 14.5px !important; font-weight: 600 !important; color: rgba(237,237,243,0.65) !important;
-  padding: 8px 20px !important; border-radius: 12px !important; white-space: nowrap !important;
-  transition: all 0.2s ease !important; cursor: pointer !important;
-  text-decoration: none !important; display: inline-block !important;
-  border: 1px solid transparent !important;
+.nav-link-wrap {{
+  height: 100%; display: flex; align-items: center;
 }}
-.diq-lnk:hover {{ 
-  color: #fff !important; 
-  background: rgba(255,255,255,0.08) !important;
-  transform: translateY(-1px) !important;
+.nav-link {{
+  color: rgba(255,255,255,0.45) !important;
+  font-size: 13px !important; font-weight: 500 !important;
+  transition: all 0.2s ease !important; text-decoration: none !important;
+  padding: 0 18px !important; height: 56px !important;
+  display: flex !important; align-items: center !important; gap: 7px !important;
+  white-space: nowrap !important;
+  border-bottom: 2px solid transparent !important;
+  cursor: pointer !important;
 }}
-.diq-lnk.active {{
-  color: #fff !important; 
-  font-weight: 800 !important; 
-  background: linear-gradient(135deg, rgba(155,114,242,0.2), rgba(109,94,252,0.1)) !important;
-  border-color: rgba(155,114,242,0.3) !important;
-  box-shadow: 0 4px 20px rgba(109,94,252,0.15), inset 0 0 0 1px rgba(155,114,242,0.2) !important;
+.nav-link:hover {{
+  color: rgba(255,255,255,0.9) !important;
+  background: rgba(255,255,255,0.03) !important;
+}}
+.nav-link-wrap.active .nav-link {{
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-bottom-color: #6D5EFC !important;
+  background: transparent !important;
+}}
+.nav-icon {{
+  font-size: 14px;
+  opacity: 0.8;
+  display: flex; align-items: center;
 }}
 .diq-auth {{
-  display: flex; align-items: center; gap: 9px; min-width: 260px; justify-content: flex-end;
+  display: flex; align-items: center; gap: 12px; min-width: 240px; justify-content: flex-end;
 }}
 .nav-profile-wrap {{
   position: relative; display: flex; align-items: center;
@@ -278,6 +307,21 @@ header[data-testid="stHeader"] {{ display: none !important; }}
   font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0;
 }}
 .nav-sep {{ width: 1px; height: 20px; background: rgba(155,114,242,0.25); }}
+.nav-bell-wrap {{
+  position: relative; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}}
+.nav-bell-wrap:hover {{ background: rgba(109,94,252,0.15); border-color: rgba(109,94,252,0.4); }}
+.nav-bell-icon {{ color: rgba(237,237,243,0.6); transition: color .15s; }}
+.nav-bell-wrap:hover .nav-bell-icon {{ color: #fff; }}
+.nav-bell-dot {{
+  position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #FF6B6B; border: 1.5px solid #060814;
+}}
 /* Hover dropdown */
 .nav-dropdown {{
   display: none; position: absolute; top: calc(100% + 10px); right: 0;
@@ -347,18 +391,21 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 <div id="diq-navbar">
   <div class="diq-brand"><div class="diq-dot"></div>LEM StratIQ</div>
   <div class="diq-links">
-    <a class="diq-lnk {_active('home')}"      href="?page=home{tp}" target="_self">Home</a>
-    <a class="diq-lnk {_active('dashboard')}" href="?page=dashboard{tp}" target="_self">My Dashboard</a>
-    <a class="diq-lnk {_active('market')}"    href="?page=market{tp}" target="_self">Markets</a>
-    <a class="diq-lnk {_active('insights')}"  href="?page=insights{tp}" target="_self">Why DeepAtomicIQ</a>
-    <a class="diq-lnk {_active('more')}"      href="?page=more{tp}" target="_self">Preferences</a>
+    {links_html}
   </div>
-  <div class="diq-auth">{auth_html}</div>
+  <div class="diq-auth" style="display:flex;align-items:center;gap:10px;">
+    <div class="nav-bell-wrap" title="Notifications">
+      <svg class="nav-bell-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="nav-bell-dot"></span>
+    </div>
+    <div class="nav-sep"></div>
+    {auth_html}
+  </div>
 </div>
 
 <script>
 // Force same-tab redirection for all nav links
-document.querySelectorAll('.diq-lnk, .nav-act-btn, .nav-dd-item').forEach(link => {{
+document.querySelectorAll('.nav-link, .nav-act-btn, .nav-dd-item').forEach(link => {{
     link.addEventListener('click', function(e) {{
         e.preventDefault();
         window.parent.location.href = this.getAttribute('href');

@@ -168,44 +168,61 @@ header[data-testid="stHeader"], div[data-testid="stToolbar"],
 .nav-bar {{
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
   display: flex; align-items: center;
-  padding: 0 40px; height: 68px;
-  background: rgba(11, 11, 26, 0.9);
+  padding: 0 40px; height: 56px;
+  background: rgba(8, 10, 26, 0.97);
   backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(155, 114, 242, 0.15);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   pointer-events: none;
 }}
 
 .nav-link {{
-  color: {MUTED}; font-size: 14px; font-weight: 500;
-  transition: all 0.25s; text-decoration: none;
-  padding: 8px 16px; border-radius: 12px;
-  display: flex; align-items: center; gap: 8px;
+  color: rgba(255,255,255,0.45);
+  font-size: 13px; font-weight: 500;
+  transition: all 0.2s; text-decoration: none;
+  padding: 0 16px; height: 56px;
+  display: flex; align-items: center; gap: 7px;
   white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
 }}
-.nav-link-wrap.active .nav-link:hover {{ color: #ffffff; background: rgba(255,255,255,0.05); }}
-.nav-link-wrap.active .nav-link {{ color: #3BA4FF; font-weight: 700; border-bottom: 2px solid #3BA4FF; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }}
+.nav-link:hover {{
+  color: rgba(255,255,255,0.85);
+  background: transparent;
+}}
+.nav-link-wrap.active .nav-link {{
+  color: #ffffff;
+  font-weight: 600;
+  border-bottom: 2px solid #6D5EFC;
+  background: transparent;
+}}
+.nav-link-wrap.active .nav-link:hover {{
+  color: #ffffff;
+  background: transparent;
+}}
 
-.nav-link {{
-  color: {ACCENT}; background: transparent; font-weight: 700;
+.nav-icon {{
+  font-size: 13px;
+  opacity: 0.7;
+  display: flex; align-items: center;
 }}
 .nav-right {{
   display: flex; align-items: center; justify-content: flex-end; gap: 12px;
 }}
 #nav-trigger-marker {{ position: fixed; top: 0; left: 0; height: 0; width: 0; z-index: 1001; }}
 
-/* The Streamlit block containing the buttons */
 div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) {{
     position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important;
-    height: 68px !important; z-index: 1005 !important;
+    height: 56px !important; z-index: 1005 !important;
     display: grid !important; gap: 0 !important;
-    grid-template-columns: 240px repeat(5, 110px) 1fr 360px !important;
+    grid-template-columns: 200px repeat(5, 110px) 1fr 320px !important;
     padding: 0 40px !important; align-items: center !important;
     background: transparent !important; pointer-events: auto !important;
 }}
 div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) button {{
     background: transparent !important; border: none !important; color: transparent !important;
-    height: 68px !important; width: 100% !important; margin: 0 !important;
-    box-shadow: none !important;
+    height: 56px !important; width: 100% !important; margin: 0 !important;
+    box-shadow: none !important; border-radius: 0 !important;
 }}
 div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) button:hover {{
     background: rgba(255,255,255,0.03) !important;
@@ -216,7 +233,7 @@ div[data-testid="stHorizontalBlock"]:has(#nav-trigger-marker) div[data-testid="c
 .nav-account {{
   display: flex; align-items: center; gap: 8px;
   padding: 5px 12px; border-radius: 20px;
-  border: 1px solid {BORDER}; background: rgba(138,43,226,0.08);
+  border: 1px solid {BORDER}; background: rgba(109,94,252,0.08);
   font-size: 13px; color: {ACCENT3}; font-weight: 600;
 }}
 .nav-avatar {{
