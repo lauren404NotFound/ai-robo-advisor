@@ -577,28 +577,18 @@ def _render_portfolio():
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
-    st.markdown(
-        f'<div style="display:flex;align-items:center;gap:14px;margin:32px 0 20px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
-        f'<div style="background:linear-gradient(135deg,{ACCENT},{ACCENT2});border-radius:12px;padding:10px;display:flex;">{get_svg("brain", 22, "#fff")}</div>'
-        f'<div><div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px;">AI-Generated</div>'
-        f'<h3 style="margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.01em;">Investment Strategy</h3></div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
     anthropic_client, claude_status = _get_claude()
     if not anthropic_client:
         with st.sidebar:
             st.error("AI Engine Offline — check API key")
 
     if "ai_insight_text_v2" not in st.session_state:
-        with st.status("Analyzing your profile via Claude Sonnet...", expanded=True) as status:
-            # Pass answers dict, integer profile_num, and iq_params dict
+        with st.status("Analysing your profile via Claude Sonnet...", expanded=True) as status:
             insight, used_claude = get_ai_explanation(ans, profile_num, iq or {})
             source = "Claude AI" if used_claude else "DeepAtomicIQ Engine"
             st.session_state.ai_insight_text_v2 = insight
             st.session_state.ai_insight_source_v2 = source
-            status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
+            status.update(label=f"Insight generated via {source}", state="complete", expanded=False)
             st.session_state.result["ai_narrative"] = insight
             database.save_assessment(
                 st.session_state.get("user_email", "guest"),
@@ -606,30 +596,38 @@ def _render_portfolio():
                 st.session_state.result,
             )
 
-    _ai_text = str(st.session_state.get("ai_insight_text_v2", "..."))
-    st.markdown(_ai_text.replace("\\n", "  \n"))
+    _ai_text  = str(st.session_state.get("ai_insight_text_v2", "..."))
+    _ai_source = st.session_state.get("ai_insight_source_v2", "Claude AI")
 
-    st.markdown("""
-    <style>
-    div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
-        background: rgba(109,94,252,0.12) !important;
-        border: 1px solid rgba(109,94,252,0.4) !important;
-        color: #fff !important;
-        border-radius: 12px !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        padding: 10px 20px !important;
-        transition: all 0.2s !important;
-    }
-    div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover {
-        background: rgba(109,94,252,0.28) !important;
-        border-color: rgba(109,94,252,0.7) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 20px rgba(109,94,252,0.25) !important;
-    }
-    </style>
+    # Section header
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:14px;margin:32px 0 16px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
+        f'<div style="background:linear-gradient(135deg,{ACCENT},{ACCENT2});border-radius:12px;padding:10px;display:flex;">{get_svg("brain", 22, "#fff")}</div>'
+        f'<div><div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px;">AI-Generated</div>'
+        f'<h3 style="margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.01em;">Investment Strategy</h3></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Styled card containing the AI narrative
+    st.markdown(f"""
+    <div style="background:rgba(109,94,252,0.05);border:1px solid rgba(109,94,252,0.2);
+                border-radius:16px;padding:28px 32px;position:relative;">
+      <div style="position:absolute;top:16px;right:18px;display:flex;align-items:center;gap:6px;
+                  background:rgba(109,94,252,0.12);border:1px solid rgba(109,94,252,0.3);
+                  border-radius:20px;padding:4px 10px;">
+        {get_svg("brain",12,ACCENT)}
+        <span style="font-size:9px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.08em;">{_ai_source}</span>
+      </div>
     """, unsafe_allow_html=True)
 
+    # Render AI text with proper markdown inside the card
+    formatted = _ai_text.replace("\\n", "\n")
+    st.markdown(f'<div style="font-size:13.5px;color:#C5D3EC;line-height:1.8;">', unsafe_allow_html=True)
+    st.markdown(formatted)
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
         if st.button("Regenerate Strategy", icon=":material/refresh:", use_container_width=True):
