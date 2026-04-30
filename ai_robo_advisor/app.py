@@ -68,7 +68,24 @@ anthropic_client = None
 
 if _api_key:
     try:
-        anthropic_client = anthropic.Anthropic(api_key=_api_key)
+        # ── Anthropic / Claude client ─────────────────────────────────────────────────
+try:
+    import anthropic as _anthropic
+    _ant_key = (
+        st.secrets.get("anthropic_api_key")          # matches your Streamlit secret
+        or st.secrets.get("ANTHROPIC_API_KEY")
+        or st.secrets.get("anthropic", {}).get("api_key")
+    )
+    if _ant_key:
+        anthropic_client = _anthropic.Anthropic(api_key=_ant_key)
+        claude_status = "ok"
+    else:
+        anthropic_client = None
+        claude_status = "no_key"
+except Exception as _e:
+    anthropic_client = None
+    claude_status = f"error: {_e}"
+# ─────────────────────────────────────────────────────────────────────────────
         claude_status = "Connected"
     except Exception as e:
         claude_status = f"Init Error: {e}"
