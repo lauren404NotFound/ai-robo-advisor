@@ -534,32 +534,32 @@ def _render_portfolio():
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
-            # Build the snapshot as a single self-contained HTML card
-            snap_rows = ""
             snap_items = [
-                ("Assets in your portfolio", f"{len(sorted_alloc)} investment types", "Spreading across multiple assets reduces the risk of any one falling."),
-                ("Target annual growth",      f"{stats['expected_annual_return']:.1f}% per year", "This is the average return the model expects over time."),
-                ("Expected ups & downs",      f"±{stats['expected_volatility']:.1f}% per year",   "Your portfolio may swing by this amount in a given year — that's normal."),
-                ("Risk-to-reward score",      f"{stats['sharpe_ratio']:.2f} (higher = better)",   "Measures whether the returns justify the risk taken."),
+                ("Assets in your portfolio", f"{len(sorted_alloc)} investment types",          "Spreading across multiple assets reduces the risk of any one falling."),
+                ("Target annual growth",     f"{stats['expected_annual_return']:.1f}% per year","This is the average return the model expects over time."),
+                ("Expected ups & downs",     f"\u00b1{stats['expected_volatility']:.1f}% per year",  "Your portfolio may swing by this amount in a given year \u2014 that's normal."),
+                ("Risk-to-reward score",     f"{stats['sharpe_ratio']:.2f} (higher = better)", "Measures whether the returns justify the risk taken."),
             ]
+            # Card header
+            st.markdown(
+                f'<div class="card" style="padding:20px 22px;margin-top:16px;">'
+                f'<div style="font-size:11px;font-weight:800;color:{ACCENT};text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">Your Portfolio at a Glance</div>',
+                unsafe_allow_html=True,
+            )
             for s_label, s_val, s_desc in snap_items:
-                snap_rows += f"""
-                <div style="display:flex;justify-content:space-between;align-items:baseline;
-                            padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <div>
-                    <div style="font-size:11px;font-weight:700;color:#C5D3EC;">{s_label}</div>
-                    <div style="font-size:10px;color:{MUTED};margin-top:2px;">{s_desc}</div>
-                  </div>
-                  <div style="font-size:13px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;
-                              white-space:nowrap;margin-left:12px;">{s_val}</div>
-                </div>"""
-            st.markdown(f"""
-            <div class="card" style="padding:20px;margin-top:16px;">
-              <div style="font-size:12px;font-weight:800;color:{ACCENT};text-transform:uppercase;
-                          letter-spacing:.1em;margin-bottom:12px;">Your Portfolio at a Glance</div>
-              {snap_rows}
-            </div>
-            """, unsafe_allow_html=True)
+                is_last = (s_label == snap_items[-1][0])
+                border = "" if is_last else "border-bottom:1px solid rgba(255,255,255,0.06);"
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;{border}">'
+                    f'<div style="flex:1;min-width:0;">'
+                    f'<div style="font-size:11px;font-weight:700;color:#C5D3EC;">{s_label}</div>'
+                    f'<div style="font-size:10px;color:{MUTED};margin-top:2px;">{s_desc}</div>'
+                    f'</div>'
+                    f'<div style="font-size:13px;font-weight:800;color:#fff;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;margin-left:16px;">{s_val}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            st.markdown('</div>', unsafe_allow_html=True)
 
 
     with c2:
