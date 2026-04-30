@@ -35,7 +35,6 @@ def explain(port: dict, answers: dict) -> str:
     
     personal_note = f"""
 ### 👥 Personal Alignment Note
-- **Investor Profile**: You are identified as a **{cat}** investor.
 - **Time Horizon**: With a **{horizon}** horizon, the MINN has calibrated your 'Temporal Decay (γ)' to ensure your capital is protected relative to your target date.
 - **Psychological Buffer**: You noted that in a market drop, you would: *"{reaction}"*. 
   - To accommodate this, the model has adjusted the **Tail Risk Weight (wT)** to ensure that if a crash occurs, your portfolio has enough 'Safe Haven' assets (like Gold or Bonds) to prevent a panic-inducing drawdown.

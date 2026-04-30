@@ -363,11 +363,6 @@ def _render_portfolio():
         <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Welcome back, {name}</div>
         <div style="font-size:13px;color:#8BA6D3;margin-top:4px;">Your AI-optimised portfolio</div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <div style="background:rgba(155,114,242,0.12);border:1px solid rgba(155,114,242,0.35);border-radius:20px;padding:8px 20px;font-size:13px;font-weight:700;color:{ACCENT2};">
-          {cat}
-        </div>
-      </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -486,24 +481,16 @@ def _render_portfolio():
         else:
             st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Portfolio Snapshot</p>', unsafe_allow_html=True)
             st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A simpler summary of your current portfolio characteristics and expected behaviour.</p>', unsafe_allow_html=True)
-            snapshot_col1, snapshot_col2 = st.columns(2)
-            with snapshot_col1:
-                st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:10px; color:{MUTED};">Risk Score</div>
-                    <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{res.get('score', 5):.1f}/10</div>
-                    <div style="font-size:9px; color:{MUTED};">Survey-derived profile</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with snapshot_col2:
-                st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:10px; color:{MUTED};">Diversification</div>
-                    <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{len(sorted_alloc)}</div>
-                    <div style="font-size:9px; color:{MUTED};">Asset sleeves selected</div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:12px;">Built around <b style="color:#fff;">{cat}</b> · Expected return <b style="color:#fff;">{stats["expected_annual_return"]:.1f}%</b> · Volatility <b style="color:#fff;">{stats["expected_volatility"]:.1f}%</b></p>', unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:14px; text-align:center; margin-bottom:10px;">
+                <div style="font-size:11px; color:{MUTED}; font-weight:700; letter-spacing:0.05em; margin-bottom:8px;">AI-GENERATED ASSET SPREAD</div>
+                <div style="font-size:32px; color:{ACCENT2}; font-weight:900;">{len(sorted_alloc)}</div>
+                <div style="font-size:10px; color:{MUTED}; margin-top:4px;">Asset sleeves selected for your unique profile</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:16px;"><b>Expected return:</b> <span style="color:#fff;">{stats["expected_annual_return"]:.1f}%</span> &nbsp;·&nbsp; <b>Expected volatility:</b> <span style="color:#fff;">{stats["expected_volatility"]:.1f}%</span></p>', unsafe_allow_html=True)
 
     st.divider()
     with st.expander("ℹ️ Data Source & Methodology", icon=":material/info:"):
