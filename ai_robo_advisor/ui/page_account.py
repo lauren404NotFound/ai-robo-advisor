@@ -231,15 +231,21 @@ def page_account():
 
     # ── SIDEBAR: Identity Card ───────────────────────────────────────────────
     with col_left:
-        avatar_url = st.session_state.get("user_avatar", "")
-        emoji_choice = prefs.get("avatar_emoji", "")
+        avatar_style_pref = prefs.get("avatar_style", "Initials (Default)")
+        _style_gradients = {
+            "Gradient · Blue":   "linear-gradient(135deg,#3BA4FF,#6D5EFC)",
+            "Gradient · Purple": "linear-gradient(135deg,#9B72F2,#6D5EFC)",
+            "Gradient · Teal":   "linear-gradient(135deg,#4AE3A0,#3BA4FF)",
+            "Dark Solid":        "linear-gradient(135deg,#1a1a3e,#2a2a5e)",
+        }
+        _grad = _style_gradients.get(avatar_style_pref, "linear-gradient(135deg,#6D5EFC,#3BA4FF)")
+
+        avatar_url = st.session_state.get("user_avatar", "") or prefs.get("avatar_url", "")
 
         if avatar_url:
             avatar_inner = f'<img src="{avatar_url}" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);">'
-        elif emoji_choice:
-            avatar_inner = f'<div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:48px;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);">{emoji_choice}</div>'
         else:
-            avatar_inner = f'<div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#6D5EFC,#3BA4FF);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;color:#fff;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);">{initials}</div>'
+            avatar_inner = f'<div style="width:110px;height:110px;border-radius:50%;background:{_grad};display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;color:#fff;border:4px solid rgba(109,94,252,0.4);box-shadow:0 10px 40px rgba(0,0,0,0.4);letter-spacing:-0.02em;">{initials}</div>'
 
         st.markdown(f"""
         <div style="background:linear-gradient(135deg,rgba(109,94,252,0.15),rgba(59,164,255,0.08));
@@ -314,15 +320,18 @@ def page_account():
                 job_title = st.text_input("Occupation", value=prefs.get("job", ""), placeholder="e.g. Portfolio Manager")
             with n_col2:
                 location = st.text_input("Location", value=prefs.get("location", ""), placeholder="e.g. Zurich, Switzerland")
-                avatar_picker = st.selectbox("Avatar Emoji Fallback", [""] + ["🐻","🦁","🐼","🐯","💎","🚀","🎯","⚡"], 
-                                             index=0 if not emoji_choice else ([""] + ["🐻","🦁","🐼","🐯","💎","🚀","🎯","⚡"]).index(emoji_choice))
+                avatar_style = st.selectbox(
+                    "Avatar Style",
+                    options=["Initials (Default)", "Gradient · Blue", "Gradient · Purple", "Gradient · Teal", "Dark Solid"],
+                    index=max(0, ["Initials (Default)", "Gradient · Blue", "Gradient · Purple", "Gradient · Teal", "Dark Solid"].index(prefs.get("avatar_style", "Initials (Default)"))
+                             if prefs.get("avatar_style", "Initials (Default)") in ["Initials (Default)", "Gradient · Blue", "Gradient · Purple", "Gradient · Teal", "Dark Solid"] else 0),
+                )
             
             st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
             st.markdown(f'<div style="font-size:12px;color:#6D5EFC;font-weight:800;margin-bottom:12px;">CONTACT & IDENTITY</div>', unsafe_allow_html=True)
             c_col1, c_col2 = st.columns(2)
             with c_col1:
-                curr_code = prefs.get("phone_code", "+44 (UK)")
-                phone_code = st.selectbox("Country Code", GLOBAL_COUNTRIES, index=GLOBAL_COUNTRIES.index(curr_code) if curr_code in GLOBAL_COUNTRIES else 14)
+                phone_code = st.text_input("Phone Prefix", value=prefs.get("phone_code", "+44"), placeholder="e.g. +44, +1, +353")
                 phone_num = st.text_input("Phone Number", value=prefs.get("phone", ""), placeholder="e.g. 7123 456789")
             with c_col2:
                 import datetime
@@ -345,7 +354,7 @@ def page_account():
                     prefs["job"] = job_title
                     prefs["location"] = location
                     prefs["bio"] = about_bio
-                    prefs["avatar_emoji"] = avatar_picker
+                    prefs["avatar_style"] = avatar_style
                     prefs["avatar_url"] = st.session_state.get("user_avatar", "")
                     # New fields
                     prefs["phone_code"] = phone_code

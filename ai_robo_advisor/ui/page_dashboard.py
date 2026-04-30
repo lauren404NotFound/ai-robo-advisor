@@ -417,36 +417,65 @@ def _render_portfolio():
 
     name = st.session_state.get("user_name", "Investor").split()[0]
     now  = datetime.datetime.now().strftime("%d %b %Y")
+
+    # ── Header ─────────────────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:4px 0 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                flex-wrap:wrap;gap:12px;padding:8px 0 28px;
+                border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:28px;">
       <div>
-        <div style="font-size:10px;font-weight:700;color:{ACCENT};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px;">LEM StratIQ · Portfolio Dashboard</div>
-        <div style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;">Good day, {name}</div>
-        <div style="font-size:13px;color:#8BA6D3;margin-top:6px;">AI-optimised portfolio &middot; personalised to your risk profile</div>
+        <div style="font-size:10px;font-weight:700;color:{ACCENT};letter-spacing:0.18em;
+                    text-transform:uppercase;margin-bottom:8px;">LEM StratIQ · Portfolio Dashboard</div>
+        <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;line-height:1.05;">
+          Welcome back, {name}
+        </div>
+        <div style="font-size:13px;color:#8BA6D3;margin-top:8px;display:flex;align-items:center;gap:10px;">
+          <span style="background:rgba(142,246,209,0.12);color:#8EF6D1;border-radius:20px;
+                       padding:3px 10px;font-size:11px;font-weight:700;">
+            ● Live Portfolio
+          </span>
+          <span style="color:rgba(255,255,255,0.3);">{now}</span>
+          <span style="color:rgba(255,255,255,0.3);">·</span>
+          <span style="color:#8BA6D3;">Risk Score: {res.get('score', 5):.1f} / 10</span>
+        </div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;">Generated</div>
-        <div style="font-size:13px;color:#8BA6D3;font-weight:600;margin-top:2px;">{now}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;
+                    text-transform:uppercase;margin-bottom:4px;">Strategy</div>
+        <div style="font-size:15px;color:#fff;font-weight:700;">{cat}</div>
+        <div style="font-size:11px;color:#8BA6D3;margin-top:2px;">{len(sorted_alloc)} Asset Classes</div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
+    # ── KPI Cards — vibrant gradient style ─────────────────────────────────────
+    kpi_data = [
+        ("Expected Annual Return", f"{stats['expected_annual_return']:.1f}%",
+         "Average yearly growth", "linear-gradient(135deg,#6D5EFC,#3BA4FF)", "#fff"),
+        ("Portfolio Volatility",   f"±{stats['expected_volatility']:.1f}%",
+         "Typical yearly swing",   "linear-gradient(135deg,#1a1a3e,#2a2a5e)", "#C5D3EC"),
+        ("Sharpe Ratio",           f"{stats['sharpe_ratio']:.2f}",
+         "Return per unit of risk","linear-gradient(135deg,#0d3d2e,#1a6b52)", "#8EF6D1"),
+        ("Best-Case 10yr Value",   f"{get_currency_symbol()}{sim['p90']:,.0f}",
+         "Top 10% scenario",       f"linear-gradient(135deg,#2d1a4e,{color}44)", color),
+    ]
     k1, k2, k3, k4 = st.columns(4)
-    for col, label, val, hint, vc, icon_name in [
-        (k1, "Yearly Growth",    f"{stats['expected_annual_return']:.1f}%",  "How much your money could grow each year on average.", POS,       "chart"),
-        (k2, "Risk Level",       f"{stats['expected_volatility']:.1f}%",     "How much the value might go up or down year to year.",  "#C5D3EC", "risk"),
-        (k3, "Reward vs. Risk",  f"{stats['sharpe_ratio']:.2f}",              "Higher = better return for the amount of risk taken.",  POS,       "zap"),
-        (k4, "Best-Case Value",  f"{get_currency_symbol()}{sim['p90']:,.0f}","Your portfolio in the top 10% best scenario.",         color,     "layers"),
-    ]:
+    for col, (label, val, hint, grad, vc) in zip([k1,k2,k3,k4], kpi_data):
         with col:
             st.markdown(f"""
-            <div class="card" style="padding:20px 18px;margin-bottom:20px;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                <div style="opacity:0.5;">{get_svg(icon_name,13,vc)}</div>
-                <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(237,237,243,0.5);">{label}</div>
+            <div style="background:{grad};border:1px solid rgba(255,255,255,0.08);
+                        border-radius:16px;padding:22px 20px;margin-bottom:24px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                          letter-spacing:.12em;color:rgba(255,255,255,0.5);margin-bottom:12px;">
+                {label}
               </div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;color:{vc};letter-spacing:-0.02em;">{val}</div>
-              <div style="font-size:10px;color:rgba(230,213,255,0.35);margin-top:8px;line-height:1.4;">{hint}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:30px;
+                          font-weight:900;color:{vc};letter-spacing:-0.02em;line-height:1;">
+                {val}
+              </div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:10px;">
+                {hint}
+              </div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -570,8 +599,98 @@ def _render_portfolio():
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
+    # ── AI INVESTMENT STRATEGY ─────────────────────────────────────────────────
     anthropic_client, claude_status = _get_claude()
+    if not anthropic_client:
+        with st.sidebar:
+            st.error("AI Engine Offline — check API key")
+
+    if "ai_insight_text_v2" not in st.session_state:
+        with st.status("Analysing your profile via Claude Sonnet...", expanded=True) as status:
+            _portfolio_stats = {
+                "expected_annual_return": stats.get("expected_annual_return", 0),
+                "expected_volatility":    stats.get("expected_volatility", 0),
+                "sharpe_ratio":           stats.get("sharpe_ratio", 0),
+                "risk_category":          port.get("risk_category", "balanced"),
+                "top_assets": [(a, w * 100) for a, w in sorted_weights.items()][:6],
+            }
+            insight, used_claude = get_ai_explanation(ans, _portfolio_stats, iq or {})
+            source = "Claude AI" if used_claude else "DeepAtomicIQ Engine"
+            st.session_state.ai_insight_text_v2 = insight
+            st.session_state.ai_insight_source_v2 = source
+            status.update(label=f"Insight generated via {source}", state="complete", expanded=False)
+            st.session_state.result["ai_narrative"] = insight
+            database.save_assessment(
+                st.session_state.get("user_email", "guest"),
+                st.session_state.survey_answers,
+                st.session_state.result,
+            )
+
+    _ai_text   = str(st.session_state.get("ai_insight_text_v2", "..."))
+    _ai_source = st.session_state.get("ai_insight_source_v2", "Claude AI")
+    _is_claude = "claude" in _ai_source.lower()
+
+    # Section header
+    st.markdown(
+        f'<div id="section-ai" style="display:flex;align-items:center;gap:14px;margin:32px 0 16px;'
+        f'padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
+        f'<div style="background:linear-gradient(135deg,{ACCENT},{ACCENT2});border-radius:12px;padding:10px;display:flex;">'
+        f'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'
+        f'<polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>'
+        f'</div>'
+        f'<div>'
+        f'<div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px;">AI-Generated Strategy</div>'
+        f'<h3 style="margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.01em;">Your Investment Narrative</h3>'
+        f'</div>'
+        f'<div style="margin-left:auto;display:flex;align-items:center;gap:8px;">'
+        + (f'<div style="display:flex;align-items:center;gap:7px;background:rgba(200,100,30,0.1);'
+           f'border:1px solid rgba(200,120,50,0.3);border-radius:20px;padding:5px 12px;">'
+           f'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E07040" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+           f'<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>'
+           f'<span style="font-size:10px;font-weight:700;color:#E07040;letter-spacing:.06em;">Claude claude-sonnet-4-20250514</span>'
+           f'</div>' if _is_claude else
+           f'<div style="display:flex;align-items:center;gap:7px;background:rgba(109,94,252,0.1);'
+           f'border:1px solid rgba(109,94,252,0.3);border-radius:20px;padding:5px 12px;">'
+           f'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{ACCENT}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+           f'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+           f'<span style="font-size:10px;font-weight:700;color:{ACCENT};letter-spacing:.06em;">DeepAtomicIQ Engine</span>'
+           f'</div>')
+        + f'</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # AI narrative card
+    st.markdown(f"""
+    <div style="background:rgba(109,94,252,0.05);border:1px solid rgba(109,94,252,0.2);
+                border-radius:16px;padding:28px 32px;">
+    """, unsafe_allow_html=True)
+    formatted = _ai_text.replace("\\n", "\n")
+    st.markdown(f'<div style="font-size:13.5px;color:#C5D3EC;line-height:1.8;">', unsafe_allow_html=True)
+    st.markdown(formatted)
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+    btn_col1, btn_col2, _ = st.columns([1, 1, 2])
+    with btn_col1:
+        if st.button("Regenerate Strategy", icon=":material/refresh:", use_container_width=True):
+            if "ai_insight_text_v2" in st.session_state:
+                del st.session_state["ai_insight_text_v2"]
+            st.rerun()
+    with btn_col2:
+        if st.session_state.get("user_email") != "guest":
+            if st.button("Email Report", icon=":material/mail:", use_container_width=True):
+                with st.spinner("Delivering report..."):
+                    sent = send_portfolio_report(
+                        st.session_state.user_email,
+                        port["risk_category"],
+                        port.get("profile_score", profile_num),
+                        st.session_state.get("ai_insight_text_v2", ""),
+                    )
+                    if sent: st.success("Sent!")
+                    else:    st.error("Failed")
+
+
     if not anthropic_client:
         with st.sidebar:
             st.error("AI Engine Offline — check API key")
