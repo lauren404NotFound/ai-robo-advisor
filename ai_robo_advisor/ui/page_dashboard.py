@@ -624,35 +624,6 @@ def _render_portfolio():
                     if sent: st.success("Sent!")
                     else:    st.error("Failed")
 
-    st.markdown("""
-    <style>
-    details[data-testid="stExpander"] > summary {
-        background: rgba(109,94,252,0.08) !important;
-        border: 1px solid rgba(109,94,252,0.3) !important;
-        border-radius: 12px !important;
-        padding: 12px 18px !important;
-        color: #9B72F2 !important;
-        font-weight: 700 !important;
-        font-size: 13px !important;
-        letter-spacing: 0.02em !important;
-    }
-    details[data-testid="stExpander"] > summary:hover {
-        background: rgba(109,94,252,0.15) !important;
-        border-color: rgba(109,94,252,0.5) !important;
-    }
-    details[data-testid="stExpander"][open] > summary {
-        border-radius: 12px 12px 0 0 !important;
-        border-bottom-color: rgba(109,94,252,0.15) !important;
-    }
-    details[data-testid="stExpander"] > div {
-        border: 1px solid rgba(109,94,252,0.3) !important;
-        border-top: none !important;
-        border-radius: 0 0 12px 12px !important;
-        background: rgba(109,94,252,0.04) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     with st.expander("🛠️ TECHNICAL LOGIC VALIDATOR (Examiner View)", expanded=False):
         st.markdown("### `System Internals Audit`")
         t_col1, t_col2 = st.columns(2)
