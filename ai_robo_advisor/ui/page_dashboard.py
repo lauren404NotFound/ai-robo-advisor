@@ -552,12 +552,9 @@ def _render_portfolio():
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.divider()
-
-    # ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
-    st.divider()
+# ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
     st.markdown(
-        f'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 16px;">'
+        f'<div style="display:flex;align-items:center;gap:12px;margin:8px 0 16px;">'
         f'<div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("brain", 24, "#fff")}</div>'
         f'<h3 style="margin:0;font-size:20px;font-weight:900;color:#fff;">Claude AI Investment Strategy</h3>'
         f'</div>',
