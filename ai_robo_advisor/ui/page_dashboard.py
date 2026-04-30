@@ -421,7 +421,7 @@ def _render_portfolio():
       <div>
         <div style="font-size:10px;font-weight:700;color:{ACCENT};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px;">LEM StratIQ · Portfolio Dashboard</div>
         <div style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;">Good day, {name}</div>
-        <div style="font-size:13px;color:#8BA6D3;margin-top:6px;">AI-optimised portfolio · {cat} strategy</div>
+        <div style="font-size:13px;color:#8BA6D3;margin-top:6px;">AI-optimised portfolio &middot; personalised to your risk profile</div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;">Generated</div>
