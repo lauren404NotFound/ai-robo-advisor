@@ -295,4 +295,5 @@ def main_router():
 
 
 main_router()
+from ui.chatbot import render_chatbot
 render_chatbot()

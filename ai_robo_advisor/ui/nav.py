@@ -362,7 +362,7 @@ header[data-testid="stHeader"] {{ display: none !important; }}
       <span class="nav-bell-dot"></span>
     </div>
     <div class="nav-sep"></div>
-    {auth_html}
+    {auth_html.strip()}
   </div>
 </div>
 
