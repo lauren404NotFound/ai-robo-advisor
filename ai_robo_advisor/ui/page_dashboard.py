@@ -114,17 +114,22 @@ def _render_feed_items(notifs, compact: bool = False):
 
 
 def _render_feed_card(notifs, include_archive: bool = False, compact: bool = False):
-    st.markdown(f'<div class="card"><div class="panel-title">{get_svg("zap", 14, ACCENT)} &nbsp; Intelligence Feed</div>', unsafe_allow_html=True)
+    """Render the Intelligence Feed without split-div card wrappers."""
     st.markdown(
-        f'<div style="font-size:11px;color:{MUTED};margin-bottom:20px;">Real-time feed of neural diagnostic events and profile changes.</div>',
+        f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;'
+        f'letter-spacing:0.1em;margin:0 0 4px;border-left:3px solid #6D5EFC;padding-left:10px;">'
+        f'{get_svg("zap",12,"#9B72F2")} &nbsp;Intelligence Feed</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<p style="font-size:11px;color:{MUTED};margin:0 0 14px;">'
+        f'Real-time feed of neural diagnostic events and profile changes.</p>',
         unsafe_allow_html=True,
     )
     _render_feed_items(notifs, compact=compact)
     if include_archive:
-        st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
         if st.button("Archive Event Log", use_container_width=True):
             st.info("Logs are archived in MongoDB Atlas.")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 def page_dashboard():
     # Authentication check
@@ -356,7 +361,7 @@ def _render_portfolio():
       <div>
         <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Portfolio Dashboard</div>
         <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Welcome back, {name}</div>
-        <div style="font-size:13px;color:#8BA6D3;margin-top:4px;">Your AI-optimised portfolio · {cat}</div>
+        <div style="font-size:13px;color:#8BA6D3;margin-top:4px;">Your AI-optimised portfolio</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div style="background:rgba(155,114,242,0.12);border:1px solid rgba(155,114,242,0.35);border-radius:20px;padding:8px 20px;font-size:13px;font-weight:700;color:{ACCENT2};">
@@ -434,8 +439,12 @@ def _render_portfolio():
                 </div>
                 """, unsafe_allow_html=True)
                 
-            st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="panel-title"><div class="rich-tooltip">Regime Mixture Probability <span class="tt-icon">{get_svg("info", 14, MUTED)}</span><span class="tooltip-text"><div class="tt-header">{get_svg("chart", 14)} Market Regimes</div>Financial markets go through different phases — normal growth (Body), sudden drops (Tail), or high uncertainty (Wing). This shows which regime the MINN believes is active, and how it has weighted your portfolio to handle it.</span></div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;'
+                f'letter-spacing:0.1em;margin:20px 0 8px;border-left:3px solid #6D5EFC;padding-left:10px;">'
+                f'Regime Mixture Probability</p>',
+                unsafe_allow_html=True,
+            )
             regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
             r_names = list(regimes.keys())
             r_vals = list(regimes.values())
@@ -496,8 +505,8 @@ def _render_portfolio():
                 """, unsafe_allow_html=True)
             st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:12px;">Built around <b style="color:#fff;">{cat}</b> · Expected return <b style="color:#fff;">{stats["expected_annual_return"]:.1f}%</b> · Volatility <b style="color:#fff;">{stats["expected_volatility"]:.1f}%</b></p>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    with st.expander("Data Source & Methodology — Where do these numbers come from?", icon=":material/info:"):
+    st.divider()
+    with st.expander("ℹ️ Data Source & Methodology", icon=":material/info:"):
         st.markdown(f"""
         <div style="font-size:14px; color:{MUTED}; line-height:1.7;">
           <h4 style="color:#ffffff; margin-top:0;">1. Data Foundation</h4>
@@ -537,7 +546,7 @@ def _render_portfolio():
     # ══════════════════════════════════════════════════════════════════════
     # ── NEURAL AI STRATEGY INTERPRETATION ────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
-    st.markdown("---")
+    st.divider()
     col_toggle, col_spacer = st.columns([1, 3])
     with col_toggle:
         mode = st.session_state.explanation_mode
@@ -552,7 +561,11 @@ def _render_portfolio():
             if "ai_insight_text" in st.session_state: del st.session_state.ai_insight_text
             st.rerun()
 
-    st.markdown(f'<h3 style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">{get_svg("brain", 24, ACCENT)} Neural AI Strategy Interpretation</h3>', unsafe_allow_html=True)
+    st.markdown(
+        f'<h3 style="display:flex;align-items:center;gap:10px;margin:18px 0 14px;font-size:20px;font-weight:900;color:#fff;">'
+        f'{get_svg("brain",22,ACCENT)} Neural AI Strategy Interpretation</h3>',
+        unsafe_allow_html=True,
+    )
 
     anthropic_client, claude_status = _get_claude()
     if not anthropic_client:
@@ -615,7 +628,7 @@ def _render_portfolio():
     # ══════════════════════════════════════════════════════════════════════
     # ── INVESTMENT PLANNER ────────────────────────────────────────────────
     # ══════════════════════════════════════════════════════════════════════
-    st.markdown("---")
+    st.divider()
     _render_section_intro(
         "Investment Planner",
         "Enter how much you want to invest — we'll show you exactly where to put it and what to expect back.",
@@ -786,7 +799,7 @@ def _render_portfolio():
 
 
     # ── HISTORICAL STRESS TEST ──
-    st.markdown("---")
+    st.divider()
     _render_section_intro("Resilience Stress Test", "", icon_svg=get_svg("shield", 24, ACCENT), margin_top=12)
     c1, c2, c3 = st.columns(3)
     stress_scenarios = [
