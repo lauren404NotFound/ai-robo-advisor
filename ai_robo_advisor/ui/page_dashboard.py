@@ -360,6 +360,7 @@ def _render_analysing():
             initial=10000,
             monthly=500,
             years=horizon_yrs,
+            answers=st.session_state.get("survey_answers", {}),
         )
 
         if "error" in portfolio:
