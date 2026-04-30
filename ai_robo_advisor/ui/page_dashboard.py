@@ -51,6 +51,44 @@ ASSET_DETAIL = {
     "PDBC": {"icon": get_svg("risk", 14, "#FF6B6B"), "colour": "#FF6B6B", "why": "PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
 }
 
+# ── Helper: get profile number from portfolio result ─────────────────────────
+def _profile_num_from_port(port: dict) -> int:
+    """Extract an integer profile number (1-6) from the portfolio dict."""
+    # Try explicit profile_num key first
+    for key in ("profile_num", "profile_number", "robo_profile"):
+        val = port.get(key)
+        if val is not None:
+            try:
+                return int(str(val).strip().replace("P","").replace("p",""))
+            except (ValueError, TypeError):
+                pass
+    # Fall back: map risk_category string to a number
+    cat = str(port.get("risk_category", "")).lower()
+    mapping = {
+        "capital preservation": 1, "conservative": 1,
+        "balanced growth": 2,      "balanced": 2, "moderate": 2,
+        "high-alpha equity": 3,    "aggressive": 3, "growth": 3,
+        "esg impact": 4,           "esg": 4,
+        "thematic concentrated": 5,"thematic": 5, "concentrated": 5,
+        "risk parity": 6,          "parity": 6, "systematic": 6,
+    }
+    for k, v in mapping.items():
+        if k in cat:
+            return v
+    # Last resort: derive from risk score
+    score = port.get("profile_score", port.get("score", 5))
+    try:
+        s = float(score)
+        if s <= 2:   return 1
+        if s <= 4:   return 2
+        if s <= 6:   return 3
+        if s <= 7:   return 4
+        if s <= 8.5: return 5
+        return 6
+    except (ValueError, TypeError):
+        return 2
+
+
 def _get_model_objects():
     import app as _app
     return _app.MODEL_PATH
@@ -114,7 +152,6 @@ def _render_feed_items(notifs, compact: bool = False):
 
 
 def _render_feed_card(notifs, include_archive: bool = False, compact: bool = False):
-    """Render the Intelligence Feed without split-div card wrappers."""
     st.markdown(
         f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;'
         f'letter-spacing:0.1em;margin:0 0 4px;border-left:3px solid #6D5EFC;padding-left:10px;">'
@@ -131,8 +168,8 @@ def _render_feed_card(notifs, include_archive: bool = False, compact: bool = Fal
         if st.button("Archive Event Log", use_container_width=True):
             st.info("Logs are archived in MongoDB Atlas.")
 
+
 def page_dashboard():
-    # Authentication check
     if not st.session_state.get("authenticated"):
         st.markdown(f"""
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:100px 20px;">
@@ -155,14 +192,11 @@ def page_dashboard():
                 st.rerun()
         return
 
-    # If currently analysing, always render that screen first
-    # (result doesn't exist yet at this point — it gets set inside _render_analysing)
     sp = st.session_state.get("survey_page", "survey")
     if sp == "analysing":
         _render_analysing()
         return
 
-    # Auto-Restore from DB if browser was refreshed
     if not st.session_state.get("result") and st.session_state.get("user_email") != "guest":
         saved = database.get_latest_assessment(st.session_state.get("user_email"))
         if saved:
@@ -171,12 +205,11 @@ def page_dashboard():
             st.session_state.survey_page = "portfolio"
             sp = "portfolio"
 
-    # Results check — survey not yet completed
     if not st.session_state.get("result"):
         if sp == "survey":
             _render_survey()
             return
-            
+
         st.markdown(f"""
         <div class="coming-soon">
           <div class="coming-soon-icon" style="color:#6D5EFC;margin-bottom:15px;display:flex;justify-content:center;">{get_svg("news", 40)}</div>
@@ -184,7 +217,7 @@ def page_dashboard():
           <div class="coming-soon-sub">Please complete the investor assessment survey to view your dashboard.</div>
         </div>
         """, unsafe_allow_html=True)
-        
+
         c1, c2, c3 = st.columns([1,2,1])
         with c2:
             if st.button("Start Neural Assessment →", type="primary", use_container_width=True):
@@ -194,7 +227,6 @@ def page_dashboard():
                 st.rerun()
         return
 
-    # Results exist — show portfolio or survey
     if sp == "survey":
         _render_survey()
     else:
@@ -202,39 +234,66 @@ def page_dashboard():
 
 
 def _render_survey():
-    step = st.session_state.survey_step
+    step = st.session_state.get("survey_step", 0)
     q    = QUESTIONS[step]
     pct  = int((step / len(QUESTIONS)) * 100)
+
+    # Use new QUESTIONS structure: id, text, subtitle, options[{label, value, desc}]
+    q_id       = q["id"]
+    q_text     = q["text"]
+    q_subtitle = q.get("subtitle", "")
+    q_opts     = q["options"]
+    opt_labels = [o["label"] for o in q_opts]
 
     st.markdown(f"""
     <div class="survey-wrap">
       <div class="progress-bar-wrap">
         <div class="progress-bar-fill" style="width:{pct}%"></div>
       </div>
-      <div class="q-number">{q['number']}</div>
-      <div class="q-text">{q['text']}</div>
-      <div class="q-desc">{q['desc']}</div>
+      <div class="q-number">Question {step + 1} of {len(QUESTIONS)}</div>
+      <div class="q-text">{q_text}</div>
+      <div class="q-desc">{q_subtitle}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    cur = st.session_state.survey_answers.get(q["key"], q["default"])
-    if cur not in q["options"]: cur = q["default"]
+    # Current answer stored by id
+    saved_val = st.session_state.survey_answers.get(q_id)
+    # Find current label from saved value
+    default_label = opt_labels[0]
+    if saved_val is not None:
+        for o in q_opts:
+            if o["value"] == saved_val or o["label"] == saved_val:
+                default_label = o["label"]
+                break
 
-    selected = st.radio("", q["options"], index=q["options"].index(cur),
-                        key=f"radio_{step}")
+    selected_label = st.radio(
+        "",
+        opt_labels,
+        index=opt_labels.index(default_label) if default_label in opt_labels else 0,
+        key=f"radio_{step}",
+    )
+
+    # Get the value for selected label
+    selected_value = next((o["value"] for o in q_opts if o["label"] == selected_label), selected_label)
+
+    # Show description for selected option
+    selected_desc = next((o.get("desc","") for o in q_opts if o["label"] == selected_label), "")
+    if selected_desc:
+        st.caption(selected_desc)
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     col_back, _, col_next = st.columns([1, 2, 1])
     with col_back:
         if step > 0:
             if st.button("← Back", use_container_width=True):
-                st.session_state.survey_answers[q["key"]] = selected
-                st.session_state.survey_step -= 1; st.rerun()
+                st.session_state.survey_answers[q_id] = selected_value
+                st.session_state.survey_step -= 1
+                st.rerun()
     with col_next:
         is_last = (step == len(QUESTIONS) - 1)
         if st.button("Generate Portfolio →" if is_last else "Next →",
                      type="primary", use_container_width=True):
-            st.session_state.survey_answers[q["key"]] = selected
+            st.session_state.survey_answers[q_id] = selected_value
             if is_last:
                 st.session_state.survey_page = "analysing"
             else:
@@ -244,8 +303,8 @@ def _render_survey():
     if st.session_state.survey_answers:
         with st.expander("Your answers so far", icon=":material/checklist:"):
             for prev_q in QUESTIONS[:step]:
-                val = st.session_state.survey_answers.get(prev_q["key"], "—")
-                st.markdown(f"**{prev_q['number']}** {prev_q['text'][:60]}…  →  `{val}`")
+                val = st.session_state.survey_answers.get(prev_q["id"], "—")
+                st.markdown(f"**Q{QUESTIONS.index(prev_q)+1}** {prev_q['text'][:60]}…  →  `{val}`")
 
 
 def _render_analysing():
@@ -267,17 +326,21 @@ def _render_analysing():
 
     try:
         ans = st.session_state.survey_answers
-        
-        # Calculate Risk Score (1-10) based on weighted heuristics
-        # This acts as the bridge between User profile and pre-trained Robo profiles
+
+        # Derive risk score from new question ids
         score = 5.0
-        if ans.get("q1_risk_comfort") == "Low — I prioritise capital preservation": score -= 2
-        elif ans.get("q1_risk_comfort") == "High — maximum long-term growth": score += 3
-        
-        reaction = ans.get("q10_reaction", "")
-        if "Sell everything" in reaction: score -= 2
-        elif "buy more" in reaction: score += 1.5
-        
+        risk_val = ans.get("risk_tolerance", 2)
+        if risk_val == 1: score -= 2
+        elif risk_val == 3: score += 2
+
+        loss_val = ans.get("loss_reaction", 2)
+        if loss_val == 1: score -= 1.5
+        elif loss_val == 3: score += 1.5
+
+        horizon_val = ans.get("investment_horizon", 2)
+        if horizon_val == 1: score -= 1
+        elif horizon_val == 3: score += 1
+
         score = max(1.1, min(10.0, score))
 
         msg.markdown(f"<div style='text-align:center;color:{MUTED};font-size:13px;'>Querying neural model for risk level {score:.1f}…</div>",
@@ -289,16 +352,16 @@ def _render_analysing():
                      unsafe_allow_html=True)
         pb.progress(70)
 
-        horizon_map = {"Short (under 3 years)":3, "Medium (3–10 years)":7, "Long (10–20 years)":15, "Very long (over 20 years)":25}
-        horizon_yrs = horizon_map.get(ans.get("q3_horizon"), 10)
+        horizon_map = {1: 3, 2: 7, 3: 15}
+        horizon_yrs = horizon_map.get(horizon_val, 10)
 
         portfolio = build_portfolio(
-            risk_score = score,
-            initial    = 10000,
-            monthly    = 500,
-            years      = horizon_yrs,
+            risk_score=score,
+            initial=10000,
+            monthly=500,
+            years=horizon_yrs,
         )
-        
+
         if "error" in portfolio:
             st.error(portfolio["error"])
             return
@@ -307,26 +370,19 @@ def _render_analysing():
         msg.markdown(f"<div style='text-align:center;color:{MUTED};font-size:13px;'>Generating Atomic IQ Interpretation…</div>",
                      unsafe_allow_html=True)
 
-        exp = {
-            "confidence": 0.92,
-            "top_contributors": [{"feature": "Risk Tolerance Capacity"}, {"feature": "Investment Horizon"}, {"feature": "Market Reaction Strategy"}]
-        }
-        inputs = {"horizon": horizon_yrs}
-        
         pb.progress(100)
         msg.empty()
         time.sleep(0.3)
 
         st.session_state.result = {
-            "portfolio":   portfolio,
-            "score":       score
+            "portfolio": portfolio,
+            "score":     score,
         }
-        
-        # PERSIST to database
+
         email = st.session_state.get("user_email")
         if email and email != "guest":
             database.save_assessment(email, ans, st.session_state.result)
-        
+
         st.session_state.survey_page = "portfolio"
         st.rerun()
 
@@ -334,7 +390,8 @@ def _render_analysing():
         st.error(f"Analysis failed: {exc}")
         if st.button("← Back to Survey"):
             st.session_state.survey_page = "survey"
-            st.session_state.survey_step = 0; st.rerun()
+            st.session_state.survey_step = 0
+            st.rerun()
 
 
 def _render_portfolio():
@@ -354,7 +411,9 @@ def _render_portfolio():
     sorted_alloc = list(sorted_weights.items())
     compact_notifs = database.get_notifications(email, limit=4)
 
-    # ── Page Header ────────────────────────────────────────────────────────────
+    # Derive integer profile number for AI engine
+    profile_num = _profile_num_from_port(port)
+
     name = st.session_state.get("user_name", "Investor").split()[0]
     st.markdown(f"""
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:4px 0 20px;">
@@ -366,15 +425,12 @@ def _render_portfolio():
     </div>
     """, unsafe_allow_html=True)
 
-
-
-    # ── KPIs — Top Row ───────────────────────────────────────────────────────
     k1, k2, k3, k4 = st.columns(4)
     for col, label, val, hint, vc, tooltip in [
-        (k1, "Expected Return",  f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate",  POS,     "Average % your portfolio is expected to grow each year."),
-        (k2, "Learned Volatility",f"{stats['expected_volatility']:.1f}%",   "Predicted Portfolio Vol","#ffffff","How much your portfolio value is likely to fluctuate."),
-        (k3, "Sharpe Ratio",     f"{stats['sharpe_ratio']:.2f}",             "Risk-Adjusted Learner",  POS,     "Return per unit of risk — higher is smarter."),
-        (k4, "P90 Growth",       f"{get_currency_symbol()}{sim['p90']:,.0f}",f"Optimistic Projection",  color,   "Top 10% optimistic scenario over your time horizon."),
+        (k1, "Expected Return",   f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate",   POS,   "Average % your portfolio is expected to grow each year."),
+        (k2, "Learned Volatility",f"{stats['expected_volatility']:.1f}%",    "Predicted Portfolio Vol", "#ffffff","How much your portfolio value is likely to fluctuate."),
+        (k3, "Sharpe Ratio",      f"{stats['sharpe_ratio']:.2f}",              "Risk-Adjusted Learner",   POS,   "Return per unit of risk — higher is smarter."),
+        (k4, "P90 Growth",        f"{get_currency_symbol()}{sim['p90']:,.0f}", f"Optimistic Projection",  color, "Top 10% optimistic scenario over your time horizon."),
     ]:
         with col:
             st.markdown(f"""
@@ -385,9 +441,8 @@ def _render_portfolio():
             </div>
             """, unsafe_allow_html=True)
 
-    # ── Row 1: Chart | Allocation ───────────────────────────────────────
     col1, col2 = st.columns([2.2, 1], gap="large")
-    
+
     with col1:
         st.markdown('<div class="card" style="padding: 24px; height: 100%;">', unsafe_allow_html=True)
         st.markdown('<p style="font-size:13px;font-weight:800;color:#fff;margin:0 0 4px;">Monte Carlo Growth Simulation</p>', unsafe_allow_html=True)
@@ -406,10 +461,8 @@ def _render_portfolio():
                          f'<span style="font-size:12px;color:{color};font-weight:700;font-family:\'JetBrains Mono\',monospace;">{pct_v:.1f}%</span></div>')
         st.markdown(etf_html + "</div></div>", unsafe_allow_html=True)
 
-    # ── Row 2: Diagnostics & Hero | Intelligence Feed ───────────────────────────
     c1, c2 = st.columns([2.2, 1], gap="large")
     with c1:
-        # Profile Hero inside a card
         st.markdown(f"""
         <div class="card" style="padding: 24px; margin-bottom: 20px;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -427,14 +480,14 @@ def _render_portfolio():
         """, unsafe_allow_html=True)
 
         st.markdown('<div class="card" style="padding: 24px;">', unsafe_allow_html=True)
-        if st.session_state.explanation_mode == "advanced":
+        if st.session_state.get("explanation_mode", "simple") == "advanced":
             st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 12px;">MINN Architecture Diagnostics</p>', unsafe_allow_html=True)
-            
+
             ic1, ic2 = st.columns(2)
             with ic1:
                 st.markdown(f"""
                 <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">THRESHOLD (δ)<span class="tooltip-text">This number controls how carefully the AI watches for risky market behavior. A higher number means the AI is heavily filtering out 'market noise' to focus only on major, dangerous trends.</span></div></div>
+                    <div style="font-size:10px; color:{MUTED};">THRESHOLD (δ)</div>
                     <div style="font-size:24px; color:{ACCENT}; font-weight:800;">{iq.get('delta',0):.2f}</div>
                     <div style="font-size:9px; color:{MUTED};">Manifold Boundary</div>
                 </div>
@@ -442,61 +495,47 @@ def _render_portfolio():
             with ic2:
                 st.markdown(f"""
                 <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:10px; color:{MUTED};"><div class="rich-tooltip">DECAY (γ)<span class="tooltip-text">This number controls the AI's 'memory'. A higher number means the AI cares more about what the market did yesterday than what it did 5 years ago, making it react faster to sudden changes.</span></div></div>
+                    <div style="font-size:10px; color:{MUTED};">DECAY (γ)</div>
                     <div style="font-size:24px; color:{ACCENT2}; font-weight:800;">{iq.get('gamma',0):.3f}</div>
                     <div style="font-size:9px; color:{MUTED};">Temporal Discount</div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-            st.markdown(
-                f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;'
-                f'letter-spacing:0.1em;margin:20px 0 8px;border-left:3px solid #6D5EFC;padding-left:10px;">'
-                f'Regime Mixture Probability</p>',
-                unsafe_allow_html=True,
-            )
+
             regimes = iq.get("regimes", {"Body":0.7, "Wing":0.1, "Tail":0.1, "Identity":0.1})
             r_names = list(regimes.keys())
-            r_vals = list(regimes.values())
-            r_exps = []
+            r_vals  = list(regimes.values())
+            r_exps  = []
             for r in r_names:
                 if r == "Body": r_exps.append("Normal, calm market conditions.")
                 elif r == "Tail": r_exps.append("Severe market crashes or extreme events.")
                 elif r == "Wing": r_exps.append("Moderate turbulence and volatility.")
                 else: r_exps.append("Baseline mathematical smoothing (Identity matrix).")
-            
-            # Simple regime bar chart
-            fig_r = px.bar(
-                x=r_vals, y=r_names, orientation='h',
-                color=r_names,
-                color_discrete_map={"Body":ACCENT, "Wing":ACCENT2, "Tail":NEG, "Identity":MUTED},
-                custom_data=[r_exps]
-            )
+
+            fig_r = px.bar(x=r_vals, y=r_names, orientation='h', color=r_names,
+                           color_discrete_map={"Body":ACCENT,"Wing":ACCENT2,"Tail":NEG,"Identity":MUTED},
+                           custom_data=[r_exps])
             fig_r.update_traces(hovertemplate="<b>%{y} Regime</b><br>Probability: %{x:.1%}<br><i>%{customdata[0]}</i><extra></extra>")
-            fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None, height=180, margin=dict(l=0,r=20,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_r.update_layout(template=TMPL, showlegend=False, xaxis_title="Weight", yaxis_title=None,
+                                height=180, margin=dict(l=0,r=20,t=0,b=0),
+                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_r, use_container_width=True)
 
-            st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 6px;">Strategic AI Tuning</p>', unsafe_allow_html=True)
-            st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:12px;">Manually override the neural manifold parameters to tune your risk exposure.</p>', unsafe_allow_html=True)
-            
-            # Load existing config from DB if available
             saved_config = database.get_portfolio_config(st.session_state.get("user_email", "guest"))
             def_delta = saved_config.get("delta", iq.get("delta", 0.5))
             def_gamma = saved_config.get("gamma", iq.get("gamma", 0.1))
-            
-            new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(def_delta), 0.1, help="Higher = more aggressive filtering of market noise.")
-            new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(def_gamma), 0.001, format="%.3f", help="Higher = faster reaction to recent volatility.")
-            
+
+            new_delta = st.slider("Neural Threshold (δ)", 0.1, 2.0, float(def_delta), 0.1)
+            new_gamma = st.slider("Temporal Decay (γ)", 0.001, 0.5, float(def_gamma), 0.001, format="%.3f")
+
             if st.button("Save Custom Tuning to Cloud", use_container_width=True, type="primary"):
-                new_config = {"delta": new_delta, "gamma": new_gamma}
-                database.save_portfolio_config(st.session_state.get("user_email", "guest"), new_config)
-                database.add_notification(st.session_state.get("user_email", "guest"), "Strategic Sync Successful", f"Your MINN parameters have been synchronized with the LEM StratIQ cloud.", "success")
+                database.save_portfolio_config(st.session_state.get("user_email","guest"), {"delta":new_delta,"gamma":new_gamma})
+                database.add_notification(st.session_state.get("user_email","guest"), "Strategic Sync Successful",
+                                          "Your MINN parameters have been synchronized with the LEM StratIQ cloud.", "success")
                 st.success("Configuration Pushed to MongoDB Atlas!")
-                st.rerun()
                 st.rerun()
         else:
             st.markdown(f'<p style="font-size:11px;font-weight:800;color:#6D5EFC;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 6px;">Portfolio Snapshot</p>', unsafe_allow_html=True)
             st.markdown(f'<p style="font-size:11px;color:{MUTED};margin-bottom:14px;">A simpler summary of your current portfolio characteristics and expected behaviour.</p>', unsafe_allow_html=True)
-            
             st.markdown(f"""
             <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:14px; text-align:center; margin-bottom:10px;">
                 <div style="font-size:11px; color:{MUTED}; font-weight:700; letter-spacing:0.05em; margin-bottom:8px;">AI-GENERATED ASSET SPREAD</div>
@@ -504,7 +543,6 @@ def _render_portfolio():
                 <div style="font-size:10px; color:{MUTED}; margin-top:4px;">Asset sleeves selected for your unique profile</div>
             </div>
             """, unsafe_allow_html=True)
-            
             st.markdown(f'<p style="font-size:12px;color:#8BA6D3;line-height:1.6;margin-top:16px;"><b>Expected return:</b> <span style="color:#fff;">{stats["expected_annual_return"]:.1f}%</span> &nbsp;·&nbsp; <b>Expected volatility:</b> <span style="color:#fff;">{stats["expected_volatility"]:.1f}%</span></p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -516,10 +554,7 @@ def _render_portfolio():
 
     st.divider()
 
-
-    # ══════════════════════════════════════════════════════════════════════
-    # ── NEURAL AI STRATEGY INTERPRETATION ────────────────────────────────
-    # ══════════════════════════════════════════════════════════════════════
+    # ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
     st.divider()
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 16px;">'
@@ -535,29 +570,41 @@ def _render_portfolio():
             st.error("🤖 **AI Engine Offline**")
 
     if "ai_insight_text_v2" not in st.session_state:
-        with st.status("Analyzing your profile via Claude 3.5 Sonnet...", expanded=True) as status:
-            insight, source = get_ai_explanation(ans, port, {})
+        with st.status("Analyzing your profile via Claude Sonnet...", expanded=True) as status:
+            # Pass answers dict, integer profile_num, and iq_params dict
+            insight, used_claude = get_ai_explanation(ans, profile_num, iq or {})
+            source = "Claude AI" if used_claude else "DeepAtomicIQ Engine"
             st.session_state.ai_insight_text_v2 = insight
             st.session_state.ai_insight_source_v2 = source
             status.update(label=f"Insight Generated via {source}", state="complete", expanded=False)
             st.session_state.result["ai_narrative"] = insight
-            database.save_assessment(st.session_state.get("user_email", "guest"), st.session_state.survey_answers, st.session_state.result)
+            database.save_assessment(
+                st.session_state.get("user_email", "guest"),
+                st.session_state.survey_answers,
+                st.session_state.result,
+            )
 
-    _ai_text = str(st.session_state.get('ai_insight_text_v2', '...'))
-    st.markdown(_ai_text.replace('\\n', '  \n'))
+    _ai_text = str(st.session_state.get("ai_insight_text_v2", "..."))
+    st.markdown(_ai_text.replace("\\n", "  \n"))
 
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
         if st.button("Refresh AI Narrative", icon=":material/refresh:", use_container_width=True):
-            if "ai_insight_text_v2" in st.session_state: del st.session_state.ai_insight_text_v2
+            if "ai_insight_text_v2" in st.session_state:
+                del st.session_state["ai_insight_text_v2"]
             st.rerun()
     with btn_col2:
         if st.session_state.get("user_email") != "guest":
             if st.button("Email Results", icon=":material/mail:", use_container_width=True):
                 with st.spinner("Delivering report..."):
-                    sent = send_portfolio_report(st.session_state.user_email, port["risk_category"], port["profile_score"], st.session_state.get("ai_insight_text_v2", ""))
+                    sent = send_portfolio_report(
+                        st.session_state.user_email,
+                        port["risk_category"],
+                        port.get("profile_score", profile_num),
+                        st.session_state.get("ai_insight_text_v2", ""),
+                    )
                     if sent: st.success("Sent!")
-                    else: st.error("Failed")
+                    else:    st.error("Failed")
 
     with st.expander("🛠️ TECHNICAL LOGIC VALIDATOR (Examiner View)", expanded=False):
         st.markdown("### `System Internals Audit`")
@@ -566,19 +613,21 @@ def _render_portfolio():
             st.write("**ML Input Vector (User Surveys)**")
             st.json(st.session_state.get("survey_answers", {}))
             st.write("**Math Engine Stats (Markowitz)**")
-            st.dataframe(pd.DataFrame([port['stats']]).T.rename(columns={0: "Value"}))
+            st.dataframe(pd.DataFrame([port["stats"]]).T.rename(columns={0: "Value"}))
         with t_col2:
             st.write("**Claude AI Integration Bridge**")
-            st.json({"Role": "DeepAtomicIQ Neural Investment Officer", "Model": "Claude 3.5 Sonnet",
-                     "Context Mapping": port['risk_category'], "API Health": claude_status,
-                     "Last Query Type": st.session_state.explanation_mode.upper()})
+            st.json({
+                "Role": "DeepAtomicIQ Neural Investment Officer",
+                "Model": "claude-sonnet-4-20250514",
+                "Profile": f"P{profile_num} — {port['risk_category']}",
+                "API Health": claude_status,
+                "Source": st.session_state.get("ai_insight_source_v2", "unknown"),
+            })
         st.write("**MongoDB Persistence Audit**")
-        st.code(f"INSERT INTO assessments (user_email, answers, result) VALUES ('{st.session_state.get('user_email', 'guest')}', ...)", language="sql")
+        st.code(f"INSERT INTO assessments (user_email, answers, result) VALUES ('{st.session_state.get('user_email','guest')}', ...)", language="sql")
         st.info("💡 **Examiner Insight**: Every survey answer is verified, mathematically processed via the Markowitz engine, explained by Claude, and committed to MongoDB Atlas.")
 
-    # ══════════════════════════════════════════════════════════════════════
-    # ── INVESTMENT PLANNER ────────────────────────────────────────────────
-    # ══════════════════════════════════════════════════════════════════════
+    # ── INVESTMENT PLANNER ────────────────────────────────────────────────────
     st.divider()
     _render_section_intro(
         "Investment Planner",
@@ -593,12 +642,10 @@ def _render_portfolio():
             min_value=100, max_value=10_000_000,
             value=st.session_state.get("invest_amount", 10000),
             step=500, key="invest_amount",
-            help="Enter your total investment amount in pounds"
         )
 
-    exp_r  = stats.get("expected_annual_return", 0) / 100
+    exp_r = stats.get("expected_annual_return", 0) / 100
 
-    # Build planner table
     planner_rows = ""
     for asset, pct in sorted_alloc:
         amt = invest_amt * (pct / 100)
@@ -648,9 +695,7 @@ def _render_portfolio():
     )
     st.markdown(table_html, unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════
-    # ── PROJECTED RETURNS TIMELINE ────────────────────────────────────────
-    # ══════════════════════════════════════════════════════════════════════
+    # ── PROJECTED RETURNS TIMELINE ────────────────────────────────────────────
     _render_section_intro(
         "Projected Returns Timeline",
         f'If you invest <b style="color:#ffffff;">£{invest_amt:,.0f}</b> today and reinvest all returns (compound growth at {exp_r*100:.1f}% p.a.):',
@@ -658,31 +703,22 @@ def _render_portfolio():
         margin_top=28,
     )
 
-    horizons = [1, 3, 5, 10, 20]
+    horizons  = [1, 3, 5, 10, 20]
     projected = [invest_amt * ((1 + exp_r) ** yr) for yr in horizons]
     gains     = [p - invest_amt for p in projected]
 
     proj_fig = go.Figure()
     proj_fig.add_trace(go.Bar(
-        x=[f"{y}yr" for y in horizons],
-        y=projected,
-        name="Portfolio Value",
-        marker=dict(
-            color=projected,
-            colorscale=[[0,"#3BA4FF"],[1,"#8EF6D1"]],
-            line=dict(width=0)
-        ),
-        text=[f"£{p:,.0f}" for p in projected],
-        textposition="outside",
+        x=[f"{y}yr" for y in horizons], y=projected, name="Portfolio Value",
+        marker=dict(color=projected, colorscale=[[0,"#3BA4FF"],[1,"#8EF6D1"]], line=dict(width=0)),
+        text=[f"£{p:,.0f}" for p in projected], textposition="outside",
         textfont=dict(color="#ffffff", size=12),
-        hovertemplate="<b>%{x}</b><br>Value: £%{y:,.0f}<extra></extra>"
+        hovertemplate="<b>%{x}</b><br>Value: £%{y:,.0f}<extra></extra>",
     ))
     proj_fig.add_trace(go.Bar(
-        x=[f"{y}yr" for y in horizons],
-        y=[invest_amt] * len(horizons),
-        name="Initial Investment",
+        x=[f"{y}yr" for y in horizons], y=[invest_amt]*len(horizons), name="Initial Investment",
         marker=dict(color="rgba(255,255,255,0.08)", line=dict(width=0)),
-        hovertemplate="Initial: £%{y:,.0f}<extra></extra>"
+        hovertemplate="Initial: £%{y:,.0f}<extra></extra>",
     ))
     proj_fig.update_layout(
         barmode="overlay", height=280,
@@ -693,11 +729,10 @@ def _render_portfolio():
                    tickprefix="£", tickformat=",.0f"),
         legend=dict(font=dict(color="#8BA6D3"), bgcolor="rgba(0,0,0,0)", orientation="h",
                     yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hoverlabel=dict(bgcolor="rgba(15,15,35,0.95)", font_color="#ffffff")
+        hoverlabel=dict(bgcolor="rgba(15,15,35,0.95)", font_color="#ffffff"),
     )
     st.plotly_chart(proj_fig, use_container_width=True, config={"displayModeBar": False}, key="proj_timeline")
 
-    # Summary tiles
     tile_cols = st.columns(len(horizons))
     for i, (yr, val, gain) in enumerate(zip(horizons, projected, gains)):
         with tile_cols[i]:
@@ -710,9 +745,7 @@ def _render_portfolio():
             </div>
             """, unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════
-    # ── WHY EACH ASSET ────────────────────────────────────────────────────
-    # ══════════════════════════════════════════════════════════════════════
+    # ── WHY EACH ASSET ────────────────────────────────────────────────────────
     _render_section_intro(
         "Why Each Asset Was Chosen",
         f'The MINN selected these specific ETFs based on your risk score of <b style="color:#ffffff;">{res.get("score", 5):.0f}/10</b> and how they interact in the co-movement model.',
@@ -722,9 +755,9 @@ def _render_portfolio():
 
     why_cols = st.columns(2)
     for i, (asset, pct) in enumerate(sorted_alloc):
-        short = asset.replace(".L","")
+        short  = asset.replace(".L","")
         detail = ASSET_DETAIL.get(short, {"icon":"📊","colour":"#8BA6D3","why":f"{short} provides diversified exposure to its target market segment."})
-        amt = invest_amt * (pct / 100)
+        amt    = invest_amt * (pct / 100)
         with why_cols[i % 2]:
             st.markdown(f"""
             <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);
@@ -741,38 +774,38 @@ def _render_portfolio():
             </div>
             """, unsafe_allow_html=True)
 
-    # ── Survey summary expander ───────────────────────────────────────────────
+    # ── Survey summary ────────────────────────────────────────────────────────
     with st.expander("Survey Summary", icon=":material/assignment:"):
         st.markdown("**Your Answers**")
-        for q in QUESTIONS:
-            val = st.session_state.survey_answers.get(q["key"], "—")
-            st.markdown(f"- **{q['number']}** {q['text'][:55]}…  →  `{val}`")
+        for i, q in enumerate(QUESTIONS):
+            val = st.session_state.survey_answers.get(q["id"], "—")
+            st.markdown(f"- **Q{i+1}** {q['text'][:55]}…  →  `{val}`")
 
-
-    # ── HISTORICAL STRESS TEST ──
+    # ── STRESS TEST ───────────────────────────────────────────────────────────
     st.divider()
     _render_section_intro("Resilience Stress Test", "", icon_svg=get_svg("shield", 24, ACCENT), margin_top=12)
     c1, c2, c3 = st.columns(3)
     stress_scenarios = [
         ("2008 Financial Crisis", "-18.2%", "Capital preservation focus enabled."),
-        ("2020 COVID Pivot", "-8.4%", "Fast regime recovery via Tech/Gold."),
-        ("Dot-Com Bubble", "-22.5%", "Heavy tech exposure drawdown.")
+        ("2020 COVID Pivot",      "-8.4%",  "Fast regime recovery via Tech/Gold."),
+        ("Dot-Com Bubble",        "-22.5%", "Heavy tech exposure drawdown."),
     ]
-    for i, (name, draw, logic) in enumerate(stress_scenarios):
+    for i, (sname, draw, logic) in enumerate(stress_scenarios):
         with [c1,c2,c3][i]:
             st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;">
                 <div style="font-size:10px;font-weight:800;color:#8BA6D3;margin-bottom:4px;text-transform:uppercase;">Scenario Impact</div>
-                <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;">{name}</div>
+                <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;">{sname}</div>
                 <div style="font-size:24px;font-weight:900;color:#FF6B6B;">{draw}</div>
                 <div style="font-size:11px;color:#8BA6D3;margin-top:8px;">{logic}</div>
             </div>""", unsafe_allow_html=True)
+
     st.markdown(f"""
 <div style='margin:8px 0;padding:12px;background:rgba(255,107,107,0.06);
 border-left:3px solid rgba(255,107,107,0.35);border-radius:8px;
 font-size:12px;color:rgba(237,237,243,0.45); display:flex; gap:10px; align-items:flex-start;'>
 <div style="margin-top:2px;">{get_svg("warning", 16, "#FF6B6B")}</div>
-<div><b>Disclaimer:</b> This is for educational and research purposes only. 
-Not financial advice. Consult a qualified financial adviser before investing. 
+<div><b>Disclaimer:</b> This is for educational and research purposes only.
+Not financial advice. Consult a qualified financial adviser before investing.
 Past performance does not guarantee future results.</div>
 </div>""", unsafe_allow_html=True)
 
