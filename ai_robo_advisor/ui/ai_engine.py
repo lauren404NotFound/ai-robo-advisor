@@ -194,150 +194,144 @@ PROFILE_META = {
 
 # ── Claude API call ───────────────────────────────────────────────────────────
 
-def _build_prompt(answers: dict, profile_num: int, iq_params: dict | None = None) -> str:
-    """Build a detailed prompt for Claude from the user's survey answers."""
-    meta = PROFILE_META.get(profile_num, PROFILE_META[2])
+def _build_prompt(answers: dict, portfolio_stats: dict, iq_params: dict | None = None) -> str:
+    """Build a prompt for Claude using the user's live computed portfolio data."""
 
-    # Map answer values back to readable labels
     answer_lines = []
     for q in QUESTIONS:
         val = answers.get(q["id"])
         if val is not None:
             for opt in q["options"]:
                 if opt["value"] == val:
-                    answer_lines.append(f"  • {q['text']}\n    → {opt['label']}: {opt['desc']}")
+                    answer_lines.append(f"  \u2022 {q['text']}\n    \u2192 {opt['label']}: {opt['desc']}")
                     break
-
     answers_text = "\n".join(answer_lines) if answer_lines else "  (no answers recorded)"
+
+    exp_ret  = portfolio_stats.get("expected_annual_return", 7.0)
+    vol      = portfolio_stats.get("expected_volatility", 10.0)
+    sharpe   = portfolio_stats.get("sharpe_ratio", 0.6)
+    risk_cat = portfolio_stats.get("risk_category", "balanced")
+    assets   = portfolio_stats.get("top_assets", [])
+    assets_text = ", ".join(f"{a} ({w:.0f}%)" for a, w in assets[:6]) if assets else "a diversified mix of assets"
 
     iq_text = ""
     if iq_params:
         iq_text = "\n\nDeepAtomicIQ model parameters:\n" + "\n".join(
-            f"  • {k}: {v}" for k, v in iq_params.items() if v is not None
+            f"  \u2022 {k}: {v}" for k, v in iq_params.items() if v is not None
         )
 
-    return f"""You are DeepAtomicIQ, an expert AI investment strategist for LEM StratIQ, a robo-advisory platform.
+    return f"""You are DeepAtomicIQ, an expert AI investment strategist for LEM StratIQ.
 
-A user has completed their investor risk-profiling survey. Based on their answers, our engine has assigned them to **Portfolio Profile {profile_num}: {meta['name']}**.
+A user has completed their investor risk-profiling survey. Our AI engine has computed a personalised {risk_cat} portfolio with these LIVE characteristics:
 
-Profile summary:
-  • Tagline: {meta['tagline']}
-  • Core assets: {meta['assets']}
-  • Expected return range: {meta['expected_return']}
-  • Historical max drawdown: {meta['max_drawdown']}
-  • Best suited for: {meta['suitable_for']}
+  \u2022 Expected annual return: {exp_ret:.1f}%
+  \u2022 Annual volatility: {vol:.1f}%
+  \u2022 Sharpe ratio: {sharpe:.2f}
+  \u2022 Top holdings: {assets_text}
 
-User's survey answers:
+User survey answers:
 {answers_text}{iq_text}
 
-Write a personalised, plain-English investment strategy note for this user. Structure it as follows:
+Write a personalised, plain-English investment strategy note. Use ONLY the live figures above. Do NOT invent profile names or reference internal profile numbers (e.g. "Profile 2"). Structure it as:
 
-1. **Why this portfolio fits you** (2–3 sentences connecting their specific answers to the profile)
-2. **What we invest in** (concrete asset breakdown with brief rationale for each)
-3. **What to expect** (realistic return/risk narrative — include the expected return range and max drawdown, explain what that means in practice)
-4. **Key risks to be aware of** (2–3 honest, specific risks for this profile)
-5. **Our recommendation** (1–2 actionable sentences — e.g. "Start with a lump sum or set up a monthly direct debit of £X to take advantage of pound-cost averaging")
+1. **Why this portfolio fits you** (2-3 sentences linking their answers to the computed portfolio)
+2. **What we invest in** (mention the top holdings and why they suit this person)
+3. **What to expect** (use the EXACT figures: {exp_ret:.1f}% return, {vol:.1f}% volatility, Sharpe {sharpe:.2f} - explain in plain English)
+4. **Key risks to be aware of** (2-3 specific risks based on the actual holdings)
+5. **Our recommendation** (1-2 actionable sentences)
 
-Tone: professional but warm, jargon-free where possible, UK English. Do NOT use phrases like "as an AI" or "I cannot provide financial advice". Write as a confident investment strategist. Keep the total response under 450 words."""
-
+Tone: professional but warm, jargon-free, UK English. Do NOT say "as an AI" or "I cannot provide financial advice". Keep under 450 words."""
 
 def get_ai_explanation(
     answers: dict,
-    profile_num: int,
+    portfolio_stats: dict,
     iq_params: dict | None = None,
 ) -> tuple[str, bool]:
     """
     Returns (explanation_text, used_claude: bool).
-
-    Tries Claude first; falls back to a rich rule-based note on any failure.
-    Never surfaces raw error messages to the user.
+    portfolio_stats: live computed dict with keys:
+      expected_annual_return, expected_volatility, sharpe_ratio,
+      risk_category, top_assets [(name, weight%), ...]
     """
-    # Coerce profile_num to int (may arrive as string e.g. "P4" or "4")
     try:
-        profile_num = int(str(profile_num).strip().replace("P", "").replace("p", ""))
-    except (ValueError, TypeError):
-        profile_num = 2
-    if profile_num not in PROFILE_META:
-        profile_num = 2
+        import anthropic as _anthropic
+        import os as _os
+        _key = _os.environ.get("ANTHROPIC_API_KEY", "")
+        client = _anthropic.Anthropic(api_key=_key) if _key else None
+    except Exception:
+        client = None
 
-    # ── Try Claude ────────────────────────────────────────────────────────────
-    api_key = (
-        st.secrets.get("ANTHROPIC_API_KEY")
-        or st.secrets.get("anthropic_api_key")
-        or st.secrets.get("anthropic", {}).get("api_key")
-    )
-
-    if api_key:
+    if client:
         try:
-            import anthropic  # local import — only needed here
-            client = anthropic.Anthropic(api_key=api_key)
-            prompt = _build_prompt(answers, profile_num, iq_params)
-            message = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=700,
+            prompt = _build_prompt(answers, portfolio_stats, iq_params)
+            response = client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=600,
                 messages=[{"role": "user", "content": prompt}],
             )
-            text = message.content[0].text.strip()
-            if text:
-                return text, True
-        except Exception:
-            pass  # fall through to local fallback
+            return response.content[0].text.strip(), True
+        except Exception as exc:
+            print(f"[ai_engine] Claude call failed: {exc}")
 
-    # ── Rich local fallback ───────────────────────────────────────────────────
-    return _local_explanation(answers, profile_num), False
-
+    return _local_explanation(answers, portfolio_stats), False
 
 # ── Local fallback (no API key needed) ───────────────────────────────────────
 
-def _local_explanation(answers: dict, profile_num) -> str:
-    try:
-        profile_num = int(str(profile_num).strip().replace("P", "").replace("p", ""))
-    except (ValueError, TypeError):
-        profile_num = 2
-    if profile_num not in PROFILE_META:
-        profile_num = 2
-    meta = PROFILE_META.get(profile_num, PROFILE_META[2])
+def _local_explanation(answers: dict, portfolio_stats: dict) -> str:
+    """Fallback explanation using live portfolio stats — no hardcoded profile names."""
+    exp_ret  = portfolio_stats.get("expected_annual_return", 7.0)
+    vol      = portfolio_stats.get("expected_volatility", 10.0)
+    sharpe   = portfolio_stats.get("sharpe_ratio", 0.6)
+    risk_cat = portfolio_stats.get("risk_category", "balanced")
+    assets   = portfolio_stats.get("top_assets", [])
+    assets_text = (", ".join(f"{a} ({w:.0f}%)" for a, w in assets[:5])
+                   if assets else "a diversified selection of global assets")
 
-    risk_val   = answers.get("risk_tolerance", 2)
+    risk_val    = answers.get("risk_tolerance", 2)
     horizon_val = answers.get("investment_horizon", 2)
-    esg_val    = answers.get("esg_priority", 1)
-    income_val = answers.get("income_vs_growth", 2)
+    esg_val     = answers.get("esg_priority", 1)
+    income_val  = answers.get("income_vs_growth", 2)
 
-    risk_label    = {1: "conservative", 2: "moderate", 3: "aggressive"}.get(risk_val, "moderate")
+    risk_label    = {1: "conservative", 2: "moderate", 3: "growth-oriented"}.get(risk_val, "moderate")
     horizon_label = {1: "short", 2: "medium", 3: "long"}.get(horizon_val, "medium")
     income_label  = {1: "income-focused", 2: "balanced income/growth", 3: "pure growth"}.get(income_val, "balanced")
 
     esg_note = (
-        " With strong ESG alignment, every holding is screened against environmental, social and governance criteria — no fossil fuels, tobacco or controversial weapons."
+        " With strong ESG alignment, every holding is screened against environmental, social and governance criteria."
         if esg_val == 3 else
         " We apply light ESG screening, tilting away from the most controversial industries."
         if esg_val == 2 else ""
     )
 
+    limited = " limited" if horizon_val == 1 else ""
+    lumpsum = (
+        "Start with a lump-sum investment and consider topping up monthly via a direct debit to benefit from pound-cost averaging."
+        if horizon_val >= 2 else
+        "Given your shorter horizon, consider phasing your investment over 3-6 months to reduce timing risk."
+    )
+
     return f"""**Why this portfolio fits you**
 
-Based on your {risk_label} risk tolerance and {horizon_label} investment horizon, our engine has matched you to **Profile {profile_num}: {meta['name']}** — {meta['tagline']}.{esg_note} Your {income_label} preference shapes the income/growth split within the portfolio.
+Based on your {risk_label} risk tolerance and {horizon_label} investment horizon, our AI engine has built you a personalised {risk_cat} portfolio targeting **{exp_ret:.1f}% annual growth** with a Sharpe ratio of **{sharpe:.2f}**.{esg_note} Your {income_label} preference shapes the income/growth split.
 
 **What we invest in**
 
-{meta['assets']}. Each component is weighted to maximise risk-adjusted returns for your profile, rebalanced systematically as markets move.
+Your portfolio is spread across: {assets_text}. Each position is weighted to maximise risk-adjusted returns for your specific circumstances, rebalanced systematically as markets move.
 
 **What to expect**
 
-Our back-tested models project **{meta['expected_return']}** annualised returns for this profile over a full market cycle. The maximum historical drawdown is approximately **{meta['max_drawdown']}** — meaning in a severe market downturn, the portfolio could temporarily fall by up to that amount before recovering. For a {horizon_label}-horizon investor like you, there is{"" if horizon_val > 1 else " limited"} time to ride out such dips.
+The engine projects **{exp_ret:.1f}% annual return** with typical year-to-year swings of around **\u00b1{vol:.1f}%**. The Sharpe ratio of {sharpe:.2f} means you're receiving {sharpe:.2f} units of return for every unit of risk (above 0.5 is solid). For a {horizon_label}-horizon investor, there is{limited} time to ride out short-term dips.
 
 **Key risks to be aware of**
 
-- **Market risk:** Global equity and bond markets can decline sharply during recessions or geopolitical shocks.
-- **Inflation risk:** If inflation rises faster than portfolio returns, real purchasing power can erode.
-- **Concentration risk:** {"Sector tilts" if profile_num in (3, 5) else "Currency and regional exposure"} can amplify losses if a specific theme underperforms.
+- **Market risk:** Global markets can fall sharply during recessions or geopolitical shocks.
+- **Inflation risk:** If inflation exceeds portfolio returns, real purchasing power can erode.
+- **Volatility risk:** With \u00b1{vol:.1f}% annual swings expected, some years will feel uncomfortable — staying invested is key.
 
 **Our recommendation**
 
-{"Start with a lump-sum investment and consider topping up monthly via a direct debit to benefit from pound-cost averaging — smoothing out the impact of short-term market volatility." if horizon_val >= 2 else "Given your shorter horizon, consider phasing your investment over 3–6 months rather than investing all at once, to reduce timing risk."} Review your profile annually or whenever your financial circumstances change significantly."""
+{lumpsum} Review your profile annually or whenever your financial circumstances change significantly."""
 
-
-# ── Actionable advice widget (called from page_dashboard) ────────────────────
 
 def render_actionable_advice(answers: dict, profile_num: int, iq_params: dict | None = None):
     """Render the Claude AI Investment Strategy section in Streamlit."""

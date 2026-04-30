@@ -577,7 +577,15 @@ def _render_portfolio():
 
     if "ai_insight_text_v2" not in st.session_state:
         with st.status("Analysing your profile via Claude Sonnet...", expanded=True) as status:
-            insight, used_claude = get_ai_explanation(ans, profile_num, iq or {})
+            # Build live portfolio_stats for the AI — real computed values, no hardcoded profiles
+            _portfolio_stats = {
+                "expected_annual_return": stats.get("expected_annual_return", 0),
+                "expected_volatility":    stats.get("expected_volatility", 0),
+                "sharpe_ratio":           stats.get("sharpe_ratio", 0),
+                "risk_category":          port.get("risk_category", "balanced"),
+                "top_assets": [(a, w * 100) for a, w in sorted_weights.items()][:6],
+            }
+            insight, used_claude = get_ai_explanation(ans, _portfolio_stats, iq or {})
             source = "Claude AI" if used_claude else "DeepAtomicIQ Engine"
             st.session_state.ai_insight_text_v2 = insight
             st.session_state.ai_insight_source_v2 = source
