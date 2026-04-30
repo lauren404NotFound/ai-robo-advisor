@@ -415,29 +415,37 @@ def _render_portfolio():
     profile_num = _profile_num_from_port(port)
 
     name = st.session_state.get("user_name", "Investor").split()[0]
+    now  = datetime.datetime.now().strftime("%d %b %Y")
     st.markdown(f"""
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:4px 0 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:4px 0 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:24px;">
       <div>
-        <div style="font-size:11px;font-weight:800;color:#6D5EFC;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Portfolio Dashboard</div>
-        <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.03em;">Welcome back, {name}</div>
-        <div style="font-size:13px;color:#8BA6D3;margin-top:4px;">Your AI-optimised portfolio</div>
+        <div style="font-size:10px;font-weight:700;color:{ACCENT};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px;">LEM StratIQ · Portfolio Dashboard</div>
+        <div style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;">Good day, {name}</div>
+        <div style="font-size:13px;color:#8BA6D3;margin-top:6px;">AI-optimised portfolio · {cat} strategy</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;">Generated</div>
+        <div style="font-size:13px;color:#8BA6D3;font-weight:600;margin-top:2px;">{now}</div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
     k1, k2, k3, k4 = st.columns(4)
-    for col, label, val, hint, vc, tooltip in [
-        (k1, "Expected Return",   f"{stats['expected_annual_return']:.1f}%",  "Inferential Estimate",   POS,   "Average % your portfolio is expected to grow each year."),
-        (k2, "Learned Volatility",f"{stats['expected_volatility']:.1f}%",    "Predicted Portfolio Vol", "#ffffff","How much your portfolio value is likely to fluctuate."),
-        (k3, "Sharpe Ratio",      f"{stats['sharpe_ratio']:.2f}",              "Risk-Adjusted Learner",   POS,   "Return per unit of risk — higher is smarter."),
-        (k4, "P90 Growth",        f"{get_currency_symbol()}{sim['p90']:,.0f}", f"Optimistic Projection",  color, "Top 10% optimistic scenario over your time horizon."),
+    for col, label, val, hint, vc, icon_name in [
+        (k1, "Ann. Return",    f"{stats['expected_annual_return']:.1f}%",  "Expected p.a.",     POS,        "chart"),
+        (k2, "Volatility",    f"{stats['expected_volatility']:.1f}%",    "Predicted std dev",  "#C5D3EC",  "risk"),
+        (k3, "Sharpe Ratio",  f"{stats['sharpe_ratio']:.2f}",             "Risk-adj. return",   POS,        "zap"),
+        (k4, "P90 Scenario",  f"{get_currency_symbol()}{sim['p90']:,.0f}","Optimistic 10%ile",  color,      "layers"),
     ]:
         with col:
             st.markdown(f"""
-            <div class="card" title="{tooltip}" style="padding:18px 14px; margin-bottom: 20px;">
-              <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.10em;color:rgba(237,237,243,0.55);margin-bottom:7px;">{label}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:800;color:{vc};">{val}</div>
-              <div style="font-size:9px;color:rgba(230,213,255,0.35);margin-top:7px;">{hint}</div>
+            <div class="card" style="padding:20px 18px;margin-bottom:20px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <div style="opacity:0.5;">{get_svg(icon_name,13,vc)}</div>
+                <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(237,237,243,0.5);">{label}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;color:{vc};letter-spacing:-0.02em;">{val}</div>
+              <div style="font-size:10px;color:rgba(230,213,255,0.3);margin-top:8px;">{hint}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -552,11 +560,12 @@ def _render_portfolio():
         _render_feed_card(compact_notifs, include_archive=True, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
+    # ── CLAUDE AI INVESTMENT STRATEGY ─────────────────────────────────────────
     st.markdown(
-        f'<div style="display:flex;align-items:center;gap:12px;margin:8px 0 16px;">'
-        f'<div style="background:{ACCENT};border-radius:10px;padding:8px;display:flex;">{get_svg("brain", 24, "#fff")}</div>'
-        f'<h3 style="margin:0;font-size:20px;font-weight:900;color:#fff;">Claude AI Investment Strategy</h3>'
+        f'<div style="display:flex;align-items:center;gap:14px;margin:32px 0 20px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
+        f'<div style="background:linear-gradient(135deg,{ACCENT},{ACCENT2});border-radius:12px;padding:10px;display:flex;">{get_svg("brain", 22, "#fff")}</div>'
+        f'<div><div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px;">AI-Generated</div>'
+        f'<h3 style="margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.01em;">Investment Strategy</h3></div>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -564,7 +573,7 @@ def _render_portfolio():
     anthropic_client, claude_status = _get_claude()
     if not anthropic_client:
         with st.sidebar:
-            st.error("🤖 **AI Engine Offline**")
+            st.error("AI Engine Offline — check API key")
 
     if "ai_insight_text_v2" not in st.session_state:
         with st.status("Analyzing your profile via Claude Sonnet...", expanded=True) as status:
@@ -607,13 +616,13 @@ def _render_portfolio():
 
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
     with btn_col1:
-        if st.button("↺  Refresh AI Narrative", use_container_width=True):
+        if st.button("Regenerate Strategy", icon=":material/refresh:", use_container_width=True):
             if "ai_insight_text_v2" in st.session_state:
                 del st.session_state["ai_insight_text_v2"]
             st.rerun()
     with btn_col2:
         if st.session_state.get("user_email") != "guest":
-            if st.button("✉  Email Results", use_container_width=True):
+            if st.button("Email Report", icon=":material/mail:", use_container_width=True):
                 with st.spinner("Delivering report..."):
                     sent = send_portfolio_report(
                         st.session_state.user_email,
@@ -624,33 +633,31 @@ def _render_portfolio():
                     if sent: st.success("Sent!")
                     else:    st.error("Failed")
 
-    with st.expander("🛠️ TECHNICAL LOGIC VALIDATOR (Examiner View)", expanded=False):
-        st.markdown("### `System Internals Audit`")
+    with st.expander("System Internals · Technical Audit (Examiner View)", expanded=False):
         t_col1, t_col2 = st.columns(2)
         with t_col1:
-            st.write("**ML Input Vector (User Surveys)**")
+            st.caption("ML Input Vector — Survey Answers")
             st.json(st.session_state.get("survey_answers", {}))
-            st.write("**Math Engine Stats (Markowitz)**")
+            st.caption("Markowitz Engine Output")
             st.dataframe(pd.DataFrame([port["stats"]]).T.rename(columns={0: "Value"}))
         with t_col2:
-            st.write("**Claude AI Integration Bridge**")
+            st.caption("Claude AI Bridge")
             st.json({
-                "Role": "DeepAtomicIQ Neural Investment Officer",
-                "Model": "claude-sonnet-4-20250514",
-                "Profile": f"P{profile_num} — {port['risk_category']}",
-                "API Health": claude_status,
-                "Source": st.session_state.get("ai_insight_source_v2", "unknown"),
+                "model": "claude-sonnet-4-20250514",
+                "profile": f"P{profile_num} — {port['risk_category']}",
+                "api_health": claude_status,
+                "source": st.session_state.get("ai_insight_source_v2", "unknown"),
             })
-        st.write("**MongoDB Persistence Audit**")
-        st.code(f"INSERT INTO assessments (user_email, answers, result) VALUES ('{st.session_state.get('user_email','guest')}', ...)", language="sql")
-        st.info("💡 **Examiner Insight**: Every survey answer is verified, mathematically processed via the Markowitz engine, explained by Claude, and committed to MongoDB Atlas.")
+            st.caption("Persistence Layer")
+            st.code(f"db.assessments.insertOne({{ user: '{st.session_state.get('user_email','guest')}', ... }})", language="javascript")
+        st.info("Every survey response is validated, processed via the Markowitz optimiser, interpreted by Claude, and persisted to MongoDB Atlas.")
 
     # ── INVESTMENT PLANNER ────────────────────────────────────────────────────
-    st.divider()
+    st.markdown("<div style='margin-top:36px;'></div>", unsafe_allow_html=True)
     _render_section_intro(
         "Investment Planner",
-        "Enter how much you want to invest — we'll show you exactly where to put it and what to expect back.",
-        margin_top=10,
+        "Specify your investment amount to see an exact asset-by-asset allocation and projected annual return.",
+        margin_top=0,
     )
 
     inv_col, _ = st.columns([1, 1])
@@ -793,15 +800,19 @@ def _render_portfolio():
             """, unsafe_allow_html=True)
 
     # ── Survey summary ────────────────────────────────────────────────────────
-    with st.expander("Survey Summary", icon=":material/assignment:"):
-        st.markdown("**Your Answers**")
+    with st.expander("Assessment Answers · Survey Summary", icon=":material/assignment:"):
         for i, q in enumerate(QUESTIONS):
             val = st.session_state.survey_answers.get(q["id"], "—")
-            st.markdown(f"- **Q{i+1}** {q['text'][:55]}…  →  `{val}`")
+            st.markdown(f"**Q{i+1}** — {q['text']}  \'\n`Answer: {val}`")
 
     # ── STRESS TEST ───────────────────────────────────────────────────────────
     st.divider()
-    _render_section_intro("Resilience Stress Test", "", icon_svg=get_svg("shield", 24, ACCENT), margin_top=12)
+    _render_section_intro(
+        "Resilience Stress Test",
+        "Estimated portfolio drawdown across historical market crises based on your risk profile.",
+        icon_svg=get_svg("shield", 24, ACCENT),
+        margin_top=12,
+    )
     c1, c2, c3 = st.columns(3)
     stress_scenarios = [
         ("2008 Financial Crisis", "-18.2%", "Capital preservation focus enabled."),
@@ -818,19 +829,19 @@ def _render_portfolio():
             </div>""", unsafe_allow_html=True)
 
     st.markdown(f"""
-<div style='margin:8px 0;padding:12px;background:rgba(255,107,107,0.06);
-border-left:3px solid rgba(255,107,107,0.35);border-radius:8px;
-font-size:12px;color:rgba(237,237,243,0.45); display:flex; gap:10px; align-items:flex-start;'>
-<div style="margin-top:2px;">{get_svg("warning", 16, "#FF6B6B")}</div>
-<div><b>Disclaimer:</b> This is for educational and research purposes only.
+<div style='margin:16px 0 8px;padding:14px 16px;background:rgba(255,107,107,0.05);
+border:1px solid rgba(255,107,107,0.18);border-radius:10px;
+font-size:11.5px;color:rgba(237,237,243,0.4);display:flex;gap:12px;align-items:flex-start;'>
+<div style="margin-top:1px;flex-shrink:0;">{get_svg("warning", 14, "rgba(255,107,107,0.6)")}</div>
+<div><span style='font-weight:700;color:rgba(237,237,243,0.6);'>Disclaimer</span> &nbsp;—&nbsp; For educational and research purposes only.
 Not financial advice. Consult a qualified financial adviser before investing.
-Past performance does not guarantee future results.</div>
+Past performance is not a reliable indicator of future results.</div>
 </div>""", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
     col_r, _ = st.columns([1, 3])
     with col_r:
-        if st.button("Try a Different Profile", icon=":material/refresh:", use_container_width=True):
+        if st.button("Retake Assessment", icon=":material/refresh:", use_container_width=True):
             st.session_state.survey_page    = "survey"
             st.session_state.survey_step    = 0
             st.session_state.survey_answers = {}
