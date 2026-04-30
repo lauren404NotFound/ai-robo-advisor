@@ -41,14 +41,14 @@ ETF_ROLES = {
 }
 
 ASSET_DETAIL = {
-    "VOO":  {"icon": get_svg("chart", 14, "#3BA4FF"), "colour": "#3BA4FF", "why": "VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
-    "QQQ":  {"icon": get_svg("zap", 14, "#6D5EFC"), "colour": "#6D5EFC", "why": "QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
-    "VWRA": {"icon": get_svg("globe", 14, "#8EF6D1"), "colour": "#8EF6D1", "why": "VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
-    "AGG":  {"icon": get_svg("shield", 14, "#8BA6D3"), "colour": "#8BA6D3", "why": "AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
-    "GLD":  {"icon": get_svg("shield", 14, "#FFD700"), "colour": "#FFD700", "why": "Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
-    "VNQ":  {"icon": get_svg("layers", 14, "#FF9B6B"), "colour": "#FF9B6B", "why": "VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
-    "ESGU": {"icon": get_svg("shield-check", 14, "#4CAF50"), "colour": "#4CAF50", "why": "ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
-    "PDBC": {"icon": get_svg("risk", 14, "#FF6B6B"), "colour": "#FF6B6B", "why": "PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
+    "VOO":  {"icon": "📈", "colour": "#3BA4FF", "why": "VOO tracks the S&P 500 — 500 of the largest US companies. It's the backbone of most portfolios because it grows with the world's largest economy. The MINN allocated this to capture consistent long-term growth."},
+    "QQQ":  {"icon": "⚡", "colour": "#6D5EFC", "why": "QQQ holds the top 100 Nasdaq-listed companies, dominated by tech giants like Apple, Microsoft, and Nvidia. Higher risk, higher reward — the MINN uses it to boost return potential in line with your risk appetite."},
+    "VWRA": {"icon": "🌐", "colour": "#8EF6D1", "why": "VWRA gives global exposure across 3,700+ companies in 50+ countries. It reduces your dependence on any single market recovering or performing well — pure diversification."},
+    "AGG":  {"icon": "🛡", "colour": "#8BA6D3", "why": "AGG invests in US government and corporate bonds. When stocks fall, bonds often hold steady — acting as a ballast. The MINN uses AGG to reduce portfolio volatility."},
+    "GLD":  {"icon": "✦", "colour": "#FFD700", "why": "Gold has protected wealth for thousands of years. It rises when inflation erodes currency value and during geopolitical uncertainty — the MINN uses it as a crisis hedge."},
+    "VNQ":  {"icon": "◧", "colour": "#FF9B6B", "why": "VNQ gives exposure to real estate investment trusts. Property tends to grow with inflation and pays dividends — adding a reliable income stream uncorrelated with stocks."},
+    "ESGU": {"icon": "◈", "colour": "#4CAF50", "why": "ESGU mirrors the S&P 500 while excluding companies with poor environmental, social, and governance ratings. It aligns your investments with your values without sacrificing returns."},
+    "PDBC": {"icon": "◎", "colour": "#FF6B6B", "why": "PDBC tracks a basket of commodities — oil, natural gas, metals, and agriculture. These real assets often zig when financial assets zag, adding genuine diversification."},
 }
 
 # ── Helper: get profile number from portfolio result ─────────────────────────
