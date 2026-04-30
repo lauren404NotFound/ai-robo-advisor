@@ -449,30 +449,7 @@ def _render_portfolio():
             </div>
             """, unsafe_allow_html=True)
 
-    # ── Quick-navigation pill bar ────────────────────────────────────────
-    _nav_sections = [
-        ("section-growth",    "Projected Growth",    get_svg("chart",  12, "#8BA6D3")),
-        ("section-allocation","Asset Allocation",     get_svg("layers", 12, "#8BA6D3")),
-        ("section-ai",        "AI Strategy",          get_svg("brain",  12, "#8BA6D3")),
-        ("section-planner",   "Investment Planner",   get_svg("zap",    12, "#8BA6D3")),
-        ("section-why",       "Why Each Asset",       get_svg("puzzle", 12, "#8BA6D3")),
-        ("section-stress",    "Stress Test",          get_svg("shield", 12, "#8BA6D3")),
-    ]
-    _pill_style = (
-        "display:flex;align-items:center;gap:7px;"
-        "background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);"
-        "border-radius:20px;padding:7px 16px;"
-        "font-size:11px;font-weight:600;color:#C5D3EC;"
-        "white-space:nowrap;transition:background 0.2s,border-color 0.2s;"
-    )
-    _pills_html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 28px;">'
-    for _sid, _label, _icon in _nav_sections:
-        _pills_html += (
-            f'<a href="#{_sid}" style="text-decoration:none;">'
-            f'<div style="{_pill_style}">{_icon}{_label}</div></a>'
-        )
-    _pills_html += "</div>"
-    st.markdown(_pills_html, unsafe_allow_html=True)
+
 
     col1, col2 = st.columns([2.2, 1], gap="large")
 
