@@ -111,16 +111,15 @@ def render_chatbot():
     // 1. Find and float the Chat Panel (if it exists)
     const panelMarker = parentDoc.getElementById('cb-panel-marker');
     if (panelMarker) {
-        let panel = panelMarker;
-        // Climb the DOM tree until we find the vertical block that also contains the chat input
-        while (panel && panel.nodeName !== 'BODY') {
-            if (panel.getAttribute('data-testid') === 'stVerticalBlock' && panel.querySelector('div[data-testid="stChatInput"]')) {
-                break; // Found the true wrapper!
-            }
-            panel = panel.parentElement;
-        }
+        // By using border=True, Streamlit guarantees a unique wrapper we can target!
+        const panel = panelMarker.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
         
-        if (panel && panel.nodeName !== 'BODY') {
+        if (panel) {
+            // Remove Streamlit's default border/padding
+            panel.style.padding = '0';
+            panel.style.backgroundColor = 'transparent';
+            
+            // Apply our custom floating panel styles
             panel.style.position = 'fixed';
             panel.style.bottom = '100px'; // sit above the FAB
             panel.style.right = '24px';
@@ -140,16 +139,15 @@ def render_chatbot():
     // 2. Find and float the FAB Button
     const fabMarker = parentDoc.getElementById('cb-fab-marker');
     if (fabMarker) {
-        let fabWrapper = fabMarker;
-        // Climb the DOM tree until we find the vertical block that also contains the primary button
-        while (fabWrapper && fabWrapper.nodeName !== 'BODY') {
-            if (fabWrapper.getAttribute('data-testid') === 'stVerticalBlock' && fabWrapper.querySelector('button[kind="primary"]')) {
-                break; // Found the true wrapper!
-            }
-            fabWrapper = fabWrapper.parentElement;
-        }
+        const fabWrapper = fabMarker.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
         
-        if (fabWrapper && fabWrapper.nodeName !== 'BODY') {
+        if (fabWrapper) {
+            // Remove Streamlit's default border/padding
+            fabWrapper.style.border = 'none';
+            fabWrapper.style.padding = '0';
+            fabWrapper.style.backgroundColor = 'transparent';
+            
+            // Apply our custom floating FAB wrapper styles
             fabWrapper.style.position = 'fixed';
             fabWrapper.style.bottom = '24px';
             fabWrapper.style.right = '24px';
@@ -191,7 +189,7 @@ def render_chatbot():
     
     # 1. Chat Panel Container (Conditional)
     if st.session_state.cb_open:
-        with st.container():
+        with st.container(border=True):
             st.markdown('<div id="cb-panel-marker"></div>', unsafe_allow_html=True)
             
             # Custom Header
@@ -224,6 +222,6 @@ def render_chatbot():
                 st.rerun()
 
     # 2. Toggle Button Container
-    with st.container():
+    with st.container(border=True):
         st.markdown('<div id="cb-fab-marker"></div>', unsafe_allow_html=True)
         st.button("✕" if st.session_state.cb_open else "🏦", key="cb_fab", on_click=toggle_cb, type="primary")
