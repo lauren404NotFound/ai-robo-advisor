@@ -247,6 +247,7 @@ def render_chatbot():
 
   // ── Render message history ──────────────────────────────────────────
   function renderHistory() {{
+    busy = false;
     msgs.innerHTML = '';
     if (HISTORY.length === 0) {{
       addBubble('assistant', WELCOME, false);
