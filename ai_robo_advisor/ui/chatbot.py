@@ -315,11 +315,7 @@ def render_chatbot():
     showTyping();
 
     // Find the hidden Streamlit bridge input and trigger a rerun
-    var allInputs = pd.querySelectorAll('input[type="text"]');
-    var bridge = null;
-    allInputs.forEach(function(el) {{
-      if (el.id && el.id.indexOf('diq_bridge') !== -1) bridge = el;
-    }});
+    var bridge = pd.querySelector('input[placeholder="diq_bridge_input"]');
 
     if (bridge) {{
       // Use React's internal value setter to bypass synthetic event system
@@ -370,11 +366,12 @@ def render_chatbot():
     """, unsafe_allow_html=True)
 
     bridge_val = st.text_input(
-        "diq_bridge",
-        value="",
-        key=f"diq_bridge_{st.session_state.cb_key}",
-        label_visibility="collapsed",
-    )
+    "diq_bridge",
+    value="",
+    key=f"diq_bridge_{st.session_state.cb_key}",
+    label_visibility="collapsed",
+    placeholder="diq_bridge_input",
+)
 
     if bridge_val and bridge_val.strip():
         st.session_state.cb_pending = bridge_val.strip()
