@@ -286,12 +286,12 @@ def render_chatbot():
   }}
 
   fab.addEventListener('click', toggle);
-  panel.addEventListener('click', function(e) {
-    if (e.target.closest('.diq-x') || e.target.closest('#diq-close')) {
+  panel.addEventListener('click', function(e) {{
+    if (e.target.closest('.diq-x') || e.target.closest('#diq-close')) {{
       e.preventDefault();
       panel.classList.remove('diq-open');
-    }
-  });
+    }}
+  }});
 
   // ── Quick reply chips ───────────────────────────────────────────────
   quick.querySelectorAll('.diq-qbtn').forEach(function(btn) {{
