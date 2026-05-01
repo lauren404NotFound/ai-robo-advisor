@@ -44,7 +44,7 @@ Paragraph 3: What they can realistically expect and one actionable tip.
 Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
 
         _msg = _client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=500,
             messages=[{"role": "user", "content": _prompt}],
         )

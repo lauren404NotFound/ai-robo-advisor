@@ -648,7 +648,7 @@ def _render_portfolio():
            f'border:1px solid rgba(200,120,50,0.3);border-radius:20px;padding:5px 12px;">'
            f'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E07040" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
            f'<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>'
-           f'<span style="font-size:10px;font-weight:700;color:#E07040;letter-spacing:.06em;">Claude claude-sonnet-4-20250514</span>'
+           f'<span style="font-size:10px;font-weight:700;color:#E07040;letter-spacing:.06em;">Claude 3.5 Sonnet</span>'
            f'</div>' if _is_claude else
            f'<div style="display:flex;align-items:center;gap:7px;background:rgba(109,94,252,0.1);'
            f'border:1px solid rgba(109,94,252,0.3);border-radius:20px;padding:5px 12px;">'
@@ -778,7 +778,7 @@ def _render_portfolio():
         with t_col2:
             st.caption("Claude AI Bridge")
             st.json({
-                "model": "claude-sonnet-4-20250514",
+                "model": "claude-3-5-sonnet-20241022",
                 "profile": f"P{profile_num} — {port['risk_category']}",
                 "api_health": claude_status,
                 "source": st.session_state.get("ai_insight_source_v2", "unknown"),

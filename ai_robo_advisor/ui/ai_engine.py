@@ -4,7 +4,7 @@ ui/ai_engine.py
 Survey questions definition and AI explanation engine.
 
   - QUESTIONS          : 10-question investor risk survey
-  - get_ai_explanation : calls Claude claude-sonnet-4-20250514 and returns a
+  - get_ai_explanation : calls Claude 3.5 Sonnet and returns a
                          plain-English investment strategy note.
                          Falls back gracefully to a rich rule-based note if the
                          API key is absent or the call fails — never surfaces
@@ -265,7 +265,7 @@ def get_ai_explanation(
         try:
             prompt = _build_prompt(answers, portfolio_stats, iq_params)
             response = client.messages.create(
-                model="claude-sonnet-4-5",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=600,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -338,7 +338,7 @@ def render_actionable_advice(answers: dict, profile_num: int, iq_params: dict | 
     with st.spinner("Generating your personalised investment strategy…"):
         explanation, used_claude = get_ai_explanation(answers, profile_num, iq_params)
 
-    source_label = "Claude AI (claude-sonnet-4-20250514)" if used_claude else "DeepAtomicIQ Strategy Engine"
+    source_label = "Claude 3.5 Sonnet" if used_claude else "DeepAtomicIQ Strategy Engine"
     source_color = "#6D5EFC" if used_claude else "#3BA4FF"
 
     st.markdown(
