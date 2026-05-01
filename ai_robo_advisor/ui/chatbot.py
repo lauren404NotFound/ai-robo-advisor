@@ -323,12 +323,15 @@ def render_chatbot():
       var setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
       setter.call(bridge, text);
       bridge.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
-      // Small delay then fire Enter to submit
-      setTimeout(function() {{
-        bridge.dispatchEvent(new window.parent.KeyboardEvent('keydown', {{
-          key: 'Enter', keyCode: 13, which: 13, bubbles: true
-        }}));
-      }}, 50);
+      
+      // Locate the parent form and click its submit button
+      var form = bridge.closest('form');
+      if (form) {{
+        var btn = form.querySelector('button');
+        if (btn) {{
+           setTimeout(function() {{ btn.click(); }}, 50);
+        }}
+      }}
     }} else {{
       // Fallback: show error if bridge not found
       hideTyping();
@@ -352,28 +355,33 @@ def render_chatbot():
 """, height=0, scrolling=False)
 
     # ── Hidden Streamlit bridge input ─────────────────────────────────────
-    # CSS hides it; JS finds it by id and sets value to trigger rerun
+    # We use an st.form for a 100% reliable Javascript trigger without Enter-key issues
     st.markdown("""
     <style>
-    /* Hide the bridge input from view */
-    div[data-testid="stTextInput"]:has(input[id*="diq_bridge"]) {
+    /* Hide the bridge form from view completely */
+    div[data-testid="stForm"]:has(input[placeholder="diq_bridge_input"]) {
         position: absolute !important;
         opacity: 0 !important;
         pointer-events: none !important;
         height: 0 !important;
         overflow: hidden !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    bridge_val = st.text_input(
-    "diq_bridge",
-    value="",
-    key=f"diq_bridge_{st.session_state.cb_key}",
-    label_visibility="collapsed",
-    placeholder="diq_bridge_input",
-)
+    with st.form(key=f"diq_bridge_form_{st.session_state.cb_key}", clear_on_submit=True):
+        bridge_val = st.text_input(
+            "diq_bridge",
+            value="",
+            key=f"diq_bridge_input_{st.session_state.cb_key}",
+            label_visibility="collapsed",
+            placeholder="diq_bridge_input",
+        )
+        submit_btn = st.form_submit_button("Submit")
 
-    if bridge_val and bridge_val.strip():
+    if submit_btn and bridge_val and bridge_val.strip():
         st.session_state.cb_pending = bridge_val.strip()
         st.rerun()
