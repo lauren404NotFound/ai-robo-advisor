@@ -133,9 +133,13 @@ def render_chatbot():
             });
             
             // Format the Chat Panel if it exists
-            const panelMarker = parentDoc.getElementById('cb-panel-marker');
-            if (panelMarker) {
-                const panel = panelMarker.closest('div[data-testid="stVerticalBlock"]');
+            const header = container.querySelector('.cb-native-header');
+            if (header) {
+                // Find the direct child of 'container' that contains the header
+                let panel = header;
+                while (panel.parentElement && panel.parentElement !== container) {
+                    panel = panel.parentElement;
+                }
                 if (panel) {
                     panel.style.background = 'rgba(10,10,28,0.98)';
                     panel.style.backdropFilter = 'blur(20px)';
