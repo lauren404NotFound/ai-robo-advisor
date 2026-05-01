@@ -198,12 +198,13 @@ def page_dashboard():
         return
 
     if not st.session_state.get("result") and st.session_state.get("user_email") != "guest":
-        saved = database.get_latest_assessment(st.session_state.get("user_email"))
-        if saved:
-            st.session_state.result = saved["result"]
-            st.session_state.survey_answers = saved["answers"]
-            st.session_state.survey_page = "portfolio"
-            sp = "portfolio"
+        if not st.session_state.get("force_retake"):
+            saved = database.get_latest_assessment(st.session_state.get("user_email"))
+            if saved:
+                st.session_state.result = saved["result"]
+                st.session_state.survey_answers = saved["answers"]
+                st.session_state.survey_page = "portfolio"
+                sp = "portfolio"
 
     if not st.session_state.get("result"):
         if sp == "survey":
@@ -385,6 +386,7 @@ def _render_analysing():
             database.save_assessment(email, ans, st.session_state.result)
 
         st.session_state.survey_page = "portfolio"
+        st.session_state.force_retake = False
         st.rerun()
 
     except Exception as exc:
@@ -925,4 +927,5 @@ Past performance is not a reliable indicator of future results.</div>
             st.session_state.survey_step    = 0
             st.session_state.survey_answers = {}
             st.session_state.result         = None
+            st.session_state.force_retake   = True
             st.rerun()

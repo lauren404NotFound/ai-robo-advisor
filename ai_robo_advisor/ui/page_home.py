@@ -247,7 +247,8 @@ def page_home():
             port   = res_final.get("portfolio", {})
             stats  = port.get("stats", {})
             alloc  = port.get("allocation_pct", {})
-            cat    = port.get("risk_category", "Balanced")
+            import re
+            cat    = re.sub(r'DeepIQ Profile \d+', 'Strategy', str(port.get("risk_category", "Balanced")))
             exp_r  = stats.get("expected_annual_return", 0)
             vol    = stats.get("expected_volatility", 0)
             sharpe = stats.get("sharpe_ratio", 0)
@@ -332,7 +333,8 @@ def page_home():
         port  = res_final.get("portfolio", {})
         stats = port.get("stats", {})
         ans   = st.session_state.get("survey_answers", {})
-        cat   = port.get("risk_category", "Balanced")
+        import re
+        cat   = re.sub(r'DeepIQ Profile \d+', 'Strategy', str(port.get("risk_category", "Balanced")))
 
         # Cache key tied to portfolio category — one Claude call per profile
         _insight_key = f"home_ai_insight_{cat}"

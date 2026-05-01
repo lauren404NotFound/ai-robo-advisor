@@ -354,7 +354,7 @@ def render_chatbot():
     st.markdown("""
     <style>
     /* Hide the bridge input from view */
-    div[data-testid="stTextInput"]:has(input[id*="diq_bridge"]) {
+    div[data-testid="stTextInput"]:has(input[placeholder="diq_bridge_input"]) {
         position: absolute !important;
         opacity: 0 !important;
         pointer-events: none !important;
