@@ -1,8 +1,7 @@
 """
 ui/chatbot.py
 =============
-Floating Claude AI chatbot — pure HTML/JS widget injected via components.html.
-The entire chat UI lives inside an iframe so positioning is guaranteed.
+Floating Claude AI chatbot — injected into the parent Streamlit window via JS.
 Call render_chatbot() at the bottom of app.py after main_router().
 """
 from __future__ import annotations
@@ -29,9 +28,6 @@ def _get_portfolio_context() -> str:
 
 
 def render_chatbot():
-    """Render a self-contained floating chatbot widget."""
-
-    # Get API key and context to pass into the widget
     api_key = (
         st.secrets.get("anthropic_api_key")
         or st.secrets.get("ANTHROPIC_API_KEY")
@@ -46,338 +42,307 @@ def render_chatbot():
     portfolio_ctx = _get_portfolio_context()
     has_portfolio = bool(portfolio_ctx)
 
-    if has_portfolio:
-        welcome = f"Hi{' ' + name if name else ''}! I can see your portfolio is set up. Ask me anything about your investments or financial planning."
-    else:
-        welcome = f"Hi{' ' + name if name else ''}! I'm your AI investment assistant. Ask me anything about investing or how LEM StratIQ works."
+    welcome = (
+        f"Hi{' ' + name if name else ''}! I can see your portfolio is set up. Ask me anything about your investments or financial planning."
+        if has_portfolio else
+        f"Hi{' ' + name if name else ''}! I'm your AI investment assistant. Ask me anything about investing or how LEM StratIQ works."
+    )
 
-    system_prompt = f"""You are DeepAtomicIQ Assistant, an expert AI investment adviser for LEM StratIQ.
-You help users understand their portfolio, investment concepts, and financial planning.
-Be warm, professional, and use plain English. UK English spelling.
-Keep responses concise — 2-4 sentences unless more detail is needed.
-Never say "as an AI". Never use emojis.
-{f"User's portfolio context: {portfolio_ctx}" if portfolio_ctx else ""}"""
+    system_prompt = (
+        "You are DeepAtomicIQ Assistant, an expert AI investment adviser for LEM StratIQ. "
+        "Help users understand their portfolio, investment concepts, and financial planning. "
+        "Be warm, professional, plain English, UK spelling. "
+        "Keep responses to 2-4 sentences unless more detail is needed. "
+        "Never say 'as an AI'. Never use emojis."
+        + (f" User portfolio: {portfolio_ctx}" if portfolio_ctx else "")
+    )
+
+    # Escape for safe JS embedding
+    import json
+    api_key_js      = json.dumps(api_key)
+    welcome_js      = json.dumps(welcome)
+    system_js       = json.dumps(system_prompt)
 
     components.html(f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-    background: transparent;
-    overflow: hidden;
-  }}
-
-  /* ── FAB ── */
-  #fab {{
-    position: fixed;
-    bottom: 24px; right: 24px;
-    width: 58px; height: 58px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%);
-    box-shadow: 0 6px 28px rgba(109,94,252,0.55);
-    border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    z-index: 9999;
-  }}
-  #fab:hover {{
-    transform: scale(1.1);
-    box-shadow: 0 10px 36px rgba(109,94,252,0.75);
-  }}
-
-  /* ── Chat Panel ── */
-  #panel {{
-    position: fixed;
-    bottom: 94px; right: 24px;
-    width: 360px;
-    height: 500px;
-    background: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 16px 64px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.08);
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-    z-index: 9998;
-    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
-  }}
-  #panel.open {{ display: flex; }}
-
-  @keyframes popIn {{
-    from {{ opacity: 0; transform: scale(0.9) translateY(16px); }}
-    to   {{ opacity: 1; transform: scale(1) translateY(0); }}
-  }}
-
-  /* Header */
-  .cb-hdr {{
-    background: linear-gradient(135deg, #6D5EFC 0%, #3BA4FF 100%);
-    padding: 14px 18px;
-    display: flex; align-items: center; gap: 12px;
-    flex-shrink: 0;
-  }}
-  .cb-av {{
-    width: 40px; height: 40px; border-radius: 50%;
-    background: rgba(255,255,255,0.22);
-    border: 2px solid rgba(255,255,255,0.4);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; color: #fff; flex-shrink: 0;
-  }}
-  .cb-hdr-text {{ flex: 1; }}
-  .cb-hdr-name {{ font-size: 14px; font-weight: 700; color: #fff; }}
-  .cb-hdr-sub  {{ font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 1px; }}
-  .cb-dot {{
-    width: 9px; height: 9px; border-radius: 50%;
-    background: #4AE3A0; box-shadow: 0 0 8px #4AE3A0;
-  }}
-  .cb-x {{
-    background: rgba(255,255,255,0.18); border: none;
-    width: 28px; height: 28px; border-radius: 50%;
-    cursor: pointer; color: #fff; font-size: 15px;
-    display: flex; align-items: center; justify-content: center;
-  }}
-  .cb-x:hover {{ background: rgba(255,255,255,0.32); }}
-
-  /* Messages */
-  #msgs {{
-    flex: 1; overflow-y: auto; padding: 14px 14px 8px;
-    background: #f7f8fc;
-    display: flex; flex-direction: column; gap: 10px;
-  }}
-  #msgs::-webkit-scrollbar {{ width: 4px; }}
-  #msgs::-webkit-scrollbar-thumb {{ background: #d1d5db; border-radius: 4px; }}
-
-  .bub {{
-    max-width: 84%; padding: 10px 14px;
-    font-size: 13.5px; line-height: 1.55; word-break: break-word;
-  }}
-  .bub-bot {{
-    background: #fff; color: #1a1a2e;
-    border-radius: 4px 18px 18px 18px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.09);
-    align-self: flex-start;
-  }}
-  .bub-user {{
-    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
-    color: #fff;
-    border-radius: 18px 18px 4px 18px;
-    align-self: flex-end;
-    box-shadow: 0 2px 10px rgba(109,94,252,0.35);
-  }}
-  .typing {{
-    align-self: flex-start;
-    background: #fff; border-radius: 4px 18px 18px 18px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.09);
-    padding: 12px 16px; display: flex; gap: 5px; align-items: center;
-  }}
-  .dot {{
-    width: 7px; height: 7px; border-radius: 50%; background: #aaa;
-    animation: blink 1.2s infinite;
-  }}
-  .dot:nth-child(2) {{ animation-delay: 0.2s; }}
-  .dot:nth-child(3) {{ animation-delay: 0.4s; }}
-  @keyframes blink {{
-    0%,80%,100% {{ opacity: 0.2; transform: scale(0.85); }}
-    40%          {{ opacity: 1;   transform: scale(1); }}
-  }}
-
-  /* Quick replies */
-  #quick {{
-    padding: 8px 14px 6px;
-    background: #f7f8fc;
-    display: flex; flex-wrap: wrap; gap: 6px;
-  }}
-  .qbtn {{
-    background: #fff; border: 1.5px solid #e0e3ef;
-    border-radius: 20px; padding: 5px 12px;
-    font-size: 12px; color: #6D5EFC; font-weight: 600;
-    cursor: pointer; white-space: nowrap;
-    transition: all 0.15s;
-  }}
-  .qbtn:hover {{ background: #6D5EFC; color: #fff; border-color: #6D5EFC; }}
-
-  /* Input bar */
-  .cb-bar {{
-    padding: 10px 12px;
-    background: #fff;
-    border-top: 1px solid #eef0f6;
-    display: flex; gap: 8px; align-items: center;
-    flex-shrink: 0;
-  }}
-  #inp {{
-    flex: 1; border: 1.5px solid #e0e3ef; border-radius: 24px;
-    padding: 9px 16px; font-size: 13.5px; color: #1a1a2e;
-    outline: none; transition: border-color 0.2s; background: #f7f8fc;
-    font-family: inherit;
-  }}
-  #inp:focus {{ border-color: #6D5EFC; background: #fff; }}
-  #inp::placeholder {{ color: #b0b7c7; }}
-  #send {{
-    width: 40px; height: 40px; border-radius: 50%;
-    background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
-    border: none; cursor: pointer; color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; box-shadow: 0 3px 14px rgba(109,94,252,0.45);
-    transition: transform 0.15s, box-shadow 0.15s;
-  }}
-  #send:hover {{ transform: scale(1.1); box-shadow: 0 5px 18px rgba(109,94,252,0.6); }}
-
-  /* Error */
-  .err {{ color: #ef4444; font-size: 12px; padding: 4px 14px; }}
-</style>
-</head>
-<body>
-
-<!-- FAB -->
-<button id="fab" onclick="toggle()" title="Chat with DeepAtomicIQ">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
-       stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-  </svg>
-</button>
-
-<!-- Panel -->
-<div id="panel">
-
-  <!-- Header -->
-  <div class="cb-hdr">
-    <div class="cb-av">✦</div>
-    <div class="cb-hdr-text">
-      <div class="cb-hdr-name">DeepAtomicIQ Assistant</div>
-      <div class="cb-hdr-sub">Powered by Claude AI</div>
-    </div>
-    <div class="cb-dot"></div>
-    <button class="cb-x" onclick="toggle()">✕</button>
-  </div>
-
-  <!-- Messages -->
-  <div id="msgs">
-    <div class="bub bub-bot">{welcome}</div>
-  </div>
-
-  <!-- Quick replies -->
-  <div id="quick">
-    <button class="qbtn" onclick="sendQuick(this)">What is my Sharpe ratio?</button>
-    <button class="qbtn" onclick="sendQuick(this)">Explain my allocation</button>
-    <button class="qbtn" onclick="sendQuick(this)">What is volatility?</button>
-    <button class="qbtn" onclick="sendQuick(this)">How does rebalancing work?</button>
-  </div>
-
-  <!-- Input -->
-  <div class="cb-bar">
-    <input id="inp" type="text" placeholder="Write your message..."
-           onkeydown="if(event.key==='Enter' && !event.shiftKey){{ event.preventDefault(); send(); }}">
-    <button id="send" onclick="send()">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-           stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="22" y1="2" x2="11" y2="13"/>
-        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-      </svg>
-    </button>
-  </div>
-
-</div>
-
 <script>
-const API_KEY     = {repr(api_key)};
-const SYS_PROMPT  = {repr(system_prompt)};
-const msgs        = document.getElementById('msgs');
-const inp         = document.getElementById('inp');
-const quickDiv    = document.getElementById('quick');
-const panel       = document.getElementById('panel');
-let history       = [];
-let thinking      = false;
+(function() {{
+  var pd = window.parent.document;
 
-function toggle() {{
-  panel.classList.toggle('open');
-  if (panel.classList.contains('open')) inp.focus();
-}}
+  // Only inject once
+  if (pd.getElementById('diq-chatbot-fab')) return;
 
-function scrollBottom() {{
-  msgs.scrollTop = msgs.scrollHeight;
-}}
-
-function addBubble(role, text) {{
-  const d = document.createElement('div');
-  d.className = 'bub ' + (role === 'user' ? 'bub-user' : 'bub-bot');
-  d.textContent = text;
-  msgs.appendChild(d);
-  scrollBottom();
-  return d;
-}}
-
-function showTyping() {{
-  const d = document.createElement('div');
-  d.className = 'typing'; d.id = 'typing';
-  d.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
-  msgs.appendChild(d); scrollBottom(); return d;
-}}
-
-function hideQuick() {{
-  if (quickDiv) quickDiv.style.display = 'none';
-}}
-
-function sendQuick(btn) {{
-  inp.value = btn.textContent;
-  hideQuick();
-  send();
-}}
-
-async function send() {{
-  const text = inp.value.trim();
-  if (!text || thinking) return;
-  inp.value = '';
-  hideQuick();
-  thinking = true;
-
-  addBubble('user', text);
-  history.push({{ role: 'user', content: text }});
-
-  const typer = showTyping();
-
-  try {{
-    const res = await fetch('https://api.anthropic.com/v1/messages', {{
-      method: 'POST',
-      headers: {{
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-      }},
-      body: JSON.stringify({{
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
-        system: SYS_PROMPT,
-        messages: history.slice(-12),
-      }}),
-    }});
-
-    if (!res.ok) {{
-      const err = await res.json().catch(() => ({{}}));
-      throw new Error(err.error?.message || `HTTP ${{res.status}}`);
+  // ── Styles ──────────────────────────────────────────────────────────────
+  var style = pd.createElement('style');
+  style.textContent = `
+    #diq-chatbot-fab {{
+      position: fixed; bottom: 24px; right: 24px;
+      width: 58px; height: 58px; border-radius: 50%;
+      background: linear-gradient(135deg, #6D5EFC, #3BA4FF);
+      box-shadow: 0 6px 28px rgba(109,94,252,0.55);
+      border: none; cursor: pointer; z-index: 999999;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .2s, box-shadow .2s;
     }}
+    #diq-chatbot-fab:hover {{
+      transform: scale(1.1);
+      box-shadow: 0 10px 36px rgba(109,94,252,0.75);
+    }}
+    #diq-chatbot-panel {{
+      position: fixed; bottom: 94px; right: 24px;
+      width: 360px; height: 510px;
+      background: #fff; border-radius: 20px;
+      box-shadow: 0 16px 64px rgba(0,0,0,0.2);
+      display: none; flex-direction: column;
+      overflow: hidden; z-index: 999998;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      animation: diqPop .25s cubic-bezier(.34,1.56,.64,1);
+    }}
+    #diq-chatbot-panel.diq-open {{ display: flex; }}
+    @keyframes diqPop {{
+      from {{ opacity:0; transform: scale(.9) translateY(16px); }}
+      to   {{ opacity:1; transform: scale(1)  translateY(0); }}
+    }}
+    .diq-hdr {{
+      background: linear-gradient(135deg,#6D5EFC,#3BA4FF);
+      padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }}
+    .diq-av {{
+      width:40px;height:40px;border-radius:50%;
+      background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.4);
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;color:#fff;flex-shrink:0;
+    }}
+    .diq-hdr-name {{ font-size:14px;font-weight:700;color:#fff; }}
+    .diq-hdr-sub  {{ font-size:11px;color:rgba(255,255,255,.75);margin-top:1px; }}
+    .diq-dot {{
+      width:9px;height:9px;border-radius:50%;
+      background:#4AE3A0;box-shadow:0 0 8px #4AE3A0;margin-left:auto;
+    }}
+    .diq-x {{
+      background:rgba(255,255,255,.18);border:none;
+      width:28px;height:28px;border-radius:50%;
+      cursor:pointer;color:#fff;font-size:15px;
+      display:flex;align-items:center;justify-content:center;
+    }}
+    .diq-x:hover {{ background:rgba(255,255,255,.32); }}
+    #diq-msgs {{
+      flex:1;overflow-y:auto;padding:14px 14px 8px;
+      background:#f7f8fc;display:flex;flex-direction:column;gap:10px;
+    }}
+    #diq-msgs::-webkit-scrollbar {{ width:4px; }}
+    #diq-msgs::-webkit-scrollbar-thumb {{ background:#d1d5db;border-radius:4px; }}
+    .diq-bub {{
+      max-width:84%;padding:10px 14px;
+      font-size:13.5px;line-height:1.55;word-break:break-word;border-radius:18px;
+    }}
+    .diq-bot {{
+      background:#fff;color:#1a1a2e;
+      border-radius:4px 18px 18px 18px;
+      box-shadow:0 1px 5px rgba(0,0,0,.09);
+      align-self:flex-start;
+    }}
+    .diq-user {{
+      background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+      color:#fff;border-radius:18px 18px 4px 18px;
+      align-self:flex-end;
+      box-shadow:0 2px 10px rgba(109,94,252,.35);
+    }}
+    .diq-typing {{
+      align-self:flex-start;background:#fff;
+      border-radius:4px 18px 18px 18px;
+      box-shadow:0 1px 5px rgba(0,0,0,.09);
+      padding:12px 16px;display:flex;gap:5px;align-items:center;
+    }}
+    .diq-dot-t {{
+      width:7px;height:7px;border-radius:50%;background:#aaa;
+      animation:diqBlink 1.2s infinite;
+    }}
+    .diq-dot-t:nth-child(2){{animation-delay:.2s}}
+    .diq-dot-t:nth-child(3){{animation-delay:.4s}}
+    @keyframes diqBlink {{
+      0%,80%,100%{{opacity:.2;transform:scale(.85)}}
+      40%{{opacity:1;transform:scale(1)}}
+    }}
+    #diq-quick {{
+      padding:8px 14px 6px;background:#f7f8fc;
+      display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0;
+    }}
+    .diq-qbtn {{
+      background:#fff;border:1.5px solid #e0e3ef;
+      border-radius:20px;padding:5px 12px;
+      font-size:12px;color:#6D5EFC;font-weight:600;
+      cursor:pointer;white-space:nowrap;
+      transition:all .15s;font-family:inherit;
+    }}
+    .diq-qbtn:hover {{ background:#6D5EFC;color:#fff;border-color:#6D5EFC; }}
+    .diq-bar {{
+      padding:10px 12px;background:#fff;
+      border-top:1px solid #eef0f6;
+      display:flex;gap:8px;align-items:center;flex-shrink:0;
+    }}
+    #diq-inp {{
+      flex:1;border:1.5px solid #e0e3ef;border-radius:24px;
+      padding:9px 16px;font-size:13.5px;color:#1a1a2e;
+      outline:none;transition:border-color .2s;background:#f7f8fc;
+      font-family:inherit;
+    }}
+    #diq-inp:focus {{ border-color:#6D5EFC;background:#fff; }}
+    #diq-inp::placeholder {{ color:#b0b7c7; }}
+    #diq-send {{
+      width:40px;height:40px;border-radius:50%;
+      background:linear-gradient(135deg,#6D5EFC,#3BA4FF);
+      border:none;cursor:pointer;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;box-shadow:0 3px 14px rgba(109,94,252,.45);
+      transition:transform .15s,box-shadow .15s;
+    }}
+    #diq-send:hover{{ transform:scale(1.1);box-shadow:0 5px 18px rgba(109,94,252,.6); }}
+    .diq-err {{ color:#ef4444;font-size:12px;padding:4px 14px;align-self:flex-start; }}
+  `;
+  pd.head.appendChild(style);
 
-    const data  = await res.json();
-    const reply = data.content?.[0]?.text?.trim() || 'No response received.';
-    history.push({{ role: 'assistant', content: reply }});
-    typer.remove();
-    addBubble('assistant', reply);
-  }} catch(e) {{
-    typer.remove();
-    const errDiv = document.createElement('div');
-    errDiv.className = 'err';
-    errDiv.textContent = 'Error: ' + e.message;
-    msgs.appendChild(errDiv);
-    scrollBottom();
-    // Remove from history so user can retry
-    history.pop();
-  }} finally {{
-    thinking = false;
-    inp.focus();
+  // ── FAB ─────────────────────────────────────────────────────────────────
+  var fab = pd.createElement('button');
+  fab.id = 'diq-chatbot-fab';
+  fab.title = 'Chat with DeepAtomicIQ';
+  fab.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+    stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>`;
+  pd.body.appendChild(fab);
+
+  // ── Panel ────────────────────────────────────────────────────────────────
+  var panel = pd.createElement('div');
+  panel.id = 'diq-chatbot-panel';
+  panel.innerHTML = `
+    <div class="diq-hdr">
+      <div class="diq-av">✦</div>
+      <div style="flex:1">
+        <div class="diq-hdr-name">DeepAtomicIQ Assistant</div>
+        <div class="diq-hdr-sub">Powered by Claude AI</div>
+      </div>
+      <div class="diq-dot"></div>
+      <button class="diq-x" id="diq-close">✕</button>
+    </div>
+    <div id="diq-msgs">
+      <div class="diq-bub diq-bot">${{welcome}}</div>
+    </div>
+    <div id="diq-quick">
+      <button class="diq-qbtn">What is my Sharpe ratio?</button>
+      <button class="diq-qbtn">Explain my allocation</button>
+      <button class="diq-qbtn">What is volatility?</button>
+      <button class="diq-qbtn">How does rebalancing work?</button>
+    </div>
+    <div class="diq-bar">
+      <input id="diq-inp" type="text" placeholder="Write your message..." autocomplete="off">
+      <button id="diq-send">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+          stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  pd.body.appendChild(panel);
+
+  // ── Logic ────────────────────────────────────────────────────────────────
+  var API_KEY    = {api_key_js};
+  var SYS_PROMPT = {system_js};
+  var welcome    = {welcome_js};
+  var history    = [];
+  var thinking   = false;
+  var msgs       = pd.getElementById('diq-msgs');
+  var inp        = pd.getElementById('diq-inp');
+  var quick      = pd.getElementById('diq-quick');
+
+  function toggle() {{
+    panel.classList.toggle('diq-open');
+    if (panel.classList.contains('diq-open')) inp.focus();
   }}
-}}
+  fab.addEventListener('click', toggle);
+  pd.getElementById('diq-close').addEventListener('click', toggle);
+
+  function scrollBottom() {{ msgs.scrollTop = msgs.scrollHeight; }}
+
+  function addBubble(role, text) {{
+    var d = pd.createElement('div');
+    d.className = 'diq-bub ' + (role === 'user' ? 'diq-user' : 'diq-bot');
+    d.textContent = text;
+    msgs.appendChild(d);
+    scrollBottom();
+  }}
+
+  function showTyping() {{
+    var d = pd.createElement('div');
+    d.className = 'diq-typing'; d.id = 'diq-typing';
+    d.innerHTML = '<div class="diq-dot-t"></div><div class="diq-dot-t"></div><div class="diq-dot-t"></div>';
+    msgs.appendChild(d); scrollBottom(); return d;
+  }}
+
+  function hideQuick() {{
+    if (quick) quick.style.display = 'none';
+  }}
+
+  quick.querySelectorAll('.diq-qbtn').forEach(function(btn) {{
+    btn.addEventListener('click', function() {{
+      inp.value = btn.textContent;
+      hideQuick();
+      send();
+    }});
+  }});
+
+  inp.addEventListener('keydown', function(e) {{
+    if (e.key === 'Enter' && !e.shiftKey) {{ e.preventDefault(); send(); }}
+  }});
+  pd.getElementById('diq-send').addEventListener('click', send);
+
+  async function send() {{
+    var text = inp.value.trim();
+    if (!text || thinking) return;
+    inp.value = '';
+    hideQuick();
+    thinking = true;
+
+    addBubble('user', text);
+    history.push({{ role: 'user', content: text }});
+    var typer = showTyping();
+
+    try {{
+      var res = await fetch('https://api.anthropic.com/v1/messages', {{
+        method: 'POST',
+        headers: {{
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+          'anthropic-version': '2023-06-01',
+        }},
+        body: JSON.stringify({{
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          system: SYS_PROMPT,
+          messages: history.slice(-12),
+        }}),
+      }});
+
+      var data  = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'HTTP ' + res.status);
+      var reply = (data.content && data.content[0] && data.content[0].text) || 'No response.';
+      history.push({{ role: 'assistant', content: reply }});
+      typer.remove();
+      addBubble('assistant', reply);
+    }} catch(e) {{
+      typer.remove();
+      var err = pd.createElement('div');
+      err.className = 'diq-err';
+      err.textContent = 'Error: ' + e.message;
+      msgs.appendChild(err); scrollBottom();
+      history.pop();
+    }} finally {{
+      thinking = false;
+      inp.focus();
+    }}
+  }}
+}})();
 </script>
-</body>
-</html>
-""", height=620, scrolling=False)
+""", height=0, scrolling=False)
