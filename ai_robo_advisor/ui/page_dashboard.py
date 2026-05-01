@@ -668,15 +668,9 @@ def _render_portfolio():
         unsafe_allow_html=True,
     )
 
-    # AI narrative card
-    st.markdown(f"""
-    <div style="background:rgba(109,94,252,0.05);border:1px solid rgba(109,94,252,0.2);
-                border-radius:16px;padding:28px 32px;">
-    """, unsafe_allow_html=True)
+    # Render AI text
     formatted = _ai_text.replace("\\n", "\n")
-    st.markdown(f'<div style="font-size:13.5px;color:#C5D3EC;line-height:1.8;">', unsafe_allow_html=True)
     st.markdown(formatted)
-    st.markdown('</div></div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
     btn_col1, btn_col2, _ = st.columns([1, 1, 2])
