@@ -240,7 +240,6 @@ def render_chatbot():
   var inp   = pd.getElementById('diq-inp');
   var quick = pd.getElementById('diq-quick');
   var fab   = pd.getElementById('diq-fab');
-  var closeBtn = pd.querySelector('.diq-x');
   var busy  = false;
 
   if (!panel || !fab) return; // elements not ready yet
@@ -287,8 +286,12 @@ def render_chatbot():
   }}
 
   fab.addEventListener('click', toggle);
-  var closeBtn = pd.getElementById('diq-close') || pd.querySelector('.diq-x');
-  if (closeBtn) closeBtn.addEventListener('click', toggle);
+  panel.addEventListener('click', function(e) {
+    if (e.target.closest('.diq-x') || e.target.closest('#diq-close')) {
+      e.preventDefault();
+      panel.classList.remove('diq-open');
+    }
+  });
 
   // ── Quick reply chips ───────────────────────────────────────────────
   quick.querySelectorAll('.diq-qbtn').forEach(function(btn) {{
