@@ -55,7 +55,7 @@ def _call_claude_secure(history: list) -> str:
 
         client = anthropic.Anthropic(api_key=key)
         resp   = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=400,
             system=system,
             messages=history[-12:],
@@ -204,7 +204,7 @@ def render_chatbot():
       <div class="diq-hdr-sub">Powered by Claude AI · Secure</div>
     </div>
     <div class="diq-online"></div>
-    <button class="diq-x">✕</button>
+    <button class="diq-x" id="diq-close">✕</button>
   </div>
   <div id="diq-msgs"></div>
   <div id="diq-quick">
@@ -280,12 +280,14 @@ def render_chatbot():
   function scrollBottom() {{ msgs.scrollTop = msgs.scrollHeight; }}
 
   // ── Toggle open/close ───────────────────────────────────────────────
-  function toggle() {{
+  function toggle(e) {{
+    if (e) e.preventDefault();
     panel.classList.toggle('diq-open');
     if (panel.classList.contains('diq-open')) inp.focus();
   }}
 
   fab.addEventListener('click', toggle);
+  var closeBtn = pd.getElementById('diq-close') || pd.querySelector('.diq-x');
   if (closeBtn) closeBtn.addEventListener('click', toggle);
 
   // ── Quick reply chips ───────────────────────────────────────────────
