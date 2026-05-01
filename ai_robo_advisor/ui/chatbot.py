@@ -247,7 +247,6 @@ def render_chatbot():
 
   // ── Render message history ──────────────────────────────────────────
   function renderHistory() {{
-    busy = false;
     msgs.innerHTML = '';
     if (HISTORY.length === 0) {{
       addBubble('assistant', WELCOME, false);
@@ -315,35 +314,23 @@ def render_chatbot():
     addBubble('user', text);
     showTyping();
 
-    // Find the hidden Streamlit bridge input and trigger a rerun
+    // Find bridge input by unique placeholder
     var bridge = pd.querySelector('input[placeholder="diq_bridge_input"]');
 
     if (bridge) {{
-      // Use React's internal value setter to bypass synthetic event system
       var setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
       setter.call(bridge, text);
       bridge.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
-      
-      // Locate the parent form and click its submit button
-      var form = bridge.closest('form');
-      if (form) {{
-        var btn = form.querySelector('button');
-        if (btn) {{
-           setTimeout(function() {{ btn.click(); }}, 50);
-        }}
-      }}
+      setTimeout(function() {{
+        bridge.dispatchEvent(new window.parent.KeyboardEvent('keydown', {{
+          key: 'Enter', keyCode: 13, which: 13, bubbles: true
+        }}));
+      }}, 50);
     }} else {{
-      // Fallback: show error if bridge not found
       hideTyping();
-      addBubble('assistant', 'Bridge not ready — please refresh the page.');
+      addBubble('assistant', 'Could not connect — please try refreshing the page.');
       busy = false;
     }}
-
-    // Reset busy after Streamlit rerun completes (it will re-render the component)
-    setTimeout(function() {{
-      hideTyping();
-      busy = false;
-    }}, 8000);
   }}
 
   // Open panel if it was open before rerun
@@ -355,33 +342,28 @@ def render_chatbot():
 """, height=0, scrolling=False)
 
     # ── Hidden Streamlit bridge input ─────────────────────────────────────
-    # We use an st.form for a 100% reliable Javascript trigger without Enter-key issues
+    # CSS hides it; JS finds it by id and sets value to trigger rerun
     st.markdown("""
     <style>
-    /* Hide the bridge form from view completely */
-    div[data-testid="stForm"]:has(input[placeholder="diq_bridge_input"]) {
+    /* Hide the bridge input from view */
+    div[data-testid="stTextInput"]:has(input[id*="diq_bridge"]) {
         position: absolute !important;
         opacity: 0 !important;
         pointer-events: none !important;
         height: 0 !important;
         overflow: hidden !important;
-        border: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    with st.form(key=f"diq_bridge_form_{st.session_state.cb_key}", clear_on_submit=True):
-        bridge_val = st.text_input(
-            "diq_bridge",
-            value="",
-            key=f"diq_bridge_input_{st.session_state.cb_key}",
-            label_visibility="collapsed",
-            placeholder="diq_bridge_input",
-        )
-        submit_btn = st.form_submit_button("Submit")
+    bridge_val = st.text_input(
+        "diq_bridge",
+        value="",
+        key=f"diq_bridge_{st.session_state.cb_key}",
+        label_visibility="collapsed",
+        placeholder="diq_bridge_input",
+    )
 
-    if submit_btn and bridge_val and bridge_val.strip():
+    if bridge_val and bridge_val.strip():
         st.session_state.cb_pending = bridge_val.strip()
         st.rerun()
