@@ -314,21 +314,27 @@ def render_chatbot():
     addBubble('user', text);
     showTyping();
 
-    // Find bridge input by unique placeholder
     var bridge = pd.querySelector('input[placeholder="diq_bridge_input"]');
 
     if (bridge) {{
-      var setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
-      setter.call(bridge, text);
+      var nativeSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
+      nativeSetter.call(bridge, text);
       bridge.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
+      bridge.dispatchEvent(new window.parent.Event('change', {{ bubbles: true }}));
       setTimeout(function() {{
         bridge.dispatchEvent(new window.parent.KeyboardEvent('keydown', {{
+          key: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true
+        }}));
+        bridge.dispatchEvent(new window.parent.KeyboardEvent('keypress', {{
           key: 'Enter', keyCode: 13, which: 13, bubbles: true
         }}));
-      }}, 50);
+        bridge.dispatchEvent(new window.parent.KeyboardEvent('keyup', {{
+          key: 'Enter', keyCode: 13, which: 13, bubbles: true
+        }}));
+      }}, 100);
     }} else {{
       hideTyping();
-      addBubble('assistant', 'Could not connect — please try refreshing the page.');
+      addBubble('assistant', 'Bridge not found — please refresh the page.');
       busy = false;
     }}
   }}
