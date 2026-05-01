@@ -23,7 +23,7 @@ def _get_portfolio_context() -> str:
     cat   = port.get("risk_category", "Balanced")
     score = result.get("score", 5)
     return (
-        f"Risk profile: {cat} (score {score:.1f}/10), "
+        f"Risk category: {cat} (score {score:.1f}/10), "
         f"Expected return: {stats.get('expected_annual_return', 0):.1f}%, "
         f"Volatility: {stats.get('expected_volatility', 0):.1f}%, "
         f"Sharpe: {stats.get('sharpe_ratio', 0):.2f}, "

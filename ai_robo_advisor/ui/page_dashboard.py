@@ -160,7 +160,7 @@ def _render_feed_card(notifs, include_archive: bool = False, compact: bool = Fal
     )
     st.markdown(
         f'<p style="font-size:11px;color:{MUTED};margin:0 0 14px;">'
-        f'Real-time feed of neural diagnostic events and profile changes.</p>',
+        f'Real-time feed of neural diagnostic events and category changes.</p>',
         unsafe_allow_html=True,
     )
     _render_feed_items(notifs, compact=compact)
@@ -213,7 +213,7 @@ def page_dashboard():
         st.markdown(f"""
         <div class="coming-soon">
           <div class="coming-soon-icon" style="color:#6D5EFC;margin-bottom:15px;display:flex;justify-content:center;">{get_svg("news", 40)}</div>
-          <div class="coming-soon-title">Incomplete Risk Profile</div>
+          <div class="coming-soon-title">Incomplete Risk Assessment</div>
           <div class="coming-soon-sub">Please complete the investor assessment survey to view your dashboard.</div>
         </div>
         """, unsafe_allow_html=True)
@@ -404,6 +404,10 @@ def _render_portfolio():
     ans   = st.session_state.survey_answers
     email = st.session_state.get("user_email")
     iq    = port.get("iq_params", {})
+    import re
+    # Clean up legacy database values that hardcoded 'DeepIQ Profile X'
+    _raw_cat = str(port.get("risk_category", "Balanced"))
+    port["risk_category"] = re.sub(r'DeepIQ Profile \d+', 'Strategy', _raw_cat)
     cat   = port["risk_category"]
     stats = port["stats"]
     sim   = port["simulated_growth"]
@@ -606,7 +610,7 @@ def _render_portfolio():
             st.error("AI Engine Offline — check API key")
 
     if "ai_insight_text_v2" not in st.session_state:
-        with st.status("Analysing your profile via Claude Sonnet...", expanded=True) as status:
+        with st.status("Analysing your assessment via Claude Sonnet...", expanded=True) as status:
             _portfolio_stats = {
                 "expected_annual_return": stats.get("expected_annual_return", 0),
                 "expected_volatility":    stats.get("expected_volatility", 0),
@@ -626,7 +630,9 @@ def _render_portfolio():
                 st.session_state.result,
             )
 
-    _ai_text   = str(st.session_state.get("ai_insight_text_v2", "..."))
+    _raw_ai_text = str(st.session_state.get("ai_insight_text_v2", "..."))
+    import re
+    _ai_text = re.sub(r'DeepIQ Profile \d+', 'Strategy', _raw_ai_text)
     _ai_source = st.session_state.get("ai_insight_source_v2", "Claude AI")
     _is_claude = "claude" in _ai_source.lower()
 
@@ -691,82 +697,6 @@ def _render_portfolio():
                     else:    st.error("Failed")
 
 
-    if not anthropic_client:
-        with st.sidebar:
-            st.error("AI Engine Offline — check API key")
-
-    if "ai_insight_text_v2" not in st.session_state:
-        with st.status("Analysing your profile via Claude Sonnet...", expanded=True) as status:
-            # Build live portfolio_stats for the AI — real computed values, no hardcoded profiles
-            _portfolio_stats = {
-                "expected_annual_return": stats.get("expected_annual_return", 0),
-                "expected_volatility":    stats.get("expected_volatility", 0),
-                "sharpe_ratio":           stats.get("sharpe_ratio", 0),
-                "risk_category":          port.get("risk_category", "balanced"),
-                "top_assets": [(a, w * 100) for a, w in sorted_weights.items()][:6],
-            }
-            insight, used_claude = get_ai_explanation(ans, _portfolio_stats, iq or {})
-            source = "Claude AI" if used_claude else "DeepAtomicIQ Engine"
-            st.session_state.ai_insight_text_v2 = insight
-            st.session_state.ai_insight_source_v2 = source
-            status.update(label=f"Insight generated via {source}", state="complete", expanded=False)
-            st.session_state.result["ai_narrative"] = insight
-            database.save_assessment(
-                st.session_state.get("user_email", "guest"),
-                st.session_state.survey_answers,
-                st.session_state.result,
-            )
-
-    _ai_text  = str(st.session_state.get("ai_insight_text_v2", "..."))
-    _ai_source = st.session_state.get("ai_insight_source_v2", "Claude AI")
-
-    # Section header with anchor
-    st.markdown(
-        f'<div id="section-ai" style="display:flex;align-items:center;gap:14px;margin:32px 0 16px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.06);">'
-        f'<div style="background:linear-gradient(135deg,{ACCENT},{ACCENT2});border-radius:12px;padding:10px;display:flex;">{get_svg("brain", 22, "#fff")}</div>'
-        f'<div><div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px;">AI-Generated</div>'
-        f'<h3 style="margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.01em;">Investment Strategy</h3></div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Styled card containing the AI narrative
-    st.markdown(f"""
-    <div style="background:rgba(109,94,252,0.05);border:1px solid rgba(109,94,252,0.2);
-                border-radius:16px;padding:28px 32px;position:relative;">
-      <div style="position:absolute;top:16px;right:18px;display:flex;align-items:center;gap:6px;
-                  background:rgba(109,94,252,0.12);border:1px solid rgba(109,94,252,0.3);
-                  border-radius:20px;padding:4px 10px;">
-        {get_svg("brain",12,ACCENT)}
-        <span style="font-size:9px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:.08em;">{_ai_source}</span>
-      </div>
-    """, unsafe_allow_html=True)
-
-    # Render AI text with proper markdown inside the card
-    formatted = _ai_text.replace("\\n", "\n")
-    st.markdown(f'<div style="font-size:13.5px;color:#C5D3EC;line-height:1.8;">', unsafe_allow_html=True)
-    st.markdown(formatted)
-    st.markdown('</div></div>', unsafe_allow_html=True)
-
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-    btn_col1, btn_col2, _ = st.columns([1, 1, 2])
-    with btn_col1:
-        if st.button("Regenerate Strategy", icon=":material/refresh:", key="regen_strat_dash", use_container_width=True):
-            if "ai_insight_text_v2" in st.session_state:
-                del st.session_state["ai_insight_text_v2"]
-            st.rerun()
-    with btn_col2:
-        if st.session_state.get("user_email") != "guest":
-            if st.button("Email Report", icon=":material/mail:", key="email_rep_dash", use_container_width=True):
-                with st.spinner("Delivering report..."):
-                    sent = send_portfolio_report(
-                        st.session_state.user_email,
-                        port["risk_category"],
-                        port.get("profile_score", profile_num),
-                        st.session_state.get("ai_insight_text_v2", ""),
-                    )
-                    if sent: st.success("Sent!")
-                    else:    st.error("Failed")
 
     with st.expander("System Internals · Technical Audit (Examiner View)", expanded=False):
         t_col1, t_col2 = st.columns(2)
@@ -958,7 +888,7 @@ def _render_portfolio():
     st.divider()
     _render_section_intro(
         "Resilience Stress Test",
-        "Estimated portfolio drawdown across historical market crises based on your risk profile.",
+        "Estimated portfolio drawdown across historical market crises based on your risk category.",
         icon_svg=get_svg("shield", 24, ACCENT),
         margin_top=12,
     )

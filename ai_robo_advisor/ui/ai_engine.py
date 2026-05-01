@@ -330,7 +330,7 @@ The engine projects **{exp_ret:.1f}% annual return** with typical year-to-year s
 
 **Our recommendation**
 
-{lumpsum} Review your profile annually or whenever your financial circumstances change significantly."""
+{lumpsum} Review your assessment annually or whenever your financial circumstances change significantly."""
 
 
 def render_actionable_advice(answers: dict, profile_num: int, iq_params: dict | None = None):

@@ -39,7 +39,7 @@ Their survey answers: {ans}
 
 Write a concise, personalised 3-paragraph explanation of why this portfolio suits them.
 Paragraph 1: What their answers reveal about them as an investor.
-Paragraph 2: Why this specific allocation matches their profile.
+Paragraph 2: Why this specific allocation matches their risk category.
 Paragraph 3: What they can realistically expect and one actionable tip.
 Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
 
@@ -55,7 +55,7 @@ Tone: confident, warm, professional. UK English. No emojis. Under 300 words."""
 
 def _fallback_insight(cat: str, stats: dict) -> str:
     return (
-        f"Your survey responses indicate a {cat} investor profile. "
+        f"Your survey responses indicate a {cat} investor category. "
         f"Based on your risk tolerance and investment horizon, our neural engine has constructed "
         f"a portfolio targeting {stats.get('expected_annual_return', 0):.1f}% annual returns "
         f"with a Sharpe ratio of {stats.get('sharpe_ratio', 0):.2f}.\n\n"
@@ -313,7 +313,7 @@ def page_home():
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <div style="font-size:14px; color:#ffffff; font-weight:700;">Live Dashboard</div>
                 <div style="background:rgba(109,94,252,0.15); color:#6D5EFC; padding:4px 10px;
-                            border-radius:20px; font-size:11px; font-weight:700;">● Awaiting Profile</div>
+                            border-radius:20px; font-size:11px; font-weight:700;">● Awaiting Assessment</div>
               </div>
               <div style="padding:20px 0;">
                 <div style="font-size:11px; color:#8BA6D3; margin-bottom:10px;">PORTFOLIO PREVIEW</div>
@@ -340,7 +340,7 @@ def page_home():
         # Clear any stale cached content (old fallback text, SVG leakage, etc.)
         stale = st.session_state.get(_insight_key, "")
         if stale and any(x in stale for x in [
-            "DeepIQ Profile", "DeepAtomicIQ Profile", "What our AI sees",
+            "DeepIQ Analysis", "DeepAtomicIQ Analysis", "What our AI sees",
             "<svg", "Strategic weighting", "details_html",
         ]):
             del st.session_state[_insight_key]
@@ -356,7 +356,7 @@ def page_home():
 
         key_drivers = [
             {"icon": "◷", "title": "Time Horizon",  "desc": "Portfolio tuned for your optimal duration."},
-            {"icon": "◈", "title": "Risk Profile",   "desc": "Calibrated to your volatility tolerance."},
+            {"icon": "◈", "title": "Risk Category",   "desc": "Calibrated to your volatility tolerance."},
             {"icon": "△", "title": "Growth Focus",   "desc": "Prioritising capital appreciation."},
         ]
         drivers_html = "".join([
@@ -440,7 +440,7 @@ def page_home():
     <div class="step-item">
       <div class="step-circle">2</div>
       <div class="step-title">Get your AI portfolio</div>
-      <div class="step-desc">Our neural network instantly maps your profile to the optimal ETF allocation.</div>
+      <div class="step-desc">Our neural network instantly maps your assessment to the optimal ETF allocation.</div>
     </div>
     <div class="step-item">
       <div class="step-circle">3</div>
