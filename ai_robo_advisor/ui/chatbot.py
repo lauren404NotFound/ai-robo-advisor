@@ -102,59 +102,66 @@ def render_chatbot():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── JavaScript to reliably float the container ────────────────────────
+    # ── JavaScript to reliably float the containers ────────────────────────
     import streamlit.components.v1 as components
     components.html("""
     <script>
     const parentDoc = window.parent.document;
     
-    // Find the marker we injected
-    const wrapperMarker = parentDoc.getElementById('cb-wrapper');
-    if (wrapperMarker) {
-        // Find the closest Streamlit vertical block container
-        const container = wrapperMarker.closest('div[data-testid="stVerticalBlock"]');
-        if (container) {
-            // Apply floating styles to the main container
-            container.style.position = 'fixed';
-            container.style.bottom = '24px';
-            container.style.right = '24px';
-            container.style.zIndex = '999999';
-            container.style.width = '360px';
-            container.style.display = 'flex';
-            container.style.flexDirection = 'column';
-            container.style.alignItems = 'flex-end';
-            container.style.gap = '16px';
-            container.style.pointerEvents = 'none'; // let clicks pass through the wrapper background
-            
-            // Re-enable pointer events for all children
-            Array.from(container.children).forEach(child => {
-                child.style.pointerEvents = 'auto';
-                child.style.width = '100%';
-            });
-            
-            // Format the Chat Panel if it exists
-            const header = container.querySelector('.cb-native-header');
-            if (header) {
-                // Find the direct child of 'container' that contains the header
-                let panel = header;
-                while (panel.parentElement && panel.parentElement !== container) {
-                    panel = panel.parentElement;
-                }
-                if (panel) {
-                    panel.style.background = 'rgba(10,10,28,0.98)';
-                    panel.style.backdropFilter = 'blur(20px)';
-                    panel.style.border = '1px solid rgba(109,94,252,0.3)';
-                    panel.style.borderRadius = '20px';
-                    panel.style.boxShadow = '0 12px 50px rgba(0,0,0,0.7)';
-                    panel.style.overflow = 'hidden';
-                    panel.style.width = '360px';
-                }
+    // 1. Find and float the Chat Panel (if it exists)
+    const panelMarker = parentDoc.getElementById('cb-panel-marker');
+    if (panelMarker) {
+        let panel = panelMarker;
+        // Climb the DOM tree until we find the vertical block that also contains the chat input
+        while (panel && panel.nodeName !== 'BODY') {
+            if (panel.getAttribute('data-testid') === 'stVerticalBlock' && panel.querySelector('div[data-testid="stChatInput"]')) {
+                break; // Found the true wrapper!
             }
+            panel = panel.parentElement;
+        }
+        
+        if (panel && panel.nodeName !== 'BODY') {
+            panel.style.position = 'fixed';
+            panel.style.bottom = '100px'; // sit above the FAB
+            panel.style.right = '24px';
+            panel.style.zIndex = '999998';
+            panel.style.width = '360px';
+            panel.style.background = 'rgba(10,10,28,0.98)';
+            panel.style.backdropFilter = 'blur(20px)';
+            panel.style.border = '1px solid rgba(109,94,252,0.3)';
+            panel.style.borderRadius = '20px';
+            panel.style.boxShadow = '0 12px 50px rgba(0,0,0,0.7)';
+            panel.style.overflow = 'hidden';
+            panel.style.display = 'flex';
+            panel.style.flexDirection = 'column';
+        }
+    }
+    
+    // 2. Find and float the FAB Button
+    const fabMarker = parentDoc.getElementById('cb-fab-marker');
+    if (fabMarker) {
+        let fabWrapper = fabMarker;
+        // Climb the DOM tree until we find the vertical block that also contains the primary button
+        while (fabWrapper && fabWrapper.nodeName !== 'BODY') {
+            if (fabWrapper.getAttribute('data-testid') === 'stVerticalBlock' && fabWrapper.querySelector('button[kind="primary"]')) {
+                break; // Found the true wrapper!
+            }
+            fabWrapper = fabWrapper.parentElement;
+        }
+        
+        if (fabWrapper && fabWrapper.nodeName !== 'BODY') {
+            fabWrapper.style.position = 'fixed';
+            fabWrapper.style.bottom = '24px';
+            fabWrapper.style.right = '24px';
+            fabWrapper.style.zIndex = '999999';
+            fabWrapper.style.width = '64px';
+            fabWrapper.style.height = '64px';
+            fabWrapper.style.display = 'flex';
+            fabWrapper.style.justifyContent = 'flex-end';
+            fabWrapper.style.alignItems = 'flex-end';
             
-            // Format the Toggle Button
-            const buttons = container.querySelectorAll('button[kind="primary"]');
-            if (buttons.length > 0) {
-                const btn = buttons[buttons.length - 1]; // get the FAB
+            const btn = fabWrapper.querySelector('button[kind="primary"]');
+            if (btn) {
                 btn.style.borderRadius = '50%';
                 btn.style.width = '64px';
                 btn.style.height = '64px';
@@ -165,7 +172,7 @@ def render_chatbot():
                 btn.style.display = 'flex';
                 btn.style.alignItems = 'center';
                 btn.style.justifyContent = 'center';
-                btn.style.marginLeft = 'auto'; // align right
+                btn.style.margin = '0';
                 
                 const p = btn.querySelector('p');
                 if (p) {
@@ -174,13 +181,6 @@ def render_chatbot():
                     p.style.lineHeight = '1';
                     p.style.margin = '0';
                 }
-                
-                // Set the container of the button to align right
-                const btnWrapper = btn.closest('div');
-                if (btnWrapper) {
-                    btnWrapper.style.display = 'flex';
-                    btnWrapper.style.justifyContent = 'flex-end';
-                }
             }
         }
     }
@@ -188,42 +188,42 @@ def render_chatbot():
     """, height=0, scrolling=False)
 
     # ── Main Chatbot DOM Structure ──────────────────────────────────────────
-    with st.container():
-        st.markdown('<div id="cb-wrapper"></div>', unsafe_allow_html=True)
-        
-        # 1. Chat Panel (Conditional)
-        if st.session_state.cb_open:
-            with st.container():
-                st.markdown('<div id="cb-panel-marker"></div>', unsafe_allow_html=True)
-                
-                # Custom Header
-                st.markdown("""
-                <div class="cb-native-header">
-                    <div class="cb-native-avatar">✦</div>
-                    <div>
-                        <div class="cb-native-title">DeepAtomicIQ Assistant</div>
-                        <div class="cb-native-sub">Powered by Claude AI</div>
-                    </div>
+    
+    # 1. Chat Panel Container (Conditional)
+    if st.session_state.cb_open:
+        with st.container():
+            st.markdown('<div id="cb-panel-marker"></div>', unsafe_allow_html=True)
+            
+            # Custom Header
+            st.markdown("""
+            <div class="cb-native-header">
+                <div class="cb-native-avatar">✦</div>
+                <div>
+                    <div class="cb-native-title">DeepAtomicIQ Assistant</div>
+                    <div class="cb-native-sub">Powered by Claude AI</div>
                 </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Chat Messages Container
+            msg_container = st.container(height=380, border=False)
+            with msg_container:
+                for msg in st.session_state.cb_messages:
+                    st.chat_message(msg["role"]).write(msg["content"])
                 
-                # Chat Messages Container
-                msg_container = st.container(height=380, border=False)
-                with msg_container:
-                    for msg in st.session_state.cb_messages:
-                        st.chat_message(msg["role"]).write(msg["content"])
-                    
-                    # If the last message is from the user, call Claude!
-                    if st.session_state.cb_messages[-1]["role"] == "user":
-                        with st.spinner("Thinking..."):
-                            reply = _call_claude(st.session_state.cb_messages)
-                        st.session_state.cb_messages.append({"role": "assistant", "content": reply})
-                        st.rerun()
-                
-                # Chat Input
-                if prompt := st.chat_input("Ask me anything...", key="cb_input"):
-                    st.session_state.cb_messages.append({"role": "user", "content": prompt})
+                # If the last message is from the user, call Claude!
+                if st.session_state.cb_messages[-1]["role"] == "user":
+                    with st.spinner("Thinking..."):
+                        reply = _call_claude(st.session_state.cb_messages)
+                    st.session_state.cb_messages.append({"role": "assistant", "content": reply})
                     st.rerun()
+            
+            # Chat Input
+            if prompt := st.chat_input("Ask me anything...", key="cb_input"):
+                st.session_state.cb_messages.append({"role": "user", "content": prompt})
+                st.rerun()
 
-        # 2. Toggle Button (Changed to Bank emoji)
+    # 2. Toggle Button Container
+    with st.container():
+        st.markdown('<div id="cb-fab-marker"></div>', unsafe_allow_html=True)
         st.button("✕" if st.session_state.cb_open else "🏦", key="cb_fab", on_click=toggle_cb, type="primary")
